@@ -13,6 +13,8 @@ class AppIndex private constructor(
     val all: List<AppEntry>,
     /** Les applis visibles dans le tiroir et la recherche. */
     val visible: List<AppEntry>,
+    /** Les applis masquées. */
+    val hidden: List<AppEntry>,
     private val byKey: Map<String, AppEntry>,
     private val byPackage: Map<String, AppEntry>,
 ) {
@@ -23,7 +25,7 @@ class AppIndex private constructor(
     }
 
     companion object {
-        val Empty = AppIndex(emptyList(), emptyList(), emptyMap(), emptyMap())
+        val Empty = AppIndex(emptyList(), emptyList(), emptyList(), emptyMap(), emptyMap())
 
         fun build(apps: List<AppEntry>, config: LauncherConfig): AppIndex {
             val collator = Collator.getInstance(Locale.FRENCH).apply { strength = Collator.PRIMARY }
@@ -33,6 +35,7 @@ class AppIndex private constructor(
             return AppIndex(
                 all = renamed,
                 visible = renamed.filterNot { it.key in config.hiddenApps },
+                hidden = renamed.filter { it.key in config.hiddenApps },
                 byKey = renamed.associateBy { it.key },
                 byPackage = renamed.associateBy { packageKeyOf(it.key) },
             )

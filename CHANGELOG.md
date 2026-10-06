@@ -3,6 +3,17 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.3.0 (code 4) — 2026-10-06
+
+Le tiroir version complète.
+
+- **Pastilles en haut** : tri **A–Z** ou **Fréquence** (les applis que tu lances le plus d'abord),
+  affichage **Grille** ou **Liste**, **4 ou 5 colonnes**.
+- **Sections par lettre** (A, B, C…) en tri alphabétique, avec la **barre A–Z** à droite :
+  toucher ou glisser sur une lettre pour y sauter.
+- **Applis masquées** : bouton en bas du tiroir pour les voir et les faire réapparaître.
+- Appui long en mode liste : même menu qu'en grille.
+
 ## v0.2.0 (code 3) — 2026-10-06
 
 L'accueil prend forme, et tout se règle dans l'appli.

@@ -1,6 +1,8 @@
 package com.atelierjlg.fern.ui.common
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,13 +92,19 @@ fun AppPicker(
 }
 
 /** Une ligne « icône + nom », utilisée dans les listes. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppRow(app: AppEntry, onClick: () -> Unit, trailing: String? = null) {
+fun AppRow(
+    app: AppEntry,
+    onClick: () -> Unit,
+    trailing: String? = null,
+    onLongClick: (() -> Unit)? = null,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(vertical = 8.dp),
     ) {
         Image(bitmap = app.icon, contentDescription = null, modifier = Modifier.size(40.dp))

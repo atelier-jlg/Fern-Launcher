@@ -8,6 +8,7 @@ import com.atelierjlg.fern.apps.AppIndex
 import com.atelierjlg.fern.apps.AppRepository
 import com.atelierjlg.fern.data.ConfigStore
 import com.atelierjlg.fern.data.DefaultLayout
+import com.atelierjlg.fern.data.DrawerSettings
 import com.atelierjlg.fern.data.HomeBlock
 import com.atelierjlg.fern.data.LauncherConfig
 import com.atelierjlg.fern.data.SlotRef
@@ -24,6 +25,7 @@ import com.atelierjlg.fern.data.renamePack
 import com.atelierjlg.fern.data.renamePage
 import com.atelierjlg.fern.data.setHidden
 import com.atelierjlg.fern.data.setSlot
+import com.atelierjlg.fern.data.updateDrawer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -132,6 +134,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun uninstall(app: AppEntry) = repository.uninstall(app)
 
     fun setHidden(app: AppEntry, hidden: Boolean) = store.update { it.setHidden(app.key, hidden) }
+
+    fun updateDrawer(transform: (DrawerSettings) -> DrawerSettings) = store.update { it.updateDrawer(transform) }
 
     fun renameApp(app: AppEntry, name: String) = store.update { it.renameApp(app.key, name) }
 

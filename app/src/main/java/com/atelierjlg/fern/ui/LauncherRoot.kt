@@ -20,6 +20,7 @@ import com.atelierjlg.fern.OverlayMode
 import com.atelierjlg.fern.data.slotValue
 import com.atelierjlg.fern.ui.common.AppPicker
 import com.atelierjlg.fern.ui.drawer.AppDrawer
+import com.atelierjlg.fern.ui.drawer.DrawerActions
 import com.atelierjlg.fern.ui.home.HomeScreen
 import com.atelierjlg.fern.ui.theme.Fern
 
@@ -52,16 +53,22 @@ fun LauncherRoot(vm: LauncherViewModel) {
         ) {
             AppDrawer(
                 apps = apps.visible,
+                hiddenApps = apps.hidden,
+                settings = config.drawer,
+                launchCounts = config.launchCounts,
                 focusSearch = overlay.mode == OverlayMode.Search,
                 versionName = BuildConfig.VERSION_NAME,
-                onLaunch = vm::launch,
-                onAppInfo = vm::openAppInfo,
-                onUninstall = vm::uninstall,
-                onClose = vm::closeOverlay,
-                destinations = vm::freeDestinations,
-                onAddTo = vm::addTo,
-                onHide = { vm.setHidden(it, true) },
-                onRename = vm::renameApp,
+                actions = DrawerActions(
+                    onLaunch = vm::launch,
+                    onAppInfo = vm::openAppInfo,
+                    onUninstall = vm::uninstall,
+                    onClose = vm::closeOverlay,
+                    destinations = vm::freeDestinations,
+                    onAddTo = vm::addTo,
+                    onSetHidden = vm::setHidden,
+                    onRename = vm::renameApp,
+                    onSettings = vm::updateDrawer,
+                ),
             )
         }
 

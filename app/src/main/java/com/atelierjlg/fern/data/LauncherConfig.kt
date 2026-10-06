@@ -30,6 +30,7 @@ data class LauncherConfig(
     val renamedApps: Map<String, String> = emptyMap(),
     /** Clé d'appli → nombre de lancements (pour le tri par fréquence). */
     val launchCounts: Map<String, Int> = emptyMap(),
+    val drawer: DrawerSettings = DrawerSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -82,6 +83,23 @@ data class PackBlock(
     val title: String,
     val apps: List<String?> = List(PACK_SIZE) { null },
 ) : HomeBlock()
+
+@Serializable
+enum class DrawerStyle { Grille, Liste }
+
+@Serializable
+enum class DrawerSort { Alphabetique, Frequence }
+
+/** Réglages du tiroir. */
+@Serializable
+data class DrawerSettings(
+    val style: DrawerStyle = DrawerStyle.Grille,
+    val sort: DrawerSort = DrawerSort.Alphabetique,
+    /** Nombre de colonnes en mode grille (4 ou 5). */
+    val columns: Int = 4,
+    /** Ouvrir directement l'appli quand la recherche ne donne qu'un résultat. */
+    val autoLaunchSingleResult: Boolean = false,
+)
 
 const val DEFAULT_SPACE_ID = "perso"
 

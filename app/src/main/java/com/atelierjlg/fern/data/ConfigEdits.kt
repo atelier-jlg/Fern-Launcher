@@ -146,3 +146,8 @@ fun LauncherConfig.setHidden(key: String, hidden: Boolean) =
 /** Renomme une appli ; un nom vide rend le nom d'origine. */
 fun LauncherConfig.renameApp(key: String, name: String) =
     copy(renamedApps = if (name.isBlank()) renamedApps - key else renamedApps + (key to name.trim()))
+
+// ─── Tiroir ─────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.updateDrawer(transform: (DrawerSettings) -> DrawerSettings) =
+    copy(drawer = transform(drawer))
