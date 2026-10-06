@@ -56,14 +56,11 @@ fun AlternanceWidget(settings: AlternanceSettings, compact: Boolean) {
     val today = LocalDate.now()
     val current = Alternance.periodAt(settings.periods, today)
     val next = Alternance.nextChange(settings.periods, today)
-    fun nameOf(type: AltType?) = when (type) {
-        AltType.Ecole -> settings.schoolName
-        AltType.Entreprise -> settings.companyName
-        null -> "Pause"
-    }
+    fun nameOf(type: AltType?) = settings.nameOf(type)
     fun colorOf(type: AltType?) = when (type) {
         AltType.Ecole -> colors.pistache
         AltType.Entreprise -> colors.roseCarmin
+        AltType.Mission -> colors.creme
         null -> colors.sousBois
     }
 

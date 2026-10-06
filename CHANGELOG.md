@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.13.0 (code 15) — 2026-10-06
+
+- **Alternance · calendrier ESB 2026/27** : Paramètres → Alternance → « Charger le calendrier ESB 2026/27 »
+  remplit toutes les périodes du calendrier officiel (Ingénieur année 1, version du 16/06/2026).
+- Nouveau type de période **Mission à l'international** (31/05 → 30/07/2027), en crème dans la frise,
+  nom modifiable.
+
 ## v0.12.0 (code 14) — 2026-10-06
 
 - **Taille des widgets Android** : en mode édition, bouton **⤢ Taille** sur un widget d'une autre appli.

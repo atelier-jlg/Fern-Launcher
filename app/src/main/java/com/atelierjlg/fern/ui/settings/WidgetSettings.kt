@@ -62,6 +62,7 @@ fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row2("École", settings.schoolName, onClick = { editingName = AltType.Ecole })
         Row2("Entreprise", settings.companyName, onClick = { editingName = AltType.Entreprise })
+        Row2("Mission à l'international", settings.missionName, onClick = { editingName = AltType.Mission })
         Text("PÉRIODES", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
         if (settings.periods.isEmpty()) {
             Text(
@@ -71,9 +72,8 @@ fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
             )
         }
         for (period in settings.periods.sortedBy { it.start }) {
-            val name = if (period.type == AltType.Ecole) settings.schoolName else settings.companyName
             Row2(
-                title = name,
+                title = settings.nameOf(period.type),
                 subtitle = "${Alternance.shortDate(period.start)} → ${Alternance.shortDate(period.end)}",
                 onClick = {},
             ) {
@@ -84,6 +84,10 @@ fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
             PillButton("+ Période", onClick = { adding = true })
             PillButton("Générer un rythme", onClick = { generating = true })
         }
+        // Le calendrier officiel de l'ESB (remplace les périodes existantes).
+        PillButton("Charger le calendrier ESB 2026/27", onClick = {
+            vm.updateAlternance { it.copy(periods = Alternance.esbIngenieur1) }
+        })
         if (settings.periods.isNotEmpty()) {
             PillButton("Tout effacer", onClick = { vm.updateAlternance { it.copy(periods = emptyList()) } })
         }
@@ -91,11 +95,19 @@ fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
 
     editingName?.let { type ->
         TextInputDialog(
-            title = if (type == AltType.Ecole) "Nom de l'école" else "Nom de l'entreprise",
-            initial = if (type == AltType.Ecole) settings.schoolName else settings.companyName,
+            title = when (type) {
+                AltType.Ecole -> "Nom de l'école"
+                AltType.Entreprise -> "Nom de l'entreprise"
+                AltType.Mission -> "Nom de la mission"
+            },
+            initial = settings.nameOf(type),
             onConfirm = { name ->
                 vm.updateAlternance {
-                    if (type == AltType.Ecole) it.copy(schoolName = name.ifBlank { it.schoolName }) else it.copy(companyName = name.ifBlank { it.companyName })
+                    when (type) {
+                        AltType.Ecole -> it.copy(schoolName = name.ifBlank { it.schoolName })
+                        AltType.Entreprise -> it.copy(companyName = name.ifBlank { it.companyName })
+                        AltType.Mission -> it.copy(missionName = name.ifBlank { it.missionName })
+                    }
                 }
                 editingName = null
             },
@@ -119,10 +131,13 @@ fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
 }
 
 @Composable
-private fun TypePicker(settings: AlternanceSettings, type: AltType, onChange: (AltType) -> Unit) {
+private fun TypePicker(settings: AlternanceSettings, type: AltType, withMission: Boolean = false, onChange: (AltType) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PillButton(settings.schoolName, onClick = { onChange(AltType.Ecole) }, accent = type == AltType.Ecole)
         PillButton(settings.companyName, onClick = { onChange(AltType.Entreprise) }, accent = type == AltType.Entreprise)
+        if (withMission) {
+            PillButton(settings.missionName, onClick = { onChange(AltType.Mission) }, accent = type == AltType.Mission)
+        }
     }
 }
 
@@ -140,7 +155,7 @@ private fun PeriodDialog(settings: AlternanceSettings, onConfirm: (AltPeriod) ->
         title = { Text("Nouvelle période") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TypePicker(settings, type) { type = it }
+                TypePicker(settings, type, withMission = true) { type = it }
                 OutlinedTextField(value = start, onValueChange = { start = it }, label = { Text("Début (jj/mm/aaaa)") }, singleLine = true)
                 OutlinedTextField(value = end, onValueChange = { end = it }, label = { Text("Fin incluse (jj/mm/aaaa)") }, singleLine = true)
             }

@@ -3,6 +3,7 @@ package com.atelierjlg.fern.widgets
 import com.atelierjlg.fern.data.AltType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -53,5 +54,27 @@ class AlternanceTest {
         assertEquals(LocalDate.of(2027, 1, 15), Alternance.parseDate("15/01/2027", today))
         assertEquals(LocalDate.of(2027, 1, 15), Alternance.parseDate("15/01/27", today))
         assertNull(Alternance.parseDate("bonjour", today))
+    }
+
+    @Test
+    fun `calendrier ESB - periodes triees et sans chevauchement`() {
+        val list = Alternance.esbIngenieur1
+        for (i in 1 until list.size) {
+            val prevEnd = LocalDate.parse(list[i - 1].end)
+            val start = LocalDate.parse(list[i].start)
+            assertEquals("trou ou chevauchement avant ${list[i].start}", prevEnd.plusDays(1), start)
+            assertTrue(!LocalDate.parse(list[i].end).isBefore(start))
+        }
+    }
+
+    @Test
+    fun `calendrier ESB - le 6 octobre 2026 on est en entreprise, ecole dans 20 jours`() {
+        val day = LocalDate.of(2026, 10, 6)
+        assertEquals(AltType.Entreprise, Alternance.periodAt(Alternance.esbIngenieur1, day)?.type)
+        val next = Alternance.nextChange(Alternance.esbIngenieur1, day)!!
+        assertEquals(AltType.Ecole, next.period.type)
+        assertEquals(20L, next.daysUntil)
+        // Mission à l'international en juin 2027.
+        assertEquals(AltType.Mission, Alternance.periodAt(Alternance.esbIngenieur1, LocalDate.of(2027, 6, 15))?.type)
     }
 }

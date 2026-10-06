@@ -214,7 +214,7 @@ data class RevisionsBlock(override val id: String, val half: Boolean = true) : H
 data class CarnetBlock(override val id: String, val half: Boolean = false) : HomeBlock()
 
 @Serializable
-enum class AltType { Ecole, Entreprise }
+enum class AltType { Ecole, Entreprise, Mission }
 
 /** Une période d'alternance, dates au format ISO (2026-10-06), fin incluse. */
 @Serializable
@@ -224,8 +224,18 @@ data class AltPeriod(val type: AltType, val start: String, val end: String)
 data class AlternanceSettings(
     val schoolName: String = "ESB",
     val companyName: String = "VINCI",
+    /** Nom affiché pour la mission à l'international (3ᵉ type de période). */
+    val missionName: String = "Mission int.",
     val periods: List<AltPeriod> = emptyList(),
-)
+) {
+    /** Le nom à afficher pour un type de période (null = pas de période : « Pause »). */
+    fun nameOf(type: AltType?): String = when (type) {
+        AltType.Ecole -> schoolName
+        AltType.Entreprise -> companyName
+        AltType.Mission -> missionName
+        null -> "Pause"
+    }
+}
 
 /** Une journée du carnet : humeur (0 graine → 4 fleur épanouie), habitudes cochées, note. */
 @Serializable

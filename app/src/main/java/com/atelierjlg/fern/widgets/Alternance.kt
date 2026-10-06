@@ -56,6 +56,25 @@ object Alternance {
         return result
     }
 
+    /**
+     * Calendrier officiel CFA ESB · Ingénieur année 1 · 2026/2027 (version du 16/06/2026).
+     * École = semaines en vert (lundi → vendredi). Entreprise = du samedi qui suit jusqu'à la veille
+     * du retour à l'école (week-ends et vacances compris). Mission à l'international : 31/05 → 30/07.
+     */
+    val esbIngenieur1: List<AltPeriod> = listOf(
+        AltPeriod(AltType.Ecole, "2026-08-27", "2026-09-25"),
+        AltPeriod(AltType.Entreprise, "2026-09-26", "2026-10-25"),
+        AltPeriod(AltType.Ecole, "2026-10-26", "2026-11-27"),
+        AltPeriod(AltType.Entreprise, "2026-11-28", "2027-01-03"),
+        AltPeriod(AltType.Ecole, "2027-01-04", "2027-01-29"),
+        AltPeriod(AltType.Entreprise, "2027-01-30", "2027-02-28"),
+        AltPeriod(AltType.Ecole, "2027-03-01", "2027-03-26"),
+        AltPeriod(AltType.Entreprise, "2027-03-27", "2027-04-25"),
+        AltPeriod(AltType.Ecole, "2027-04-26", "2027-05-28"),
+        AltPeriod(AltType.Entreprise, "2027-05-29", "2027-05-30"),
+        AltPeriod(AltType.Mission, "2027-05-31", "2027-07-30"),
+    )
+
     private val shortFormat = DateTimeFormatter.ofPattern("dd/MM")
 
     fun shortDate(iso: String): String = runCatching { LocalDate.parse(iso).format(shortFormat) }.getOrDefault(iso)
