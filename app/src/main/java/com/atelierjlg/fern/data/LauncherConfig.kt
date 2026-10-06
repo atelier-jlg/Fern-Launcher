@@ -240,13 +240,24 @@ data class CoursSettings(
     val examKeywords: List<String> = listOf("examen", "partiel", "ds", "controle", "soutenance", "oral", "qcm", "rendu"),
 )
 
+/** Les moments du chat ; « Content » = quand la 1re tâche (le repas) est cochée. */
+@Serializable
+enum class CatPose(val label: String) {
+    Jour("La journée"),
+    Matin("Le matin (7 h – 10 h)"),
+    Nuit("La nuit (22 h – 7 h)"),
+    Content("Nourri, content"),
+}
+
 /** Widget « Le chat » : son nom, ses images (facultatives) et les petites tâches du jour. */
 @Serializable
 data class ChatSettings(
     val name: String = "Le chat",
-    /** Images PNG de Jules (dossier stickers/) ; null = le chat en pixel art dessiné par Fern. */
-    val dayImage: String? = null,
-    val nightImage: String? = null,
+    /**
+     * Images ou animations de Jules (PNG, GIF ou WebP animé, dossier stickers/) pour chaque moment.
+     * Absente = le chat en pixel art dessiné par Fern (la nuit et le matin reprennent l'image du jour).
+     */
+    val images: Map<CatPose, String> = emptyMap(),
     val chores: List<String> = listOf("Gamelle", "Litière"),
     /** Jour (2026-10-06) → tâches faites. On garde 14 jours. */
     val done: Map<String, Set<Int>> = emptyMap(),

@@ -55,6 +55,7 @@ import com.atelierjlg.fern.data.updateAlternance
 import com.atelierjlg.fern.data.updateCarnetDay
 import com.atelierjlg.fern.data.updateCarnetSettings
 import com.atelierjlg.fern.widgets.Anki
+import com.atelierjlg.fern.data.CatPose
 import com.atelierjlg.fern.data.ChatSettings
 import com.atelierjlg.fern.data.CoursSettings
 import com.atelierjlg.fern.data.MaisonKind
@@ -277,8 +278,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleChore(index: Int) = store.update { it.toggleChore(todayIso(), index) }
 
-    /** Copie une image choisie pour le chat (jour ou nuit) dans le dossier des stickers. */
-    fun importChatImage(night: Boolean, uri: Uri) {
+    /** Copie une image (ou animation GIF / WebP) choisie pour le chat dans le dossier des stickers. */
+    fun importChatImage(pose: CatPose, uri: Uri) {
         viewModelScope.launch {
             val name = "${newId()}.img"
             val ok = withContext(Dispatchers.IO) {
@@ -289,7 +290,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 }.isSuccess
             }
             if (ok) {
-                store.update { c -> c.updateChat { if (night) it.copy(nightImage = name) else it.copy(dayImage = name) } }
+                store.update { c -> c.updateChat { it.copy(images = it.images + (pose to name)) } }
             } else {
                 toast("Impossible de lire cette image")
             }

@@ -370,7 +370,7 @@ fun LauncherConfig.removeSticker(pageId: String, stickerId: String) =
 /** Tous les fichiers de stickers encore utilisés (tous Spaces confondus). */
 val LauncherConfig.usedStickerFiles: Set<String>
     get() = spaces.flatMap { it.pages }.flatMap { it.stickers }.map { it.file }.toSet() +
-        listOfNotNull(chat.dayImage, chat.nightImage)
+        chat.images.values
 
 // ─── Alternance & carnet ────────────────────────────────────────────────────
 

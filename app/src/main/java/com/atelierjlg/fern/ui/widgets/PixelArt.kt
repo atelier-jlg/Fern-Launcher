@@ -67,6 +67,33 @@ object CatSprites {
         }
     }
 
+    /** Content (nourri) : yeux en « ^ », joues roses, queue qui remue (2 images). */
+    val happyA = sitA.mapIndexed { i, line ->
+        when (i) {
+            4 -> ".bbebbbbebb..."
+            5 -> ".bebebbebeb..."
+            6 -> ".bpbbppbbpb..."
+            else -> line
+        }
+    }
+    val happyB = happyA.mapIndexed { i, line ->
+        when (i) {
+            11, 12 -> line.substring(0, 11) + "..t"
+            13 -> line.substring(0, 11) + ".t."
+            else -> line
+        }
+    }
+
+    /** Le petit cœur (h) qui apparaît quand le chat a mangé. */
+    val heart = listOf(
+        ".hh.hh.",
+        "hhhhhhh",
+        "hhhhhhh",
+        ".hhhhh.",
+        "..hhh..",
+        "...h...",
+    )
+
     /** L'étirement du matin : les pattes avant en avant, le dos qui s'allonge. */
     val stretch = listOf(
         "..................",

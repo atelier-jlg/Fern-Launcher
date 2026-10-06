@@ -25,6 +25,7 @@ import com.atelierjlg.fern.data.AltPeriod
 import com.atelierjlg.fern.data.AltType
 import com.atelierjlg.fern.data.AlternanceSettings
 import com.atelierjlg.fern.data.CarnetSettings
+import com.atelierjlg.fern.data.CatPose
 import com.atelierjlg.fern.data.ChatSettings
 import com.atelierjlg.fern.data.CoursSettings
 import com.atelierjlg.fern.data.PomodoroSettings
@@ -342,30 +343,43 @@ fun CoursSection(vm: LauncherViewModel, settings: CoursSettings) {
 @Composable
 fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
     var editing by remember { mutableStateOf<String?>(null) }
-    var pickingNight by remember { mutableStateOf(false) }
+    var pickingPose by remember { mutableStateOf(CatPose.Jour) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.importChatImage(pickingNight, uri)
-    }
-    fun pick(night: Boolean) {
-        pickingNight = night
-        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        if (uri != null) vm.importChatImage(pickingPose, uri)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row2("Nom", settings.name, onClick = { editing = "name" })
-        Text("IMAGES", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Text("IMAGES ET ANIMATIONS", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
         Text(
-            "Sans image, Fern dessine un chat en pixel art. Avec tes PNG (fond transparent), il « respire » doucement.",
+            "Sans image, Fern dessine un chat en pixel art. Tu peux mettre tes PNG, ou des animations en GIF / WebP animé " +
+                "(fond transparent). Astuce pixel art : exporte en grand (×8, ex. 32 px → 256 px) pour que ça reste net.",
             style = Fern.type.nomApp,
             color = Fern.colors.lichen,
         )
-        Row2("Le jour", if (settings.dayImage != null) "Image choisie" else "Pixel art", onClick = { pick(false) }) {
-            if (settings.dayImage != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(dayImage = null) } })
-        }
-        Row2("La nuit (22 h – 7 h)", if (settings.nightImage != null) "Image choisie" else "Comme le jour", onClick = { pick(true) }) {
-            if (settings.nightImage != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(nightImage = null) } })
+        for (pose in CatPose.entries) {
+            val file = settings.images[pose]
+            Row2(
+                pose.label,
+                when {
+                    file != null -> "Ton image"
+                    pose == CatPose.Jour || pose == CatPose.Content -> "Pixel art de Fern"
+                    else -> "Comme la journée"
+                },
+                onClick = {
+                    pickingPose = pose
+                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+            ) {
+                if (file != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(images = it.images - pose) } })
+            }
         }
         Text("TÂCHES DU JOUR", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Text(
+            "La 1re tâche, c'est le repas : quand elle est cochée, le chat a un petit cœur et une bouille contente.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
         for (i in 0 until 3) {
             Row2("Tâche ${i + 1}", settings.chores.getOrNull(i) ?: "—", onClick = { editing = "chore:$i" })
         }

@@ -1,6 +1,10 @@
 package com.atelierjlg.fern.ui.widgets
 
-import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -49,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.atelierjlg.fern.data.AltType
 import com.atelierjlg.fern.data.AlternanceSettings
+import com.atelierjlg.fern.data.CatPose
 import com.atelierjlg.fern.data.ChatSettings
 import com.atelierjlg.fern.data.PomodoroPhase
 import com.atelierjlg.fern.data.PomodoroSettings
@@ -153,19 +158,38 @@ private fun catMoment(hour: Int) = when (hour) {
     else -> CatMoment.Nuit
 }
 
-/** Charge une image de Jules en la réduisant (≤ 600 px). */
-private fun loadImage(file: File): ImageBitmap? = runCatching {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.path, bounds)
-    var sample = 1
-    while (bounds.outWidth / sample > 600 || bounds.outHeight / sample > 600) sample *= 2
-    BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+/**
+ * Charge une image ou une animation de Jules (PNG, GIF, WebP animé) en Drawable Android.
+ * Une animation (AnimatedImageDrawable) est lancée tout de suite. Pas de lissage : le pixel art reste net.
+ */
+private fun loadCatDrawable(file: File): Drawable? = runCatching {
+    val drawable = ImageDecoder.decodeDrawable(ImageDecoder.createSource(file)) { decoder, info, _ ->
+        // Les très grandes images sont réduites (mémoire).
+        val biggest = maxOf(info.size.width, info.size.height)
+        if (biggest > 800) decoder.setTargetSampleSize(biggest / 800 + 1)
+    }
+    drawable.isFilterBitmap = false
+    if (drawable is AnimatedImageDrawable) drawable.start()
+    drawable
 }.getOrNull()
+
+/** Affiche le Drawable (image ou animation) dans une vue Android classique. */
+@Composable
+private fun CatImage(file: File, modifier: Modifier) {
+    val drawable by produceState<Drawable?>(null, file) {
+        value = withContext(Dispatchers.IO) { loadCatDrawable(file) }
+    }
+    AndroidView(
+        factory = { ctx -> ImageView(ctx).apply { scaleType = ImageView.ScaleType.FIT_CENTER } },
+        update = { view -> if (view.drawable !== drawable) view.setImageDrawable(drawable) },
+        modifier = modifier,
+    )
+}
 
 /**
  * Le chat : il dort la nuit, s'étire le matin, veille le reste du temps (il cligne des yeux,
- * remue la queue). Avec les tâches du jour à cocher (gamelle, litière…).
- * Si Jules a choisi ses propres images (jour / nuit), elles remplacent le pixel art.
+ * remue la queue). Quand la 1re tâche (le repas) est cochée : petit cœur et bouille contente.
+ * Si Jules a mis ses propres images ou animations, elles remplacent le pixel art.
  */
 @Composable
 fun ChatWidget(
@@ -185,7 +209,15 @@ fun ChatWidget(
     val moment = catMoment(hour)
     val today = LocalDate.now().toString()
     val done = settings.done[today].orEmpty()
-    val custom = if (moment == CatMoment.Nuit) settings.nightImage ?: settings.dayImage else settings.dayImage
+    val fed = settings.chores.isNotEmpty() && 0 in done
+    // Quelle image de Jules montrer (la nuit et le matin reprennent celle de la journée).
+    val custom = when {
+        fed && moment != CatMoment.Nuit && settings.images[CatPose.Content] != null -> settings.images[CatPose.Content]
+        moment == CatMoment.Nuit -> settings.images[CatPose.Nuit] ?: settings.images[CatPose.Jour]
+        moment == CatMoment.Matin -> settings.images[CatPose.Matin] ?: settings.images[CatPose.Jour]
+        else -> settings.images[CatPose.Jour]
+    }
+    val customHappy = fed && settings.images[CatPose.Content] != null && moment != CatMoment.Nuit
     val palette = mapOf(
         'b' to colors.creme, 's' to colors.lichen, 'p' to colors.roseCarmin,
         'e' to colors.nuit, 'd' to colors.sousBois, 't' to colors.creme,
@@ -197,27 +229,41 @@ fun ChatWidget(
                 Box(Modifier.size(if (compact) 64.dp else 84.dp)) {
                     if (custom != null) {
                         // Image de Jules : une respiration lente (elle gonfle un tout petit peu).
-                        val bitmap by produceState<ImageBitmap?>(null, custom) {
-                            value = withContext(Dispatchers.IO) { loadImage(imageFile(custom)) }
-                        }
                         val breath by rememberInfiniteTransition(label = "souffle").animateFloat(
                             initialValue = 1f,
                             targetValue = 1.04f,
                             animationSpec = infiniteRepeatable(tween(if (moment == CatMoment.Nuit) 2400 else 1400), RepeatMode.Reverse),
                             label = "souffle",
                         )
-                        bitmap?.let {
-                            Image(it, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().fillMaxHeight().scale(breath))
-                        }
+                        CatImage(imageFile(custom), Modifier.fillMaxWidth().fillMaxHeight().scale(breath))
                     } else {
-                        val sprite = when (moment) {
-                            CatMoment.Nuit -> CatSprites.sleep
+                        val sprite = when {
+                            moment == CatMoment.Nuit -> CatSprites.sleep
                             // Le matin : étirement, puis assis, puis étirement…
-                            CatMoment.Matin -> if (rememberFrame(1800) == 0) CatSprites.stretch else CatSprites.sitA
-                            // La journée : un clignement de temps en temps (1 image sur 6).
-                            CatMoment.Jour -> if (rememberFrame(700, frames = 6) == 5) CatSprites.sitB else CatSprites.sitA
+                            moment == CatMoment.Matin && rememberFrame(1800) == 0 -> CatSprites.stretch
+                            // Nourri : yeux rieurs, la queue qui remue vite.
+                            fed -> if (rememberFrame(450) == 0) CatSprites.happyA else CatSprites.happyB
+                            // Sinon : un clignement de temps en temps (1 image sur 6).
+                            else -> if (rememberFrame(700, frames = 6) == 5) CatSprites.sitB else CatSprites.sitA
                         }
                         PixelSprite(sprite, palette, Modifier.fillMaxWidth().fillMaxHeight())
+                    }
+                    if (fed && !customHappy) {
+                        // Le petit cœur à côté de la tête, qui bat doucement.
+                        val beat by rememberInfiniteTransition(label = "coeur").animateFloat(
+                            initialValue = 0.85f,
+                            targetValue = 1.1f,
+                            animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+                            label = "coeur",
+                        )
+                        PixelSprite(
+                            CatSprites.heart,
+                            mapOf('h' to colors.roseCarmin),
+                            Modifier
+                                .align(if (moment == CatMoment.Nuit) Alignment.CenterEnd else Alignment.TopEnd)
+                                .size(if (compact) 16.dp else 20.dp)
+                                .scale(beat),
+                        )
                     }
                     if (moment == CatMoment.Nuit) {
                         // Des « z » qui montent doucement.
@@ -239,10 +285,11 @@ fun ChatWidget(
                 Column(Modifier.weight(1f)) {
                     Text(settings.name.uppercase(), style = Fern.type.libelle, color = colors.lichen)
                     Text(
-                        when (moment) {
-                            CatMoment.Nuit -> "Dort · chut"
-                            CatMoment.Matin -> "S'étire"
-                            CatMoment.Jour -> "Veille sur toi"
+                        when {
+                            moment == CatMoment.Nuit -> "Dort · chut"
+                            fed -> "Ventre plein ♥"
+                            moment == CatMoment.Matin -> "S'étire"
+                            else -> "Veille sur toi"
                         },
                         style = Fern.type.corps,
                         color = colors.creme,

@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.15.0 (code 17) — 2026-10-06
+
+- **Le chat nourri** : quand la 1re tâche (Gamelle) est cochée, il a une **bouille contente**
+  (yeux en « ^ », joues roses, queue qui remue) et un **petit cœur** qui bat à côté de la tête.
+- **Tes animations** : Paramètres → Le chat accepte des PNG, **GIF ou WebP animés**, pour 4 moments :
+  la journée, le matin, la nuit, et « nourri, content ». Le pixel art reste net (pas de lissage).
+
 ## v0.14.0 (code 16) — 2026-10-06
 
 Six nouveaux widgets (mode édition → + Widget). Ils sont en demi-largeur au départ, ⇔ pour passer en pleine largeur.
