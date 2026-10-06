@@ -53,11 +53,8 @@ fun LauncherRoot(vm: LauncherViewModel) {
     // (sinon Android fermerait le lanceur).
     BackHandler { vm.onBack() }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Fern.colors.nuit),
-    ) {
+    // Pas de fond ici : on voit le fond d'écran du téléphone derrière l'accueil.
+    Box(Modifier.fillMaxSize()) {
         HomeScreen(vm)
 
         val webLabel = remember(apps) { vm.webLabel() }

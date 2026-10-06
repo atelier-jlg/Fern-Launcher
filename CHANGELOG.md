@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.17.0 (code 22) — 2026-10-06
+
+- **Fond d'écran géré par le téléphone** : Fern affiche maintenant le fond d'écran d'Android
+  (Réglages → Fond d'écran, ou Paramètres → Thème → Fond d'écran). Les images intégrées sont retirées.
+- Le fond glisse doucement quand tu changes de page (effet de profondeur, si le fond s'y prête).
+- **Espace en haut de l'accueil** réglable (Paramètres → Thème) : 0 à 35 % de l'écran,
+  pour laisser voir le haut de ton fond (21 % par défaut).
+
 ## v0.16.3 (code 21) — 2026-10-06
 
 - **Le chat sans carte ni texte** : il est posé directement sur le fond, comme un sticker, en plus grand.

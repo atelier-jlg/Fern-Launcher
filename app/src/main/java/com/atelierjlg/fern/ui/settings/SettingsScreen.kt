@@ -253,7 +253,19 @@ private fun ThemeSection(vm: LauncherViewModel, theme: NamedTheme, saved: List<N
         uri?.let { vm.importTheme(it) }
     }
 
+    val config by vm.config.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Fond d'écran")
+        SettingRow(
+            title = "Fond d'écran",
+            subtitle = "Géré par le téléphone · toucher pour le changer",
+            onClick = vm::openWallpaperPicker,
+        )
+        SettingRow(
+            title = "Espace en haut de l'accueil",
+            subtitle = "${config.home.topSpacePercent} % de l'écran · pour laisser voir le haut du fond",
+            onClick = vm::cycleTopSpace,
+        )
         SectionLabel("Thème actif · ${theme.name}")
         for ((label, key, hex) in theme.colors.entries()) {
             SettingRow(title = label, subtitle = hex, onClick = { editing = key to hex }) { Swatch(hex) }

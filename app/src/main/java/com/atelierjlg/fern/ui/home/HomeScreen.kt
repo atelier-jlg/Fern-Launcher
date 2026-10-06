@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,9 +109,6 @@ import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
 import kotlin.math.abs
 
-/** Part de la hauteur d'écran occupée par le bandeau pixel art : accueil / autres pages. */
-private const val BANDEAU_ACCUEIL = 0.29f
-private const val BANDEAU_PAGES = 0.21f
 
 /**
  * L'écran d'accueil : les pages (glisser à gauche / à droite), le dock en bas,
@@ -155,7 +153,7 @@ fun HomeScreen(vm: LauncherViewModel) {
             ),
     ) {
         val screenHeight = maxHeight
-        Background(pagerState)
+        WallpaperScroll(pagerState, pages.size)
 
         Column(
             Modifier
@@ -173,7 +171,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     page = page,
                     index = index,
                     pageCount = pages.size,
-                    topSpace = screenHeight * if (index == 0) BANDEAU_ACCUEIL else BANDEAU_PAGES,
+                    topSpace = screenHeight * (config.home.topSpacePercent / 100f),
                     apps = apps,
                     actions = actions,
                 )
@@ -266,37 +264,24 @@ private fun Modifier.homeGestures(
         }
 }
 
-/** Les deux couches de fond. Le bandeau passe en fondu de « accueil » (29 %) à « pages » (21 %). */
+/**
+ * Le fond d'écran du téléphone glisse doucement avec les pages (effet de profondeur),
+ * comme dans les autres lanceurs. Android s'en occupe : on lui dit juste où on en est.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Background(pagerState: PagerState) {
-    val position = pagerState.currentPage + pagerState.currentPageOffsetFraction
-    val homeness = (1f - abs(position)).coerceIn(0f, 1f)
-    Image(
-        painter = painterResource(R.drawable.fond_topo),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier.fillMaxSize(),
-    )
-    if (homeness < 1f) {
-        Image(
-            painter = painterResource(R.drawable.bandeau_pages),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,
-            alpha = 1f - homeness,
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-    if (homeness > 0f) {
-        Image(
-            painter = painterResource(R.drawable.bandeau_accueil),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,
-            alpha = homeness,
-            modifier = Modifier.fillMaxSize(),
-        )
+private fun WallpaperScroll(pagerState: PagerState, pageCount: Int) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val wallpaper = remember { android.app.WallpaperManager.getInstance(view.context) }
+    LaunchedEffect(pageCount) {
+        snapshotFlow { pagerState.currentPage + pagerState.currentPageOffsetFraction }.collect { position ->
+            val steps = (pageCount - 1).coerceAtLeast(1)
+            val x = (position / steps).coerceIn(0f, 1f)
+            runCatching {
+                wallpaper.setWallpaperOffsetSteps(1f / steps, 1f)
+                view.windowToken?.let { wallpaper.setWallpaperOffsets(it, x, 0.5f) }
+            }
+        }
     }
 }
 

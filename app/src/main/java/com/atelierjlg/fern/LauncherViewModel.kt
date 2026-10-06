@@ -62,6 +62,7 @@ import com.atelierjlg.fern.data.MaisonKind
 import com.atelierjlg.fern.data.PomodoroPhase
 import com.atelierjlg.fern.data.ScreenTimeSettings
 import com.atelierjlg.fern.data.hasMaison
+import com.atelierjlg.fern.data.cycleTopSpace
 import com.atelierjlg.fern.data.startPomodoro
 import com.atelierjlg.fern.data.stopPomodoro
 import com.atelierjlg.fern.data.tickPomodoro
@@ -419,6 +420,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateScreenTime(transform: (ScreenTimeSettings) -> ScreenTimeSettings) = store.update { it.updateScreenTime(transform) }
+
+    fun cycleTopSpace() = store.update { it.cycleTopSpace() }
+
+    /** Ouvre le choix du fond d'écran d'Android. */
+    fun openWallpaperPicker() = startSafely(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Fond d'écran"))
 
     fun openUsageAccess() = startSafely(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
 
