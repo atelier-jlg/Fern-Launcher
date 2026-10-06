@@ -42,6 +42,19 @@ import com.atelierjlg.fern.search.SearchExtras
 import com.atelierjlg.fern.search.SearchRepository
 import com.atelierjlg.fern.search.ShortcutResult
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.FocusSettings
+import com.atelierjlg.fern.data.SpaceSchedule
+import com.atelierjlg.fern.data.activeRuleAt
+import com.atelierjlg.fern.data.addSpace
+import com.atelierjlg.fern.data.nextSpace
+import com.atelierjlg.fern.data.removeSpace
+import com.atelierjlg.fern.data.renameSpace
+import com.atelierjlg.fern.data.setActiveSpace
+import com.atelierjlg.fern.data.setSpaceTheme
+import com.atelierjlg.fern.data.updateFocus
+import com.atelierjlg.fern.data.updateSchedule
+import java.time.LocalDateTime
+import kotlinx.coroutines.delay
 import com.atelierjlg.fern.data.GestureAction
 import com.atelierjlg.fern.data.NamedTheme
 import com.atelierjlg.fern.data.SearchSettings
@@ -132,6 +145,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val searchVersion: StateFlow<Int> = _searchVersion.asStateFlow()
 
     init {
+        // Planning des Spaces : une vérification par minute.
+        viewModelScope.launch {
+            while (true) {
+                checkSchedule()
+                delay(60_000L - System.currentTimeMillis() % 60_000L)
+            }
+        }
         // Premier lancement : on pose la disposition de départ dès que la liste des applis est connue.
         viewModelScope.launch {
             val installed = repository.apps.first { it.isNotEmpty() }
@@ -309,10 +329,59 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             GestureAction.RoueRadiale -> _radial.value = at ?: Offset.Unspecified
             GestureAction.Appli -> apps.value.find(binding.appKey)?.let { launch(it) }
                 ?: Toast.makeText(context, "Choisis l'appli de ce geste dans les Paramètres", Toast.LENGTH_SHORT).show()
+            GestureAction.SpaceSuivant -> {
+                store.update { it.nextSpace() }
+                Toast.makeText(context, "Space : ${config.value.activeSpace.name}", Toast.LENGTH_SHORT).show()
+            }
+            GestureAction.Focus -> toggleFocus()
         }
     }
 
     fun updateGestures(transform: (GestureSettings) -> GestureSettings) = store.update { it.updateGestures(transform) }
+
+    // ─── Spaces & Focus ──────────────────────────────────────────────────────
+
+    fun setActiveSpace(spaceId: String) {
+        store.update { it.setActiveSpace(spaceId) }
+        _homeTick.update { it + 1 }
+    }
+
+    fun addSpace(name: String, copyCurrent: Boolean) = store.update { it.addSpace(name, copyCurrent) }
+    fun renameSpace(spaceId: String, name: String) = store.update { it.renameSpace(spaceId, name) }
+    fun removeSpace(spaceId: String) = store.update { it.removeSpace(spaceId) }
+    fun setSpaceTheme(spaceId: String, theme: NamedTheme?) = store.update { it.setSpaceTheme(spaceId, theme) }
+    fun updateSchedule(transform: (SpaceSchedule) -> SpaceSchedule) = store.update { it.updateSchedule(transform) }
+    fun updateFocus(transform: (FocusSettings) -> FocusSettings) = store.update { it.updateFocus(transform) }
+
+    fun toggleFocus() {
+        store.update { c -> c.updateFocus { it.copy(enabled = !it.enabled) } }
+        val on = config.value.focus.enabled
+        Toast.makeText(
+            getApplication<Application>(),
+            if (on) "Mode Focus activé" else "Mode Focus coupé",
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    /** La règle de planning appliquée en dernier : on ne rebascule que quand elle change. */
+    private var lastRuleId: String? = null
+
+    /** Vérifie le planning (appelé chaque minute et au retour sur l'accueil). */
+    fun checkSchedule() {
+        val schedule = config.value.spaceSchedule
+        if (!schedule.enabled) {
+            lastRuleId = null
+            return
+        }
+        val now = LocalDateTime.now()
+        val rule = activeRuleAt(schedule.rules, now.dayOfWeek.value, now.hour * 60 + now.minute)
+        if (rule?.id != lastRuleId) {
+            lastRuleId = rule?.id
+            if (rule != null && rule.spaceId != config.value.activeSpace.id) {
+                store.update { it.setActiveSpace(rule.spaceId) }
+            }
+        }
+    }
 
     // ─── Paramètres ──────────────────────────────────────────────────────────
 

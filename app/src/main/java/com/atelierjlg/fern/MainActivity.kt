@@ -32,11 +32,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Le thème vient de la configuration : le changer dans les Paramètres recolore tout.
             val config by viewModel.config.collectAsStateWithLifecycle()
-            val colors = remember(config.theme.colors) { config.theme.colors.toFernColors() }
+            val colors = remember(config.effectiveTheme.colors) { config.effectiveTheme.colors.toFernColors() }
             FernTheme(colors = colors) {
                 LauncherRoot(viewModel)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.checkSchedule()
     }
 
     override fun onStop() {

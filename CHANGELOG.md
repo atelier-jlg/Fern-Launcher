@@ -3,6 +3,21 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.6.0 (code 7) — 2026-10-06
+
+Spaces et mode Focus.
+
+- **Spaces** (Paramètres → Spaces) : plusieurs jeux de pages + dock, par exemple « Perso » et « Travail ».
+  Créer un Space vide ou une copie de l'actuel, renommer, supprimer, **thème propre à chaque Space**.
+  Quand il y en a plusieurs, leur nom s'affiche au-dessus du dock : toucher pour passer au suivant.
+- **Planning** : bascule automatique selon le jour et l'heure (ex. Travail lun–ven 8:00–18:00).
+  Fern ne rebascule qu'au changement de créneau : un changement manuel est respecté jusque-là.
+- **Mode Focus** (Paramètres → Focus) : les applis choisies disparaissent de l'accueil,
+  du tiroir et de la recherche tant qu'il est actif. À mettre sur un geste pour l'activer d'un coup.
+- Nouvelles actions de geste : « Passer au Space suivant », « Activer / couper le mode Focus ».
+- Note : l'éditeur de couleurs modifie le thème général ; un Space avec son propre thème
+  garde le sien.
+
 ## v0.5.0 (code 6) — 2026-10-06
 
 Gestes, Paramètres et thèmes.

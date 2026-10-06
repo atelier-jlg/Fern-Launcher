@@ -90,6 +90,40 @@ class ConfigEditsTest {
     }
 
     @Test
+    fun spaces() {
+        val two = sample().addSpace("Travail", copyCurrent = true)
+        assertEquals(2, two.spaces.size)
+        assertEquals("Travail", two.activeSpace.name)
+        // La copie a les mêmes blocs mais de nouveaux identifiants.
+        assertEquals(3, two.activeSpace.pages[0].blocks.size)
+        assertTrue(two.activeSpace.pages[0].id != "p1")
+        val back = two.nextSpace()
+        assertEquals(DEFAULT_SPACE_ID, back.activeSpace.id)
+        val one = two.removeSpace(two.spaces[1].id)
+        assertEquals(1, one.spaces.size)
+        assertEquals(one, one.removeSpace(one.spaces[0].id))
+    }
+
+    @Test
+    fun scheduleRules() {
+        val work = SpaceRule("r1", "travail", days = setOf(1, 2, 3, 4, 5), startMinute = 8 * 60, endMinute = 18 * 60)
+        val night = SpaceRule("r2", "nuit", days = (1..7).toSet(), startMinute = 22 * 60, endMinute = 7 * 60)
+        val rules = listOf(work, night)
+        assertEquals("travail", activeRuleAt(rules, 1, 9 * 60)?.spaceId)
+        assertNull(activeRuleAt(rules, 6, 9 * 60))
+        assertEquals("nuit", activeRuleAt(rules, 3, 23 * 60)?.spaceId)
+        assertEquals("nuit", activeRuleAt(rules, 4, 6 * 60)?.spaceId)
+        assertNull(activeRuleAt(rules, 4, 19 * 60))
+    }
+
+    @Test
+    fun focusHidesBlockedApps() {
+        val config = sample().setHidden("a@0", true).updateFocus { it.copy(blockedApps = setOf("insta@0")) }
+        assertEquals(setOf("a@0"), config.currentlyHidden)
+        assertEquals(setOf("a@0", "insta@0"), config.updateFocus { it.copy(enabled = true) }.currentlyHidden)
+    }
+
+    @Test
     fun jsonRoundTrip() {
         val config = sample().countLaunch("x@0").countLaunch("x@0")
         val text = FernJson.encodeToString(LauncherConfig.serializer(), config)

@@ -137,6 +137,18 @@ fun HomeScreen(vm: LauncherViewModel) {
                     actions = actions,
                 )
             }
+            // Plusieurs Spaces : leur nom s'affiche au-dessus du dock, toucher passe au suivant.
+            if (config.spaces.size > 1) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    PillButton(
+                        text = space.name,
+                        onClick = {
+                            val i = config.spaces.indexOfFirst { it.id == space.id }
+                            vm.setActiveSpace(config.spaces[(i + 1) % config.spaces.size].id)
+                        },
+                    )
+                }
+            }
             PageDots(count = pages.size, current = pagerState.currentPage)
             Dock(
                 slots = space.dock,

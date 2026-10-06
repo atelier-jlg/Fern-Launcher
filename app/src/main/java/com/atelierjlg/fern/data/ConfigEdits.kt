@@ -176,3 +176,75 @@ fun LauncherConfig.saveTheme(name: String): LauncherConfig {
 
 fun LauncherConfig.deleteSavedTheme(name: String) =
     copy(savedThemes = savedThemes.filterNot { it.name == name })
+
+// ─── Spaces ─────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.setActiveSpace(spaceId: String) =
+    if (spaces.any { it.id == spaceId }) copy(activeSpaceId = spaceId) else this
+
+fun LauncherConfig.nextSpace(): LauncherConfig {
+    val index = spaces.indexOfFirst { it.id == activeSpace.id }
+    return copy(activeSpaceId = spaces[(index + 1) % spaces.size].id)
+}
+
+/** Crée un Space ; s'il est « copié », il reprend les pages et le dock du Space actif. */
+fun LauncherConfig.addSpace(name: String, copyCurrent: Boolean): LauncherConfig {
+    val base = if (copyCurrent) activeSpace else Space()
+    val space = base.copy(
+        id = newId(),
+        name = name.trim().ifEmpty { "Space" },
+        // Nouveaux identifiants de pages/blocs pour ne pas mélanger avec l'original.
+        pages = base.pages.map { page ->
+            page.copy(id = newId(), blocks = page.blocks.map { it.withNewId() })
+        },
+    )
+    return copy(spaces = spaces + space, activeSpaceId = space.id)
+}
+
+private fun HomeBlock.withNewId(): HomeBlock = when (this) {
+    is ClockBlock -> copy(id = newId())
+    is AppRowBlock -> copy(id = newId())
+    is PackBlock -> copy(id = newId())
+}
+
+fun LauncherConfig.renameSpace(spaceId: String, name: String) =
+    copy(spaces = spaces.map { if (it.id == spaceId) it.copy(name = name.trim().ifEmpty { it.name }) else it })
+
+/** Supprime un Space (il en reste toujours au moins un) et ses règles de planning. */
+fun LauncherConfig.removeSpace(spaceId: String): LauncherConfig {
+    if (spaces.size <= 1) return this
+    val remaining = spaces.filterNot { it.id == spaceId }
+    return copy(
+        spaces = remaining,
+        activeSpaceId = if (activeSpaceId == spaceId) remaining.first().id else activeSpaceId,
+        spaceSchedule = spaceSchedule.copy(rules = spaceSchedule.rules.filterNot { it.spaceId == spaceId }),
+    )
+}
+
+/** Donne au Space actif son propre thème (ou null pour reprendre le thème général). */
+fun LauncherConfig.setSpaceTheme(spaceId: String, theme: NamedTheme?) =
+    copy(spaces = spaces.map { if (it.id == spaceId) it.copy(theme = theme) else it })
+
+fun LauncherConfig.updateSchedule(transform: (SpaceSchedule) -> SpaceSchedule) =
+    copy(spaceSchedule = transform(spaceSchedule))
+
+/** La règle qui s'applique à ce moment-là (la dernière de la liste gagne), ou null. */
+fun activeRuleAt(rules: List<SpaceRule>, dayOfWeek: Int, minuteOfDay: Int): SpaceRule? =
+    rules.lastOrNull { rule ->
+        if (rule.startMinute <= rule.endMinute) {
+            dayOfWeek in rule.days && minuteOfDay >= rule.startMinute && minuteOfDay < rule.endMinute
+        } else {
+            // Passe minuit : 22 h → 7 h. Avant minuit, on regarde le jour même ; après, la veille.
+            val yesterday = if (dayOfWeek == 1) 7 else dayOfWeek - 1
+            (dayOfWeek in rule.days && minuteOfDay >= rule.startMinute) ||
+                (yesterday in rule.days && minuteOfDay < rule.endMinute)
+        }
+    }
+
+// ─── Focus ──────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.updateFocus(transform: (FocusSettings) -> FocusSettings) = copy(focus = transform(focus))
+
+/** Les applis cachées en ce moment : masquées + bloquées par le mode Focus. */
+val LauncherConfig.currentlyHidden: Set<String>
+    get() = if (focus.enabled) hiddenApps + focus.blockedApps else hiddenApps

@@ -37,14 +37,46 @@ data class LauncherConfig(
     val theme: NamedTheme = ThemePresets.EstampeNuit,
     /** Les thèmes enregistrés par Jules (ou importés). */
     val savedThemes: List<NamedTheme> = emptyList(),
+    /** Bascule automatique de Space selon l'heure. */
+    val spaceSchedule: SpaceSchedule = SpaceSchedule(),
+    val focus: FocusSettings = FocusSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
+
+    /** Le thème réellement affiché : celui du Space s'il en a un, sinon le thème général. */
+    val effectiveTheme: NamedTheme
+        get() = activeSpace.theme ?: theme
 }
 
+/** Une règle de planning : ce Space, ces jours-là, de telle heure à telle heure. */
+@Serializable
+data class SpaceRule(
+    val id: String,
+    val spaceId: String,
+    /** Jours de la semaine, 1 = lundi … 7 = dimanche. */
+    val days: Set<Int> = (1..7).toSet(),
+    /** Minutes depuis minuit (8 h 30 = 510). Si fin < début, la règle passe minuit. */
+    val startMinute: Int = 8 * 60,
+    val endMinute: Int = 18 * 60,
+)
+
+@Serializable
+data class SpaceSchedule(
+    val enabled: Boolean = false,
+    val rules: List<SpaceRule> = emptyList(),
+)
+
+/** Mode Focus : certaines applis disparaissent tant qu'il est actif. */
+@Serializable
+data class FocusSettings(
+    val enabled: Boolean = false,
+    val blockedApps: Set<String> = emptySet(),
+)
+
 /**
- * Un « Space » : un jeu complet de pages + dock. Pour l'instant il n'y en a qu'un ;
- * plusieurs Spaces (Perso, Travail…) viendront plus tard.
+ * Un « Space » : un jeu complet de pages + dock (+ éventuellement son thème).
+ * Exemple : « Perso » et « Travail », avec bascule manuelle ou à heures fixes.
  */
 @Serializable
 data class Space(
@@ -53,6 +85,8 @@ data class Space(
     val pages: List<HomePage> = listOf(HomePage(id = "accueil", title = "Accueil", blocks = listOf(ClockBlock("horloge")))),
     /** Les applis du dock (null = emplacement vide). */
     val dock: List<String?> = List(DOCK_SIZE) { null },
+    /** Un thème propre à ce Space (null = le thème général). */
+    val theme: NamedTheme? = null,
 )
 
 @Serializable
@@ -130,6 +164,8 @@ enum class GestureAction(val label: String) {
     Edition("Mode édition"),
     RoueRadiale("Roue d'applis"),
     Appli("Ouvrir une appli"),
+    SpaceSuivant("Passer au Space suivant"),
+    Focus("Activer / couper le mode Focus"),
 }
 
 /** Un geste → une action (et l'appli si l'action est « Ouvrir une appli »). */

@@ -67,6 +67,8 @@ import com.atelierjlg.fern.ui.theme.Fern
 /** Les rubriques des Paramètres. */
 private enum class Section(val title: String) {
     Theme("Thème"),
+    Spaces("Spaces"),
+    Focus("Focus"),
     Gestes("Gestes"),
     Recherche("Recherche"),
     Tiroir("Tiroir"),
@@ -125,6 +127,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
                     SettingRow(title = s.title, onClick = { section = s })
                 }
                 Section.Theme -> item { ThemeSection(vm, config.theme, config.savedThemes) }
+                Section.Spaces -> item { SpacesSection(vm, config) }
+                Section.Focus -> item { FocusSection(vm, config) }
                 Section.Gestes -> item { GesturesSection(vm, config.gestures) }
                 Section.Recherche -> searchSection(vm, config.search.extended, config.search.webSearchUrl)
                 Section.Tiroir -> drawerSection(vm, config.drawer)
