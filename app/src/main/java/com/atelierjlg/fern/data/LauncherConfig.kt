@@ -32,6 +32,11 @@ data class LauncherConfig(
     val launchCounts: Map<String, Int> = emptyMap(),
     val drawer: DrawerSettings = DrawerSettings(),
     val search: SearchSettings = SearchSettings(),
+    val gestures: GestureSettings = GestureSettings(),
+    /** Le thème actif. */
+    val theme: NamedTheme = ThemePresets.EstampeNuit,
+    /** Les thèmes enregistrés par Jules (ou importés). */
+    val savedThemes: List<NamedTheme> = emptyList(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -111,6 +116,37 @@ data class SearchSettings(
     val browserPackage: String? = null,
     /** Chercher aussi dans les contacts, l'agenda, les raccourcis, et faire les calculs. */
     val extended: Boolean = false,
+)
+
+/** Ce qu'un geste peut déclencher. */
+@Serializable
+enum class GestureAction(val label: String) {
+    Rien("Rien"),
+    Tiroir("Ouvrir le tiroir"),
+    Recherche("Ouvrir la recherche"),
+    Notifications("Ouvrir les notifications"),
+    ReglagesRapides("Ouvrir les réglages rapides"),
+    Verrouiller("Verrouiller l'écran"),
+    Edition("Mode édition"),
+    RoueRadiale("Roue d'applis"),
+    Appli("Ouvrir une appli"),
+}
+
+/** Un geste → une action (et l'appli si l'action est « Ouvrir une appli »). */
+@Serializable
+data class GestureBinding(val action: GestureAction, val appKey: String? = null)
+
+const val RADIAL_SIZE = 8
+
+/** Réglages des gestes de l'accueil. */
+@Serializable
+data class GestureSettings(
+    val swipeUp: GestureBinding = GestureBinding(GestureAction.Tiroir),
+    val swipeDown: GestureBinding = GestureBinding(GestureAction.Recherche),
+    val doubleTap: GestureBinding = GestureBinding(GestureAction.Verrouiller),
+    val longPress: GestureBinding = GestureBinding(GestureAction.Edition),
+    /** Les applis de la roue (jusqu'à 8). */
+    val radialApps: List<String?> = List(RADIAL_SIZE) { null },
 )
 
 const val DEFAULT_SPACE_ID = "perso"

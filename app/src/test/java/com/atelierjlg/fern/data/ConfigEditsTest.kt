@@ -36,6 +36,13 @@ class ConfigEditsTest {
     }
 
     @Test
+    fun radialSlot() {
+        val config = sample().setSlot(SlotRef.Radial(2), "app@0")
+        assertEquals("app@0", config.slotValue(SlotRef.Radial(2)))
+        assertEquals(RADIAL_SIZE, config.gestures.radialApps.size)
+    }
+
+    @Test
     fun moveBlockStaysInBounds() {
         val moved = sample().moveBlock("p1", "a", +1)
         assertEquals(listOf("b", "a", "c"), moved.activeSpace.pages[0].blocks.map { it.id })
@@ -63,6 +70,23 @@ class ConfigEditsTest {
         assertEquals("Mon appli", config.renamedApps["x@0"])
         assertTrue("x@0" in config.hiddenApps)
         assertNull(config.renameApp("x@0", "").renamedApps["x@0"])
+    }
+
+    @Test
+    fun themeEdits() {
+        val config = sample().setThemeColor("creme", "#ffffff").setThemeColor("nuit", "pas une couleur")
+        assertEquals("#FFFFFF", config.theme.colors.creme)
+        assertEquals(ThemeColors().nuit, config.theme.colors.nuit)
+        val saved = config.saveTheme("Clair").saveTheme("Clair")
+        assertEquals(1, saved.savedThemes.size)
+        assertEquals("Clair", saved.theme.name)
+    }
+
+    @Test
+    fun themeFileRoundTrip() {
+        val file = ThemeFile(theme = ThemePresets.NuitTeal)
+        val text = FernJson.encodeToString(ThemeFile.serializer(), file)
+        assertEquals(file, FernJson.decodeFromString(ThemeFile.serializer(), text))
     }
 
     @Test

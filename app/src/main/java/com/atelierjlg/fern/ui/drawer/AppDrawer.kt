@@ -82,6 +82,7 @@ class DrawerActions(
     val onSetHidden: (AppEntry, Boolean) -> Unit,
     val onRename: (AppEntry, String) -> Unit,
     val onSettings: ((DrawerSettings) -> DrawerSettings) -> Unit,
+    val onOpenSettings: () -> Unit,
 )
 
 /**
@@ -177,7 +178,7 @@ fun AppDrawer(
             .imePadding(),
     ) {
         if (!searching) {
-            DrawerChips(settings = settings, onSettings = actions.onSettings)
+            DrawerChips(settings = settings, onSettings = actions.onSettings, onOpenSettings = actions.onOpenSettings)
         }
 
         if (searching) {
@@ -277,7 +278,11 @@ fun AppDrawer(
 
 /** Les pastilles en haut du tiroir : tri et affichage. */
 @Composable
-private fun DrawerChips(settings: DrawerSettings, onSettings: ((DrawerSettings) -> DrawerSettings) -> Unit) {
+private fun DrawerChips(
+    settings: DrawerSettings,
+    onSettings: ((DrawerSettings) -> DrawerSettings) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
@@ -304,6 +309,7 @@ private fun DrawerChips(settings: DrawerSettings, onSettings: ((DrawerSettings) 
                 onClick = { onSettings { it.copy(columns = if (it.columns >= 5) 4 else 5) } },
             )
         }
+        PillButton(text = "⚙ Réglages", onClick = onOpenSettings)
     }
 }
 

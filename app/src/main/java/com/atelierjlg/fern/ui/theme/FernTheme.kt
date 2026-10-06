@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.atelierjlg.fern.data.ThemeColors
 
 /**
  * Toutes les couleurs d'un thème Fern.
@@ -48,6 +49,25 @@ object FernPalettes {
         carmin = Color(0xFF8E2733),
         pistache = Color(0xFFBFE3A3),
         vague = Color(0xFF98A0A8),
+    )
+}
+
+/** Convertit un thème enregistré (« #RRGGBB ») en couleurs Compose. */
+fun ThemeColors.toFernColors(): FernColors {
+    fun c(hex: String, fallback: Color) = runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
+    val d = FernPalettes.EstampeNuit
+    return FernColors(
+        nuit = c(nuit, d.nuit),
+        mousse = c(mousse, d.mousse),
+        lierre = c(lierre, d.lierre),
+        sousBois = c(sousBois, d.sousBois),
+        creme = c(creme, d.creme),
+        lichen = c(lichen, d.lichen),
+        moussePale = c(moussePale, d.moussePale),
+        roseCarmin = c(roseCarmin, d.roseCarmin),
+        carmin = c(carmin, d.carmin),
+        pistache = c(pistache, d.pistache),
+        vague = c(vague, d.vague),
     )
 }
 

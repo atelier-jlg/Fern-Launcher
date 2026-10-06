@@ -41,6 +41,21 @@ import com.atelierjlg.fern.search.EventResult
 import com.atelierjlg.fern.search.SearchExtras
 import com.atelierjlg.fern.search.SearchRepository
 import com.atelierjlg.fern.search.ShortcutResult
+import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.GestureAction
+import com.atelierjlg.fern.data.NamedTheme
+import com.atelierjlg.fern.data.SearchSettings
+import com.atelierjlg.fern.data.ThemeFile
+import com.atelierjlg.fern.data.applyTheme
+import com.atelierjlg.fern.data.deleteSavedTheme
+import com.atelierjlg.fern.data.saveTheme
+import com.atelierjlg.fern.data.setThemeColor
+import com.atelierjlg.fern.data.updateSearch
+import com.atelierjlg.fern.data.GestureBinding
+import com.atelierjlg.fern.data.GestureSettings
+import com.atelierjlg.fern.data.updateGestures
+import com.atelierjlg.fern.system.SystemActions
+import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -138,7 +153,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /** Appui sur le bouton Accueil alors qu'on est déjà sur Fern. */
     fun onHomePressed() {
-        if (!_overlay.value.visible && !_editing.value) _homeTick.update { it + 1 }
+        if (!_overlay.value.visible && !_editing.value && !_settingsOpen.value) _homeTick.update { it + 1 }
+        _radial.value = null
+        _settingsOpen.value = false
         closeOverlay()
         _picking.value = null
         _editing.value = false
@@ -148,6 +165,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun onBack() {
         when {
             _picking.value != null -> _picking.value = null
+            _settingsOpen.value -> _settingsOpen.value = false
+            _radial.value != null -> _radial.value = null
             _overlay.value.visible -> closeOverlay()
             _editing.value -> _editing.value = false
         }
@@ -264,6 +283,120 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
         startSafely(intent)
+    }
+
+    // ─── Gestes ──────────────────────────────────────────────────────────────
+
+    /** Roue d'applis ouverte (position du doigt), ou null. */
+    private val _radial = MutableStateFlow<Offset?>(null)
+    val radial: StateFlow<Offset?> = _radial.asStateFlow()
+
+    fun closeRadial() {
+        _radial.value = null
+    }
+
+    /** Exécute l'action associée à un geste. `at` = position du doigt (pour la roue). */
+    fun perform(binding: GestureBinding, at: Offset? = null) {
+        val context = getApplication<Application>()
+        when (binding.action) {
+            GestureAction.Rien -> Unit
+            GestureAction.Tiroir -> open(OverlayMode.Drawer)
+            GestureAction.Recherche -> open(OverlayMode.Search)
+            GestureAction.Notifications -> SystemActions.expandNotifications(context)
+            GestureAction.ReglagesRapides -> SystemActions.expandQuickSettings(context)
+            GestureAction.Verrouiller -> SystemActions.lockScreen(context)
+            GestureAction.Edition -> setEditing(true)
+            GestureAction.RoueRadiale -> _radial.value = at ?: Offset.Unspecified
+            GestureAction.Appli -> apps.value.find(binding.appKey)?.let { launch(it) }
+                ?: Toast.makeText(context, "Choisis l'appli de ce geste dans les Paramètres", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun updateGestures(transform: (GestureSettings) -> GestureSettings) = store.update { it.updateGestures(transform) }
+
+    // ─── Paramètres ──────────────────────────────────────────────────────────
+
+    private val _settingsOpen = MutableStateFlow(false)
+    val settingsOpen: StateFlow<Boolean> = _settingsOpen.asStateFlow()
+
+    fun openSettings() {
+        closeOverlay()
+        _editing.value = false
+        _settingsOpen.value = true
+    }
+
+    fun closeSettings() {
+        _settingsOpen.value = false
+    }
+
+    fun updateSearch(transform: (SearchSettings) -> SearchSettings) = store.update { it.updateSearch(transform) }
+    fun setThemeColor(key: String, hex: String) = store.update { it.setThemeColor(key, hex) }
+    fun applyTheme(theme: NamedTheme) = store.update { it.applyTheme(theme) }
+    fun saveTheme(name: String) = store.update { it.saveTheme(name) }
+    fun deleteSavedTheme(name: String) = store.update { it.deleteSavedTheme(name) }
+
+    private fun toast(message: String) {
+        Toast.makeText(getApplication<Application>(), message, Toast.LENGTH_LONG).show()
+    }
+
+    /** Écrit un texte dans un fichier choisi par Jules (sélecteur de fichiers Android). */
+    private fun writeText(uri: Uri, text: String, success: String) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use {
+                        it.write(text.encodeToByteArray())
+                    } ?: error("fichier inaccessible")
+                }.isSuccess
+            }
+            toast(if (ok) success else "Impossible d'écrire le fichier")
+        }
+    }
+
+    private suspend fun readText(uri: Uri): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+        }.getOrNull()
+    }
+
+    fun exportTheme(uri: Uri) = writeText(
+        uri,
+        FernJson.encodeToString(ThemeFile.serializer(), ThemeFile(theme = config.value.theme)),
+        "Thème exporté",
+    )
+
+    fun importTheme(uri: Uri) {
+        viewModelScope.launch {
+            val theme = readText(uri)?.let { text ->
+                runCatching { FernJson.decodeFromString(ThemeFile.serializer(), text).theme }.getOrNull()
+            }
+            if (theme == null) {
+                toast("Ce fichier n'est pas un thème Fern")
+            } else {
+                store.update { it.applyTheme(theme).saveTheme(theme.name) }
+                toast("Thème « ${theme.name} » importé")
+            }
+        }
+    }
+
+    fun exportBackup(uri: Uri) = writeText(
+        uri,
+        FernJson.encodeToString(LauncherConfig.serializer(), config.value),
+        "Sauvegarde exportée",
+    )
+
+    fun importBackup(uri: Uri) {
+        viewModelScope.launch {
+            val restored = readText(uri)?.let { text ->
+                runCatching { FernJson.decodeFromString(LauncherConfig.serializer(), text) }.getOrNull()
+            }
+            if (restored == null) {
+                toast("Ce fichier n'est pas une sauvegarde Fern")
+            } else {
+                store.replace(restored.copy(seeded = true))
+                toast("Sauvegarde restaurée")
+            }
+        }
     }
 
     // ─── Mode édition ───────────────────────────────────────────────────────

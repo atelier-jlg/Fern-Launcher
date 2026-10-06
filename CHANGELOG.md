@@ -3,6 +3,25 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.5.0 (code 6) — 2026-10-06
+
+Gestes, Paramètres et thèmes.
+
+- **Onglet Paramètres** (bouton ⚙ en mode édition, ou « ⚙ Réglages » en haut du tiroir) :
+  - **Thème** : modifier chaque couleur (curseurs ou code #RRGGBB), thèmes prêts
+    (Estampe nuit, Nuit teal = la proposition vert-bleu à tester, Sous-bois),
+    **Enregistrer**, **Exporter** (fichier à envoyer à un proche) et **Importer**.
+  - **Gestes** : choisir l'action de glisser ↑ / ↓, double appui, appui long
+    (tiroir, recherche, notifications, réglages rapides, verrouiller, mode édition,
+    roue d'applis, ouvrir une appli précise).
+  - **Recherche** : recherche étendue (contacts, agenda, raccourcis, calcul), moteur web.
+  - **Tiroir** : affichage, tri, ouverture directe.
+  - **Sauvegarde** : exporter / restaurer toute la configuration dans un fichier.
+  - **À propos** : version, choisir l'écran d'accueil par défaut.
+- **Double appui = verrouiller l'écran** (par défaut). Il faut activer une fois
+  « Fern Launcher » dans Paramètres Android → Accessibilité (Fern ne lit rien à l'écran).
+- **Roue d'applis** : jusqu'à 8 applis en cercle autour du doigt, à attribuer à un geste.
+
 ## v0.4.0 (code 5) — 2026-10-06
 
 La recherche, comme demandé.

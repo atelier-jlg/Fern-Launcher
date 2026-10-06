@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fern Launcher</string>
+    <string name="accessibility_description">Permet à Fern Launcher de verrouiller l\'écran d\'un double appui et d\'ouvrir le volet des notifications. Fern ne lit rien de ce qui s\'affiche à l\'écran.</string>
 </resources>

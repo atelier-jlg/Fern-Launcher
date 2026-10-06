@@ -16,6 +16,7 @@ fun newId(): String = UUID.randomUUID().toString().take(8)
 sealed class SlotRef {
     data class Dock(val index: Int) : SlotRef()
     data class Block(val pageId: String, val blockId: String, val index: Int) : SlotRef()
+    data class Radial(val index: Int) : SlotRef()
 }
 
 // ─── Outils internes ────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ fun LauncherConfig.setSlot(ref: SlotRef, key: String?): LauncherConfig = when (r
     is SlotRef.Block -> updateBlock(ref.pageId, ref.blockId) { block ->
         block.slots?.let { block.withSlots(it.withSlot(ref.index, key)) } ?: block
     }
+    is SlotRef.Radial -> copy(gestures = gestures.copy(radialApps = gestures.radialApps.withSlot(ref.index, key)))
 }
 
 fun LauncherConfig.slotValue(ref: SlotRef): String? = when (ref) {
@@ -75,6 +77,7 @@ fun LauncherConfig.slotValue(ref: SlotRef): String? = when (ref) {
     is SlotRef.Block -> activeSpace.pages.firstOrNull { it.id == ref.pageId }
         ?.blocks?.firstOrNull { it.id == ref.blockId }
         ?.slots?.getOrNull(ref.index)
+    is SlotRef.Radial -> gestures.radialApps.getOrNull(ref.index)
 }
 
 /** Une destination pour « Ajouter à… » depuis le tiroir. */
@@ -154,3 +157,22 @@ fun LauncherConfig.updateDrawer(transform: (DrawerSettings) -> DrawerSettings) =
 
 fun LauncherConfig.updateSearch(transform: (SearchSettings) -> SearchSettings) =
     copy(search = transform(search))
+
+fun LauncherConfig.updateGestures(transform: (GestureSettings) -> GestureSettings) =
+    copy(gestures = transform(gestures))
+
+// ─── Thèmes ─────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.setThemeColor(key: String, hex: String) =
+    if (!isValidHex(hex)) this else copy(theme = theme.copy(colors = theme.colors.with(key, hex.uppercase())))
+
+fun LauncherConfig.applyTheme(theme: NamedTheme) = copy(theme = theme)
+
+/** Enregistre le thème actif sous un nom (remplace un thème du même nom). */
+fun LauncherConfig.saveTheme(name: String): LauncherConfig {
+    val named = theme.copy(name = name.trim().ifEmpty { "Mon thème" })
+    return copy(theme = named, savedThemes = savedThemes.filterNot { it.name == named.name } + named)
+}
+
+fun LauncherConfig.deleteSavedTheme(name: String) =
+    copy(savedThemes = savedThemes.filterNot { it.name == name })

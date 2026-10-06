@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 
+    <!-- Gestes : ouvrir le volet des notifications / réglages rapides. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
     <!-- Depuis Android 11, il faut déclarer quelles applis on a le droit de voir :
          ici, toutes celles qui ont une icône dans un lanceur. -->
     <queries>
@@ -58,5 +61,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Verrouillage de l'écran par double appui (à activer dans Accessibilité). -->
+        <service
+            android:name=".system.FernAccessibilityService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service" />
+        </service>
     </application>
 </manifest>

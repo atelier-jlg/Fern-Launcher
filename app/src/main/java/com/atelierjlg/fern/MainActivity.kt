@@ -10,6 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.atelierjlg.fern.ui.LauncherRoot
 import com.atelierjlg.fern.ui.theme.FernTheme
+import com.atelierjlg.fern.ui.theme.toFernColors
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Point d'entrée : l'unique écran de Fern. Android l'ouvre quand on appuie sur Accueil.
@@ -26,7 +30,10 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         setContent {
-            FernTheme {
+            // Le thème vient de la configuration : le changer dans les Paramètres recolore tout.
+            val config by viewModel.config.collectAsStateWithLifecycle()
+            val colors = remember(config.theme.colors) { config.theme.colors.toFernColors() }
+            FernTheme(colors = colors) {
                 LauncherRoot(viewModel)
             }
         }

@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -82,6 +83,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     val editing by vm.editing.collectAsStateWithLifecycle()
     val homeTick by vm.homeTick.collectAsStateWithLifecycle()
 
+    val radial by vm.radial.collectAsStateWithLifecycle()
+    val gestures = config.gestures
     val space = config.activeSpace
     val pages = space.pages
     val pagerState = rememberPagerState { pages.size }
@@ -95,7 +98,8 @@ fun HomeScreen(vm: LauncherViewModel) {
         editing = editing,
         onLaunch = vm::launch,
         onPick = vm::pickFor,
-        onEnterEdit = { vm.setEditing(true) },
+        // Un appui long sur une appli fait la même chose qu'un appui long sur le fond.
+        onEnterEdit = { vm.perform(gestures.longPress) },
     )
 
     BoxWithConstraints(
@@ -103,9 +107,10 @@ fun HomeScreen(vm: LauncherViewModel) {
             .fillMaxSize()
             .homeGestures(
                 enabled = !editing,
-                onSwipeUp = { vm.open(OverlayMode.Drawer) },
-                onSwipeDown = { vm.open(OverlayMode.Search) },
-                onLongPress = { vm.setEditing(true) },
+                onSwipeUp = { vm.perform(gestures.swipeUp) },
+                onSwipeDown = { vm.perform(gestures.swipeDown) },
+                onDoubleTap = { vm.perform(gestures.doubleTap) },
+                onLongPress = { at -> vm.perform(gestures.longPress, at) },
             ),
     ) {
         val screenHeight = maxHeight
@@ -141,9 +146,21 @@ fun HomeScreen(vm: LauncherViewModel) {
             )
         }
 
+        radial?.let { center ->
+            RadialWheel(
+                center = center,
+                slots = gestures.radialApps,
+                apps = apps,
+                onLaunch = { app -> vm.closeRadial(); vm.launch(app) },
+                onPick = vm::pickFor,
+                onDismiss = vm::closeRadial,
+            )
+        }
+
         if (editing) {
             EditBar(
                 onAddPage = { name -> vm.addPage(name) },
+                onSettings = vm::openSettings,
                 onDone = { vm.setEditing(false) },
             )
         }
@@ -162,11 +179,13 @@ private fun Modifier.homeGestures(
     enabled: Boolean,
     onSwipeUp: () -> Unit,
     onSwipeDown: () -> Unit,
-    onLongPress: () -> Unit,
+    onDoubleTap: () -> Unit,
+    onLongPress: (Offset) -> Unit,
 ): Modifier {
     if (!enabled) return this
     val up by rememberUpdatedState(onSwipeUp)
     val down by rememberUpdatedState(onSwipeDown)
+    val double by rememberUpdatedState(onDoubleTap)
     val long by rememberUpdatedState(onLongPress)
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
     return this
@@ -187,7 +206,10 @@ private fun Modifier.homeGestures(
             )
         }
         .pointerInput(Unit) {
-            detectTapGestures(onLongPress = { long() })
+            detectTapGestures(
+                onDoubleTap = { double() },
+                onLongPress = { long(it) },
+            )
         }
 }
 
@@ -478,7 +500,7 @@ private fun DrawerButton(onClick: () -> Unit) {
 
 /** La barre du haut en mode édition. */
 @Composable
-private fun EditBar(onAddPage: (String) -> Unit, onDone: () -> Unit) {
+private fun EditBar(onAddPage: (String) -> Unit, onSettings: () -> Unit, onDone: () -> Unit) {
     val colors = Fern.colors
     val haptics = LocalHapticFeedback.current
     var newPage by remember { mutableStateOf(false) }
@@ -495,7 +517,9 @@ private fun EditBar(onAddPage: (String) -> Unit, onDone: () -> Unit) {
     ) {
         Text("Édition".uppercase(), style = Fern.type.libelle, color = colors.roseCarmin, modifier = Modifier.weight(1f))
         PillButton("+ Page", onClick = { newPage = true })
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
+        PillButton("⚙", onClick = onSettings)
+        Spacer(Modifier.width(6.dp))
         PillButton("Terminé", onClick = onDone, accent = true)
     }
 

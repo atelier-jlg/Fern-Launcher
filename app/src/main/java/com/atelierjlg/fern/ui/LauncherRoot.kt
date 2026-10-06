@@ -28,6 +28,7 @@ import com.atelierjlg.fern.ui.drawer.DrawerActions
 import com.atelierjlg.fern.ui.drawer.SearchActions
 import com.atelierjlg.fern.ui.drawer.SearchPanel
 import com.atelierjlg.fern.ui.home.HomeScreen
+import com.atelierjlg.fern.ui.settings.SettingsScreen
 import com.atelierjlg.fern.ui.theme.Fern
 
 /**
@@ -41,6 +42,7 @@ fun LauncherRoot(vm: LauncherViewModel) {
     val overlay by vm.overlay.collectAsStateWithLifecycle()
     val picking by vm.picking.collectAsStateWithLifecycle()
     val searchVersion by vm.searchVersion.collectAsStateWithLifecycle()
+    val settingsOpen by vm.settingsOpen.collectAsStateWithLifecycle()
 
     // Demande d'autorisations (contacts, agenda) : Android affiche sa propre fenêtre.
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -97,6 +99,7 @@ fun LauncherRoot(vm: LauncherViewModel) {
                     onSetHidden = vm::setHidden,
                     onRename = vm::renameApp,
                     onSettings = vm::updateDrawer,
+                    onOpenSettings = vm::openSettings,
                 ),
                 searchExtras = vm::searchExtras,
                 searchVersion = searchVersion,
@@ -121,6 +124,11 @@ fun LauncherRoot(vm: LauncherViewModel) {
                 searchVersion = searchVersion,
                 searchActions = searchActions,
             )
+        }
+
+        // Paramètres : plein écran, en fondu.
+        AnimatedVisibility(visible = settingsOpen, enter = fadeIn(tween(200)), exit = fadeOut(tween(160))) {
+            SettingsScreen(vm)
         }
 
         picking?.let { ref ->
