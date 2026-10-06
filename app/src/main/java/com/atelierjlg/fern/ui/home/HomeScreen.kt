@@ -96,6 +96,7 @@ import com.atelierjlg.fern.ui.widgets.CoursWidget
 import com.atelierjlg.fern.ui.widgets.MeteoWidget
 import com.atelierjlg.fern.ui.widgets.PlanteWidget
 import com.atelierjlg.fern.ui.widgets.PomodoroWidget
+import com.atelierjlg.fern.ui.widgets.PomodoroSettingsDialog
 import com.atelierjlg.fern.ui.widgets.TempsEcranWidget
 import com.atelierjlg.fern.widgets.Plant
 import com.atelierjlg.fern.data.DOCK_SIZE
@@ -303,6 +304,7 @@ private fun PageView(
     var renamingPage by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var renamingPack by remember { mutableStateOf<PackBlock?>(null) }
+    var editingPomodoro by remember { mutableStateOf(false) }
     var newPack by remember { mutableStateOf(false) }
     var addingFamily by remember { mutableStateOf(false) }
     var addingWidget by remember { mutableStateOf(false) }
@@ -360,6 +362,7 @@ private fun PageView(
                                     else -> null
                                 },
                                 onToggleHalf = if (block.canChangeWidth && block !is AppWidgetBlock) ({ vm.cycleWidth(page.id, block.id) }) else null,
+                                onSettings = if (block is MaisonBlock && block.kind == MaisonKind.Pomodoro) ({ editingPomodoro = true }) else null,
                                 compact = block.span == 1,
                             )
                         }
@@ -421,6 +424,14 @@ private fun PageView(
             confirmLabel = "Supprimer",
             onConfirm = { vm.removePage(page.id); confirmDelete = false },
             onDismiss = { confirmDelete = false },
+        )
+    }
+    if (editingPomodoro) {
+        val pomodoro = vm.config.collectAsStateWithLifecycle().value.pomodoro
+        PomodoroSettingsDialog(
+            settings = pomodoro,
+            onChange = { work, pause, focus -> vm.updatePomodoroSettings(work, pause, focus) },
+            onDismiss = { editingPomodoro = false },
         )
     }
     renamingPack?.let { pack ->

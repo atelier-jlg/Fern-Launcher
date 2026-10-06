@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.21.0 (code 28) — 2026-10-06
+
+- **Pomodoro** : le bouton lancer / arrêter devient un bouton rond **à droite** (▶ pistache pour lancer,
+  ■ pour arrêter, dessinés). Sous la durée : la durée de pause.
+- **Réglages du Pomodoro depuis l'accueil** : en mode édition, un **engrenage** sur le widget ouvre
+  les durées (travail 15 à 60 min, pause 5 à 20 min) et le mode Focus automatique.
+
 ## v0.20.0 (code 27) — 2026-10-06
 
 - **Tiroir** : le bouton Réglages devient un petit **engrenage** dessiné, collé à droite.

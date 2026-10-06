@@ -27,6 +27,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -468,23 +473,86 @@ fun PomodoroWidget(settings: PomodoroSettings, compact: Boolean, onStart: () -> 
                     },
                     style = Fern.type.libelle,
                     color = if (settings.phase == PomodoroPhase.Pause) colors.pistache else colors.lichen,
+                    maxLines = 1,
                 )
                 Text(
                     if (running) "%02d:%02d".format(remaining / 60, remaining % 60) else "${settings.workMinutes} min",
                     style = Fern.type.titreWidget,
                     color = colors.creme,
+                    maxLines = 1,
                 )
                 if (settings.phase == PomodoroPhase.Travail && settings.autoFocus && !compact) {
                     Text("Mode Focus actif", style = Fern.type.nomApp, color = colors.lichen)
+                } else if (!running && !compact) {
+                    Text("Pause ${settings.breakMinutes} min", style = Fern.type.nomApp, color = colors.lichen)
                 }
-                if (running) {
-                    PillButton("Arrêter", onClick = onStop)
-                } else {
-                    PillButton("Lancer", onClick = onStart, accent = true)
+            }
+            Spacer(Modifier.width(8.dp))
+            // Le bouton rond, à droite : ▶ pour lancer, ■ pour arrêter (dessinés, pas des emoji).
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(if (compact) 44.dp else 52.dp)
+                    .clip(CircleShape)
+                    .background(if (running) colors.lierre else colors.pistache)
+                    .clickable(onClick = if (running) onStop else onStart),
+            ) {
+                val iconColor = if (running) colors.creme else colors.nuit
+                Canvas(Modifier.size(16.dp)) {
+                    if (running) {
+                        drawRoundRect(iconColor, cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+                    } else {
+                        val path = Path().apply {
+                            moveTo(size.width * 0.15f, 0f)
+                            lineTo(size.width, size.height / 2)
+                            lineTo(size.width * 0.15f, size.height)
+                            close()
+                        }
+                        drawPath(path, iconColor)
+                    }
                 }
             }
         }
     }
+}
+
+/** Réglages du Pomodoro (bouton engrenage en mode édition) : durées et mode Focus. */
+@Composable
+fun PomodoroSettingsDialog(
+    settings: PomodoroSettings,
+    onChange: (work: Int, pause: Int, autoFocus: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = Fern.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pomodoro") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("TRAVAIL", style = Fern.type.libelle, color = colors.roseCarmin)
+                for (line in listOf(15, 20, 25, 30, 45, 50, 60).chunked(4)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (m in line) {
+                            PillButton("$m min", accent = m == settings.workMinutes, onClick = { onChange(m, settings.breakMinutes, settings.autoFocus) })
+                        }
+                    }
+                }
+                Text("PAUSE", style = Fern.type.libelle, color = colors.roseCarmin)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (m in listOf(5, 10, 15, 20)) {
+                        PillButton("$m min", accent = m == settings.breakMinutes, onClick = { onChange(settings.workMinutes, m, settings.autoFocus) })
+                    }
+                }
+                Text("MODE FOCUS PENDANT LE TRAVAIL", style = Fern.type.libelle, color = colors.roseCarmin)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PillButton("Oui", accent = settings.autoFocus, onClick = { onChange(settings.workMinutes, settings.breakMinutes, true) })
+                    PillButton("Non", accent = !settings.autoFocus, onClick = { onChange(settings.workMinutes, settings.breakMinutes, false) })
+                }
+                Text("Les nouvelles durées comptent à partir du prochain lancement.", style = Fern.type.nomApp, color = colors.lichen)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
 }
 
 // ─── Cours du jour ──────────────────────────────────────────────────────────

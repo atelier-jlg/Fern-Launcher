@@ -49,6 +49,7 @@ import com.atelierjlg.fern.data.SlotRef
 import com.atelierjlg.fern.ui.common.AppIcon
 import com.atelierjlg.fern.ui.common.EmptySlot
 import com.atelierjlg.fern.ui.common.GlyphButton
+import com.atelierjlg.fern.ui.common.GearButton
 import com.atelierjlg.fern.ui.theme.Fern
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -99,6 +100,8 @@ fun BlockToolbar(
     onRename: (() -> Unit)? = null,
     onResize: (() -> Unit)? = null,
     onToggleHalf: (() -> Unit)? = null,
+    /** Réglages propres à l'élément (ex. durées du Pomodoro) : bouton engrenage. */
+    onSettings: (() -> Unit)? = null,
     /** Élément étroit (un quart de largeur) : un seul bouton « ⋯ » qui ouvre un menu. */
     compact: Boolean = false,
 ) {
@@ -112,6 +115,7 @@ fun BlockToolbar(
                     "Après" to onDown,
                     onRename?.let { "Renommer" to it },
                     onToggleHalf?.let { "Largeur" to it },
+                    onSettings?.let { "Réglages" to it },
                     onResize?.let { (if (onToggleHalf == null) "Taille" else "Hauteur") to it },
                     "Supprimer" to onDelete,
                 )
@@ -131,6 +135,7 @@ fun BlockToolbar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        if (onSettings != null) Box(Modifier.padding(2.dp)) { GearButton(onClick = onSettings, size = 28.dp) }
         if (onRename != null) GlyphButton("✎", onClick = onRename, size = 28.dp)
         if (onResize != null) GlyphButton(if (onToggleHalf == null) "⤢" else "↕", onClick = onResize, size = 28.dp)
         if (onToggleHalf != null) GlyphButton("⇔", onClick = onToggleHalf, size = 28.dp)
