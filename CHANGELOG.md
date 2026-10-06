@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.22.2 (code 34) — 2026-10-06
+
+- **Widget Ciel** : la carte n'a plus une hauteur fixe (la 3ᵉ ligne « 20 % éclairée · lever… » était coupée)
+  et le titre (phase de lune, heures du soleil) est un cran plus petit, sur une seule ligne.
+
 ## v0.22.1 (code 33) — 2026-10-06
 
 - **Paramètres → Thème** : noms de couleurs universels (Fond, Cartes, Boutons, Séparateurs, Texte,

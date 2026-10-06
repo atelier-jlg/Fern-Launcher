@@ -41,6 +41,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.viewinterop.AndroidView
 import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.search.EventResult
@@ -125,11 +127,12 @@ fun SkyWidget(place: PlaceSettings, compact: Boolean = false) {
     }
 
     WidgetCard(onClick = openStellarium) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(60.dp)) {
+        // Hauteur minimale (pas fixe) : le texte n'est jamais coupé, même sur trois lignes.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 60.dp)) {
             if (isDay && sunrise != null && sunset != null) {
                 val total = (sunset.toSecondOfDay() - sunrise.toSecondOfDay()).toFloat()
                 val progress = ((time.toSecondOfDay() - sunrise.toSecondOfDay()) / total).coerceIn(0f, 1f)
-                Canvas(Modifier.width(120.dp).fillMaxHeight()) {
+                Canvas(Modifier.width(120.dp).height(60.dp)) {
                     val r = size.width / 2 - 6.dp.toPx()
                     val center = Offset(size.width / 2, size.height - 4.dp.toPx())
                     drawArc(
@@ -150,8 +153,9 @@ fun SkyWidget(place: PlaceSettings, compact: Boolean = false) {
                     Text("Ciel · ${place.name}".uppercase(), style = Fern.type.libelle, color = colors.lichen)
                     Text(
                         "↑ ${sunrise.format(hm)}  ↓ ${sunset.format(hm)}",
-                        style = Fern.type.titreWidget,
+                        style = Fern.type.titreWidget.copy(fontSize = 26.sp, lineHeight = 28.sp),
                         color = colors.creme,
+                        maxLines = 1,
                     )
                 }
             } else {
@@ -168,11 +172,19 @@ fun SkyWidget(place: PlaceSettings, compact: Boolean = false) {
                 Spacer(Modifier.width(16.dp))
                 Column {
                     Text("Ciel de nuit".uppercase(), style = Fern.type.libelle, color = colors.lichen)
-                    Text(Astro.moonPhaseName(phase), style = Fern.type.titreWidget, color = colors.creme)
+                    Text(
+                        Astro.moonPhaseName(phase),
+                        // Un cran plus petit que les autres titres : « Premier croissant » est long.
+                        style = Fern.type.titreWidget.copy(fontSize = 26.sp, lineHeight = 28.sp),
+                        color = colors.creme,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         "${(illumination * 100).toInt()} % éclairée" + (sunrise?.let { " · lever ${it.format(hm)}" } ?: ""),
                         style = Fern.type.nomApp,
                         color = colors.lichen,
+                        maxLines = 1,
                     )
                 }
             }
