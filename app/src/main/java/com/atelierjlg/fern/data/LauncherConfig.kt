@@ -50,7 +50,6 @@ data class LauncherConfig(
     val chat: ChatSettings = ChatSettings(),
     val pomodoro: PomodoroSettings = PomodoroSettings(),
     val screenTime: ScreenTimeSettings = ScreenTimeSettings(),
-    val home: HomeSettings = HomeSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -59,16 +58,6 @@ data class LauncherConfig(
     val effectiveTheme: NamedTheme
         get() = activeSpace.theme ?: theme
 }
-
-/** Réglages de l'accueil. */
-@Serializable
-data class HomeSettings(
-    /**
-     * Espace laissé libre en haut de chaque page, en % de la hauteur d'écran :
-     * pour laisser voir le haut du fond d'écran (ex. le bandeau pixel art).
-     */
-    val topSpacePercent: Int = 21,
-)
 
 /** Une règle de planning : ce Space, ces jours-là, de telle heure à telle heure. */
 @Serializable

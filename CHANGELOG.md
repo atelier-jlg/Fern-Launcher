@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.17.2 (code 24) — 2026-10-06
+
+- **La grille occupe tout l'écran** : les pages commencent juste sous la barre d'état
+  (plus d'espace réservé au bandeau). Le réglage « Espace en haut de l'accueil » est retiré.
+
 ## v0.17.1 (code 23) — 2026-10-06
 
 - **Widget Musique** : les boutons précédent / lecture-pause / suivant sont de vraies icônes dessinées

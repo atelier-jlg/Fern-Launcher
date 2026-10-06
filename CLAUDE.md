@@ -158,5 +158,5 @@ app/src/main/java/com/atelierjlg/fern/
 - Contacts / agenda / raccourcis / calcul : « recherche étendue », **désactivée par défaut**.
 - Pas de grand titre de page sur l'accueil (seulement en mode édition).
 - **Fond d'écran : géré par le téléphone** (fenêtre transparente, `windowShowWallpaper`). Fern ne dessine plus
-  de fond ; seul l'espace en haut des pages est réglable (`home.topSpacePercent`). Les PNG restent dans `design/assets/`.
+  de fond, et la grille occupe tout l'écran (juste sous la barre d'état). Les PNG restent dans `design/assets/`.
 - Familles : classement auto (`FamilyClassifier`) + corrections de Jules (`appFamilies`), qui passent avant.

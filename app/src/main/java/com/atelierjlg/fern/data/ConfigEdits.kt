@@ -489,15 +489,3 @@ fun LauncherConfig.tickPomodoro(now: Long): LauncherConfig {
 /** Y a-t-il un widget de ce type quelque part (pour ne pas calculer pour rien) ? */
 fun LauncherConfig.hasMaison(kind: MaisonKind): Boolean =
     spaces.flatMap { it.pages }.flatMap { it.blocks }.any { it is MaisonBlock && it.kind == kind }
-
-// ─── Accueil ────────────────────────────────────────────────────────────────
-
-/** Les valeurs proposées pour l'espace en haut de l'accueil (en %). */
-val TOP_SPACE_STEPS = listOf(0, 5, 10, 15, 21, 29, 35)
-
-/** Passe à la valeur suivante de l'espace en haut (après la dernière, on revient à 0). */
-fun LauncherConfig.cycleTopSpace(): LauncherConfig {
-    val steps = TOP_SPACE_STEPS
-    val next = steps.firstOrNull { it > home.topSpacePercent } ?: steps.first()
-    return copy(home = home.copy(topSpacePercent = next))
-}

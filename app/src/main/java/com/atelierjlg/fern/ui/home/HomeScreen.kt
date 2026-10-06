@@ -171,7 +171,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                     page = page,
                     index = index,
                     pageCount = pages.size,
-                    topSpace = screenHeight * (config.home.topSpacePercent / 100f),
+                    // Toute la hauteur : juste sous la barre d'état (+ la barre d'édition en mode édition).
+                    topSpace = if (editing) 64.dp else 8.dp,
                     apps = apps,
                     actions = actions,
                 )
@@ -314,6 +315,7 @@ private fun PageView(
         Modifier
             .fillMaxSize()
             .then(if (actions.editing) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+            .statusBarsPadding()
             .padding(horizontal = 20.dp),
     ) {
         Spacer(Modifier.height(topSpace))
