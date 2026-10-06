@@ -33,7 +33,11 @@ class ChatScheduleTest {
 
     @Test
     fun `case cochee le matin, decochee l'apres-midi`() {
-        val settings = ChatSettings(done = mapOf("2026-10-06-matin" to setOf(0), "2026-10-03-semaine" to setOf(1)))
+        val settings = ChatSettings(
+            chores = listOf("Gamelle", "Litière"),
+            rules = listOf(gamelle, litiere),
+            done = mapOf("2026-10-06-matin" to setOf(0), "2026-10-03-semaine" to setOf(1)),
+        )
         assertTrue(ChatSchedule.isDone(settings, 0, LocalDateTime.of(2026, 10, 6, 8, 0)))
         assertFalse(ChatSchedule.isDone(settings, 0, LocalDateTime.of(2026, 10, 6, 13, 0)))
         assertTrue(ChatSchedule.isDone(settings, 1, LocalDateTime.of(2026, 10, 9, 20, 0)))
