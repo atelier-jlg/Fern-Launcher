@@ -26,7 +26,7 @@ Tu reprends un projet en cours. Lis tout avant de proposer quoi que ce soit.
 - Formes douces : cartes arrondies, pilules, plaques d'icônes rondes, découpe en vague.
 - Ton sur ton, contraste maîtrisé, rien de criard. Lisible d'un coup d'œil, y compris en extérieur.
 - J'aime l'aération : peu d'apps par zone, et de la place pour des **stickers de ce qui me tient à cœur** (mon chat, mes proches).
-- Je n'aime pas l'orange. Je l'ai remplacé par un **vert pistache** clair et mignon.
+- J'aime bien l'**orange / ocre**, mais il ne fonctionnait pas dans ce thème : je l'ai remplacé ici par un **vert pistache** clair et mignon. (L'orange reste possible dans d'autres thèmes.)
 
 ## Ce qu'on a fait jusqu'ici
 1. **Pistes de départ** : plusieurs essais (nuancier sombre, taupe cosy, estampe claire). J'ai retenu une **fusion « nuancier + estampe »**, déclinée en sombre. C'est la piste de travail actuelle.
