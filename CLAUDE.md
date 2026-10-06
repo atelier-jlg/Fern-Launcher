@@ -144,7 +144,8 @@ app/src/main/java/com/atelierjlg/fern/
 8. ✅ Icônes : plaques par famille (Arcticons recoloré), packs d'icônes, familles dans le tiroir. *(v0.8.0)*
 9. ✅ Demi-largeur (2 éléments côte à côte), espace vide, stickers en placement libre. *(v0.9.0)*
 10. ✅ Lignes de 4 colonnes : éléments en 1/2/4 colonnes, espaces réglables, « + Appli ». *(v0.10.0)*
-11. À venir : widgets Alternance /
+11. ✅ Widgets Alternance, Révisions (AnkiDroid, lotus), Carnet du jour (→ Obsidian). *(v0.11.0)*
+12. À venir : nouveaux widgets à proposer /
    Révisions (AnkiDroid) / Carnet, glisser-déposer libre en mode édition.
 
 ## Décisions de détail (session du 2026-10-06)

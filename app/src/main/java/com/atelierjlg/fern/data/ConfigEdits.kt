@@ -215,6 +215,9 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is ContextBlock -> copy(id = newId())
     is SpacerBlock -> copy(id = newId())
     is AppBlock -> copy(id = newId())
+    is AlternanceBlock -> copy(id = newId())
+    is RevisionsBlock -> copy(id = newId())
+    is CarnetBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -297,12 +300,16 @@ val HomeBlock.span: Int
         is SkyBlock -> if (half) 2 else 4
         is MusicBlock -> if (half) 2 else 4
         is ContextBlock -> if (half) 2 else 4
+        is AlternanceBlock -> if (half) 2 else 4
+        is RevisionsBlock -> if (half) 2 else 4
+        is CarnetBlock -> if (half) 2 else 4
         is ClockBlock, is AppRowBlock -> 4
     }
 
 /** Peut-on changer la largeur de cet élément (bouton ⇔) ? */
 val HomeBlock.canChangeWidth: Boolean
-    get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock || this is SpacerBlock
+    get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock ||
+        this is SpacerBlock || this is AlternanceBlock || this is RevisionsBlock || this is CarnetBlock
 
 /** Bouton ⇔ : widgets entier ↔ demi ; espaces entier → demi → quart → entier. */
 fun LauncherConfig.cycleWidth(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
@@ -312,6 +319,9 @@ fun LauncherConfig.cycleWidth(pageId: String, blockId: String) = updateBlock(pag
         is MusicBlock -> b.copy(half = !b.half)
         is ContextBlock -> b.copy(half = !b.half)
         is SpacerBlock -> b.copy(span = when (b.span) { 4 -> 2; 2 -> 1; else -> 4 })
+        is AlternanceBlock -> b.copy(half = !b.half)
+        is RevisionsBlock -> b.copy(half = !b.half)
+        is CarnetBlock -> b.copy(half = !b.half)
         else -> b
     }
 }
@@ -356,3 +366,18 @@ fun LauncherConfig.removeSticker(pageId: String, stickerId: String) =
 /** Tous les fichiers de stickers encore utilisés (tous Spaces confondus). */
 val LauncherConfig.usedStickerFiles: Set<String>
     get() = spaces.flatMap { it.pages }.flatMap { it.stickers }.map { it.file }.toSet()
+
+// ─── Alternance & carnet ────────────────────────────────────────────────────
+
+fun LauncherConfig.updateAlternance(transform: (AlternanceSettings) -> AlternanceSettings) =
+    copy(alternance = transform(alternance))
+
+fun LauncherConfig.updateCarnetSettings(transform: (CarnetSettings) -> CarnetSettings) =
+    copy(carnet = transform(carnet))
+
+/** Modifie la journée `date` (ISO) du carnet ; on ne garde que les 90 derniers jours. */
+fun LauncherConfig.updateCarnetDay(date: String, transform: (CarnetDay) -> CarnetDay): LauncherConfig {
+    val day = transform(carnet.days[date] ?: CarnetDay())
+    val days = (carnet.days + (date to day)).toSortedMap().entries.toList().takeLast(90).associate { it.key to it.value }
+    return copy(carnet = carnet.copy(days = days))
+}

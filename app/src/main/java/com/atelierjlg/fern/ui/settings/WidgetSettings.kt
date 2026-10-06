@@ -1,0 +1,257 @@
+package com.atelierjlg.fern.ui.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.atelierjlg.fern.LauncherViewModel
+import com.atelierjlg.fern.data.AltPeriod
+import com.atelierjlg.fern.data.AltType
+import com.atelierjlg.fern.data.AlternanceSettings
+import com.atelierjlg.fern.data.CarnetSettings
+import com.atelierjlg.fern.ui.common.GlyphButton
+import com.atelierjlg.fern.ui.common.PillButton
+import com.atelierjlg.fern.ui.common.TextInputDialog
+import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.widgets.Alternance
+import java.time.LocalDate
+
+@Composable
+private fun Row2(title: String, subtitle: String?, onClick: () -> Unit, trailing: @Composable () -> Unit = {}) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Fern.colors.mousse, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = Fern.type.corps, color = Fern.colors.creme)
+            if (subtitle != null) Text(subtitle, style = Fern.type.nomApp, color = Fern.colors.lichen)
+        }
+        trailing()
+    }
+}
+
+// ─── Alternance ─────────────────────────────────────────────────────────────
+
+/** Paramètres → Alternance : noms, périodes, et générateur de rythme. */
+@Composable
+fun AlternanceSection(vm: LauncherViewModel, settings: AlternanceSettings) {
+    var editingName by remember { mutableStateOf<AltType?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    var generating by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row2("École", settings.schoolName, onClick = { editingName = AltType.Ecole })
+        Row2("Entreprise", settings.companyName, onClick = { editingName = AltType.Entreprise })
+        Text("PÉRIODES", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        if (settings.periods.isEmpty()) {
+            Text(
+                "Ajoute tes périodes une par une, ou génère ton rythme (ex. 2 semaines d'école, 3 en entreprise).",
+                style = Fern.type.nomApp,
+                color = Fern.colors.lichen,
+            )
+        }
+        for (period in settings.periods.sortedBy { it.start }) {
+            val name = if (period.type == AltType.Ecole) settings.schoolName else settings.companyName
+            Row2(
+                title = name,
+                subtitle = "${Alternance.shortDate(period.start)} → ${Alternance.shortDate(period.end)}",
+                onClick = {},
+            ) {
+                GlyphButton("✕", onClick = { vm.updateAlternance { it.copy(periods = it.periods - period) } })
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton("+ Période", onClick = { adding = true })
+            PillButton("Générer un rythme", onClick = { generating = true })
+        }
+        if (settings.periods.isNotEmpty()) {
+            PillButton("Tout effacer", onClick = { vm.updateAlternance { it.copy(periods = emptyList()) } })
+        }
+    }
+
+    editingName?.let { type ->
+        TextInputDialog(
+            title = if (type == AltType.Ecole) "Nom de l'école" else "Nom de l'entreprise",
+            initial = if (type == AltType.Ecole) settings.schoolName else settings.companyName,
+            onConfirm = { name ->
+                vm.updateAlternance {
+                    if (type == AltType.Ecole) it.copy(schoolName = name.ifBlank { it.schoolName }) else it.copy(companyName = name.ifBlank { it.companyName })
+                }
+                editingName = null
+            },
+            onDismiss = { editingName = null },
+        )
+    }
+    if (adding) {
+        PeriodDialog(
+            settings = settings,
+            onConfirm = { p -> vm.updateAlternance { it.copy(periods = (it.periods + p).sortedBy { x -> x.start }) }; adding = false },
+            onDismiss = { adding = false },
+        )
+    }
+    if (generating) {
+        RhythmDialog(
+            settings = settings,
+            onConfirm = { list -> vm.updateAlternance { it.copy(periods = list) }; generating = false },
+            onDismiss = { generating = false },
+        )
+    }
+}
+
+@Composable
+private fun TypePicker(settings: AlternanceSettings, type: AltType, onChange: (AltType) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PillButton(settings.schoolName, onClick = { onChange(AltType.Ecole) }, accent = type == AltType.Ecole)
+        PillButton(settings.companyName, onClick = { onChange(AltType.Entreprise) }, accent = type == AltType.Entreprise)
+    }
+}
+
+@Composable
+private fun PeriodDialog(settings: AlternanceSettings, onConfirm: (AltPeriod) -> Unit, onDismiss: () -> Unit) {
+    var type by remember { mutableStateOf(AltType.Ecole) }
+    var start by remember { mutableStateOf("") }
+    var end by remember { mutableStateOf("") }
+    val startDate = Alternance.parseDate(start)
+    val endDate = Alternance.parseDate(end)
+    val valid = startDate != null && endDate != null && !endDate.isBefore(startDate)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nouvelle période") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                TypePicker(settings, type) { type = it }
+                OutlinedTextField(value = start, onValueChange = { start = it }, label = { Text("Début (jj/mm/aaaa)") }, singleLine = true)
+                OutlinedTextField(value = end, onValueChange = { end = it }, label = { Text("Fin incluse (jj/mm/aaaa)") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = { onConfirm(AltPeriod(type, startDate.toString(), endDate.toString())) }) { Text("Ajouter") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
+}
+
+@Composable
+private fun RhythmDialog(settings: AlternanceSettings, onConfirm: (List<AltPeriod>) -> Unit, onDismiss: () -> Unit) {
+    var first by remember { mutableStateOf(AltType.Ecole) }
+    var start by remember { mutableStateOf("") }
+    var until by remember { mutableStateOf("") }
+    var school by remember { mutableStateOf("2") }
+    var company by remember { mutableStateOf("3") }
+    val startDate = Alternance.parseDate(start)
+    val untilDate = Alternance.parseDate(until)
+    val schoolWeeks = school.toIntOrNull()?.takeIf { it in 1..52 }
+    val companyWeeks = company.toIntOrNull()?.takeIf { it in 1..52 }
+    val valid = startDate != null && untilDate != null && untilDate.isAfter(startDate) && schoolWeeks != null && companyWeeks != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Générer un rythme") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("On commence par :")
+                TypePicker(settings, first) { first = it }
+                OutlinedTextField(value = start, onValueChange = { start = it }, label = { Text("À partir du (jj/mm/aaaa)") }, singleLine = true)
+                OutlinedTextField(value = until, onValueChange = { until = it }, label = { Text("Jusqu'au (jj/mm/aaaa)") }, singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = school,
+                        onValueChange = { school = it },
+                        label = { Text("Sem. ${settings.schoolName}") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = company,
+                        onValueChange = { company = it },
+                        label = { Text("Sem. ${settings.companyName}") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Text("Remplace les périodes existantes.", style = Fern.type.nomApp)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = {
+                onConfirm(Alternance.generate(startDate!!, untilDate!!, schoolWeeks!!, companyWeeks!!, first))
+            }) { Text("Générer") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
+}
+
+// ─── Carnet ─────────────────────────────────────────────────────────────────
+
+/** Paramètres → Carnet : les 3 habitudes et la destination Obsidian. */
+@Composable
+fun CarnetSection(vm: LauncherViewModel, settings: CarnetSettings) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("HABITUDES", style = Fern.type.libelle, color = Fern.colors.roseCarmin)
+        for (i in 0 until 3) {
+            Row2("Habitude ${i + 1}", settings.habits.getOrNull(i) ?: "—", onClick = { editing = "habit:$i" })
+        }
+        Text("OBSIDIAN", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Row2("Coffre", settings.obsidianVault.ifBlank { "Le dernier ouvert" }, onClick = { editing = "vault" })
+        Row2("Dossier des notes du jour", settings.obsidianFolder.ifBlank { "Racine du coffre" }, onClick = { editing = "folder" })
+        Text(
+            "« → Obsidian » ajoute ta note (avec l'humeur et les habitudes) à la fin de la note du jour, " +
+                "par exemple « ${settings.obsidianFolder.ifBlank { "" }}/${LocalDate.now()} ».",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+    }
+    editing?.let { field ->
+        val initial = when {
+            field.startsWith("habit:") -> settings.habits.getOrNull(field.substringAfter(':').toInt()) ?: ""
+            field == "vault" -> settings.obsidianVault
+            else -> settings.obsidianFolder
+        }
+        TextInputDialog(
+            title = when {
+                field.startsWith("habit:") -> "Habitude"
+                field == "vault" -> "Nom du coffre (vide = le dernier ouvert)"
+                else -> "Dossier (vide = racine)"
+            },
+            initial = initial,
+            onConfirm = { text ->
+                vm.updateCarnetSettings { s ->
+                    when {
+                        field.startsWith("habit:") -> {
+                            val i = field.substringAfter(':').toInt()
+                            val list = (s.habits + List(3) { "" }).take(3).toMutableList()
+                            list[i] = text.trim().ifEmpty { list[i] }
+                            s.copy(habits = list)
+                        }
+                        field == "vault" -> s.copy(obsidianVault = text.trim())
+                        else -> s.copy(obsidianFolder = text.trim().trim('/'))
+                    }
+                }
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}

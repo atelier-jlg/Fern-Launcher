@@ -44,6 +44,8 @@ data class LauncherConfig(
     val icons: IconSettings = IconSettings(),
     /** Familles choisies à la main (clé d'appli → famille) ; sinon classement automatique. */
     val appFamilies: Map<String, Family> = emptyMap(),
+    val alternance: AlternanceSettings = AlternanceSettings(),
+    val carnet: CarnetSettings = CarnetSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -192,6 +194,53 @@ data class Sticker(
     val y: Float = 0.5f,
     val sizeDp: Float = 140f,
     val rotation: Float = 0f,
+)
+
+/** Widget « Alternance » : où je suis (école / entreprise), compte à rebours, frise des semaines. */
+@Serializable
+@SerialName("alternance")
+data class AlternanceBlock(override val id: String, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Révisions » : cartes AnkiDroid à réviser ; le lotus s'ouvre quand tout est fait. */
+@Serializable
+@SerialName("revisions")
+data class RevisionsBlock(override val id: String, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Carnet du jour » : humeur de la graine à la fleur, 3 habitudes, note vers Obsidian. */
+@Serializable
+@SerialName("carnet")
+data class CarnetBlock(override val id: String, val half: Boolean = false) : HomeBlock()
+
+@Serializable
+enum class AltType { Ecole, Entreprise }
+
+/** Une période d'alternance, dates au format ISO (2026-10-06), fin incluse. */
+@Serializable
+data class AltPeriod(val type: AltType, val start: String, val end: String)
+
+@Serializable
+data class AlternanceSettings(
+    val schoolName: String = "ESB",
+    val companyName: String = "VINCI",
+    val periods: List<AltPeriod> = emptyList(),
+)
+
+/** Une journée du carnet : humeur (0 graine → 4 fleur épanouie), habitudes cochées, note. */
+@Serializable
+data class CarnetDay(
+    val mood: Int? = null,
+    val habits: Set<Int> = emptySet(),
+    val note: String = "",
+)
+
+@Serializable
+data class CarnetSettings(
+    val habits: List<String> = listOf("Bouger", "Lire", "Boire de l'eau"),
+    /** Coffre Obsidian (vide = le dernier ouvert) et dossier des notes du jour. */
+    val obsidianVault: String = "",
+    val obsidianFolder: String = "Carnet",
+    /** Jour (2026-10-06) → contenu. On garde les 90 derniers jours. */
+    val days: Map<String, CarnetDay> = emptyMap(),
 )
 
 /** Où se trouve Jules (pour le soleil et la lune). */

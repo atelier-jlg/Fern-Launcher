@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.atelierjlg.fern.LauncherViewModel
 import com.atelierjlg.fern.data.ContextBlock
+import com.atelierjlg.fern.data.AlternanceBlock
+import com.atelierjlg.fern.data.CarnetBlock
+import com.atelierjlg.fern.data.RevisionsBlock
 import com.atelierjlg.fern.data.HomeBlock
 import com.atelierjlg.fern.data.MusicBlock
 import com.atelierjlg.fern.data.SkyBlock
@@ -112,6 +115,9 @@ fun WidgetAdder(vm: LauncherViewModel, pageId: String, onDone: () -> Unit) {
                         "Ciel · soleil et lune" to { SkyBlock(newId()) },
                         "Musique · ce qui joue" to { MusicBlock(newId()) },
                         "Contexte · moment, agenda, note" to { ContextBlock(newId()) },
+                        "Alternance · école ou entreprise" to { AlternanceBlock(newId()) },
+                        "Révisions · cartes AnkiDroid" to { RevisionsBlock(newId()) },
+                        "Carnet du jour · humeur, habitudes, note" to { CarnetBlock(newId()) },
                     )) {
                         TextButton(onClick = { vm.addBlock(pageId, block()); onDone() }, modifier = Modifier.fillMaxWidth()) {
                             Text(label, modifier = Modifier.fillMaxWidth())

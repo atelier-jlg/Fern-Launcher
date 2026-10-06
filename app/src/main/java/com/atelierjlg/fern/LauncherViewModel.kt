@@ -44,6 +44,12 @@ import com.atelierjlg.fern.search.ShortcutResult
 import com.atelierjlg.fern.data.AppWidgetBlock
 import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.AlternanceSettings
+import com.atelierjlg.fern.data.CarnetSettings
+import com.atelierjlg.fern.data.updateAlternance
+import com.atelierjlg.fern.data.updateCarnetDay
+import com.atelierjlg.fern.data.updateCarnetSettings
+import com.atelierjlg.fern.widgets.Anki
 import com.atelierjlg.fern.data.Sticker
 import com.atelierjlg.fern.data.addSticker
 import com.atelierjlg.fern.data.removeSticker
@@ -190,8 +196,57 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // ─── Révisions, alternance, carnet ──────────────────────────────────────
+
+    private val _anki = MutableStateFlow<Anki.State>(Anki.State.NotInstalled)
+    val anki: StateFlow<Anki.State> = _anki.asStateFlow()
+
+    fun refreshAnki() {
+        viewModelScope.launch { _anki.value = withContext(Dispatchers.IO) { Anki.state(getApplication()) } }
+    }
+
+    fun openAnki() = openPackage(Anki.PACKAGE)
+
+    fun updateAlternance(transform: (AlternanceSettings) -> AlternanceSettings) = store.update { it.updateAlternance(transform) }
+
+    fun updateCarnetSettings(transform: (CarnetSettings) -> CarnetSettings) = store.update { it.updateCarnetSettings(transform) }
+
+    private fun todayIso() = java.time.LocalDate.now().toString()
+
+    fun setMood(mood: Int) = store.update { c -> c.updateCarnetDay(todayIso()) { it.copy(mood = mood) } }
+
+    fun toggleHabit(index: Int) = store.update { c ->
+        c.updateCarnetDay(todayIso()) { d -> d.copy(habits = if (index in d.habits) d.habits - index else d.habits + index) }
+    }
+
+    fun setCarnetNote(note: String) = store.update { c -> c.updateCarnetDay(todayIso()) { it.copy(note = note.trim()) } }
+
+    /**
+     * Envoie la note dans Obsidian : elle est ajoutée à la fin de la note « Carnet/2026-10-06 »
+     * (créée si besoin), grâce aux liens `obsidian://` de l'appli.
+     */
+    fun sendNoteToObsidian(note: String) {
+        val settings = config.value.carnet
+        val day = config.value.carnet.days[todayIso()]
+        val text = buildString {
+            day?.mood?.let { append("Humeur : ").append(listOf("graine", "pousse", "bourgeon", "fleur", "éclose")[it]).append("\n") }
+            val done = day?.habits.orEmpty().mapNotNull { settings.habits.getOrNull(it) }
+            if (done.isNotEmpty()) append("Habitudes : ").append(done.joinToString(", ")).append("\n")
+            append(note)
+        }
+        val path = listOf(settings.obsidianFolder.trim('/'), todayIso()).filter { it.isNotBlank() }.joinToString("/")
+        val uri = Uri.Builder().scheme("obsidian").authority("new").apply {
+            if (settings.obsidianVault.isNotBlank()) appendQueryParameter("vault", settings.obsidianVault)
+            appendQueryParameter("file", path)
+            appendQueryParameter("content", "\n" + text)
+            appendQueryParameter("append", "true")
+        }.build()
+        startSafely(Intent(Intent.ACTION_VIEW, uri))
+    }
+
     /** Fern revient au premier plan. */
     fun onForeground() {
+        refreshAnki()
         widgetHost.startListening()
         music.start()
         checkSchedule()

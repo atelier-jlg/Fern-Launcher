@@ -73,6 +73,8 @@ private enum class Section(val title: String) {
     Gestes("Gestes"),
     Recherche("Recherche"),
     Tiroir("Tiroir"),
+    Alternance("Alternance"),
+    Carnet("Carnet du jour"),
     Lieu("Lieu (ciel)"),
     Sauvegarde("Sauvegarde"),
     APropos("À propos"),
@@ -135,6 +137,8 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 Section.Gestes -> item { GesturesSection(vm, config.gestures) }
                 Section.Recherche -> searchSection(vm, config.search.extended, config.search.webSearchUrl)
                 Section.Tiroir -> drawerSection(vm, config.drawer)
+                Section.Alternance -> item { AlternanceSection(vm, config.alternance) }
+                Section.Carnet -> item { CarnetSection(vm, config.carnet) }
                 Section.Lieu -> item { PlaceSection(vm, config.place) }
                 Section.Sauvegarde -> item { BackupSection(vm) }
                 Section.APropos -> item { AboutSection() }

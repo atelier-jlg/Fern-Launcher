@@ -3,6 +3,22 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.11.0 (code 13) — 2026-10-06
+
+Les trois widgets qui manquaient (+ Widget en mode édition).
+
+- **Alternance** : où tu es cette semaine (ESB ou VINCI), « VINCI dans 5 j », et la frise des
+  prochaines semaines (pistache = école, rose = entreprise, semaine en cours entourée).
+  Paramètres → Alternance : noms, périodes une par une, ou **générer un rythme**
+  (ex. 2 semaines d'école / 3 en entreprise, du … au …).
+- **Révisions** : nombre de cartes AnkiDroid à revoir aujourd'hui ; le **lotus s'ouvre**
+  quand tout est fait. Toucher ouvre AnkiDroid. Autorisation demandée une fois.
+- **Carnet du jour** : l'humeur de la **graine à la fleur** (toucher la plante pour la faire grandir),
+  **3 habitudes** à cocher, une **note** (toucher pour écrire) et « **→ Obsidian** » qui l'ajoute
+  à la note du jour (Carnet/2026-10-06) avec l'humeur et les habitudes.
+  Paramètres → Carnet du jour : noms des habitudes, coffre et dossier Obsidian.
+- Les trois passent de demi à pleine largeur avec ⇔.
+
 ## v0.10.0 (code 12) — 2026-10-06
 
 Placement plus libre.

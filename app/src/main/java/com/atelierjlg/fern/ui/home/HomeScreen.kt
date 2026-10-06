@@ -60,6 +60,14 @@ import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.SkyBlock
 import com.atelierjlg.fern.data.SpacerBlock
 import com.atelierjlg.fern.data.AppBlock
+import com.atelierjlg.fern.data.AlternanceBlock
+import com.atelierjlg.fern.data.CarnetBlock
+import com.atelierjlg.fern.data.CarnetDay
+import com.atelierjlg.fern.data.RevisionsBlock
+import com.atelierjlg.fern.ui.widgets.AlternanceWidget
+import com.atelierjlg.fern.ui.widgets.CarnetWidget
+import com.atelierjlg.fern.ui.widgets.RevisionsWidget
+import com.atelierjlg.fern.widgets.Anki
 import com.atelierjlg.fern.data.ROW_COLUMNS
 import com.atelierjlg.fern.data.canChangeWidth
 import com.atelierjlg.fern.data.span
@@ -492,6 +500,31 @@ private fun BlockView(
                     if (actions.editing) Modifier.border(1.dp, Fern.colors.moussePale, RoundedCornerShape(20.dp)) else Modifier,
                 ),
         )
+        is AlternanceBlock -> {
+            val alternance = vm.config.collectAsStateWithLifecycle().value.alternance
+            AlternanceWidget(alternance, compact = block.half)
+        }
+        is RevisionsBlock -> {
+            val anki by vm.anki.collectAsStateWithLifecycle()
+            val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.refreshAnki() }
+            RevisionsWidget(
+                state = anki,
+                onOpenAnki = vm::openAnki,
+                onRequestPermission = { permission.launch(Anki.PERMISSION) },
+            )
+        }
+        is CarnetBlock -> {
+            val carnet = vm.config.collectAsStateWithLifecycle().value.carnet
+            CarnetWidget(
+                day = carnet.days[java.time.LocalDate.now().toString()] ?: CarnetDay(),
+                habits = carnet.habits,
+                compact = block.half,
+                onMood = vm::setMood,
+                onToggleHabit = vm::toggleHabit,
+                onNote = vm::setCarnetNote,
+                onSendToObsidian = vm::sendNoteToObsidian,
+            )
+        }
         is AppBlock -> Slot(
             app = apps.find(block.app),
             ref = SlotRef.Block(page.id, block.id, 0),
@@ -513,6 +546,9 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is AppWidgetBlock -> block.provider
     is SpacerBlock -> "Espace"
     is AppBlock -> "Appli"
+    is AlternanceBlock -> "Alternance"
+    is RevisionsBlock -> "Révisions"
+    is CarnetBlock -> "Carnet"
 }
 
 @Composable
