@@ -25,6 +25,15 @@ import com.atelierjlg.fern.data.AltPeriod
 import com.atelierjlg.fern.data.AltType
 import com.atelierjlg.fern.data.AlternanceSettings
 import com.atelierjlg.fern.data.CarnetSettings
+import com.atelierjlg.fern.data.ChatSettings
+import com.atelierjlg.fern.data.CoursSettings
+import com.atelierjlg.fern.data.PomodoroSettings
+import com.atelierjlg.fern.data.ScreenTimeSettings
+import com.atelierjlg.fern.widgets.CalendarInfo
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.produceState
 import com.atelierjlg.fern.ui.common.GlyphButton
 import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
@@ -267,6 +276,187 @@ fun CarnetSection(vm: LauncherViewModel, settings: CarnetSettings) {
                 editing = null
             },
             onDismiss = { editing = null },
+        )
+    }
+}
+
+// ─── Cours du jour ──────────────────────────────────────────────────────────
+
+/** Paramètres → Cours du jour : les agendas à lire et les mots qui signalent un examen. */
+@Composable
+fun CoursSection(vm: LauncherViewModel, settings: CoursSettings) {
+    var reload by remember { mutableStateOf(0) }
+    val calendars by produceState<List<CalendarInfo>?>(null, reload) { value = vm.calendars() }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { reload++ }
+    var editingKeywords by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Le widget lit l'agenda d'Android. Pour Proton Calendar : lien de partage ICS dans ICSx⁵, " +
+                "puis choisis ici l'agenda créé par ICSx⁵.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        Text("AGENDAS", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        when {
+            calendars == null -> Unit
+            calendars!!.isEmpty() -> {
+                Text("Aucun agenda visible (autorisation manquante ?)", style = Fern.type.nomApp, color = Fern.colors.lichen)
+                PillButton("Autoriser l'agenda", onClick = { permission.launch(android.Manifest.permission.READ_CALENDAR) }, accent = true)
+            }
+            else -> {
+                Text(
+                    if (settings.calendarIds.isEmpty()) "Aucun coché = tous les agendas." else "Seuls les agendas cochés sont lus.",
+                    style = Fern.type.nomApp,
+                    color = Fern.colors.lichen,
+                )
+                for (cal in calendars!!) {
+                    val on = cal.id in settings.calendarIds
+                    Row2(cal.name, cal.account, onClick = {
+                        vm.updateCours { it.copy(calendarIds = if (on) it.calendarIds - cal.id else it.calendarIds + cal.id) }
+                    }) {
+                        Text(if (on) "✓" else "", style = Fern.type.corps, color = Fern.colors.pistache)
+                    }
+                }
+            }
+        }
+        Text("EXAMENS", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Row2("Mots repérés dans les titres", settings.examKeywords.joinToString(", "), onClick = { editingKeywords = true })
+    }
+    if (editingKeywords) {
+        TextInputDialog(
+            title = "Mots séparés par des virgules",
+            initial = settings.examKeywords.joinToString(", "),
+            onConfirm = { text ->
+                vm.updateCours { it.copy(examKeywords = text.split(',').map { w -> w.trim() }.filter { w -> w.isNotEmpty() }) }
+                editingKeywords = false
+            },
+            onDismiss = { editingKeywords = false },
+        )
+    }
+}
+
+// ─── Le chat ────────────────────────────────────────────────────────────────
+
+/** Paramètres → Le chat : nom, images jour / nuit, tâches du jour. */
+@Composable
+fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    var pickingNight by remember { mutableStateOf(false) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) vm.importChatImage(pickingNight, uri)
+    }
+    fun pick(night: Boolean) {
+        pickingNight = night
+        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row2("Nom", settings.name, onClick = { editing = "name" })
+        Text("IMAGES", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Text(
+            "Sans image, Fern dessine un chat en pixel art. Avec tes PNG (fond transparent), il « respire » doucement.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        Row2("Le jour", if (settings.dayImage != null) "Image choisie" else "Pixel art", onClick = { pick(false) }) {
+            if (settings.dayImage != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(dayImage = null) } })
+        }
+        Row2("La nuit (22 h – 7 h)", if (settings.nightImage != null) "Image choisie" else "Comme le jour", onClick = { pick(true) }) {
+            if (settings.nightImage != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(nightImage = null) } })
+        }
+        Text("TÂCHES DU JOUR", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        for (i in 0 until 3) {
+            Row2("Tâche ${i + 1}", settings.chores.getOrNull(i) ?: "—", onClick = { editing = "chore:$i" })
+        }
+    }
+    editing?.let { field ->
+        TextInputDialog(
+            title = if (field == "name") "Nom du chat" else "Tâche (vide = aucune)",
+            initial = if (field == "name") settings.name else settings.chores.getOrNull(field.substringAfter(':').toInt()) ?: "",
+            onConfirm = { text ->
+                vm.updateChat { c ->
+                    if (field == "name") {
+                        c.copy(name = text.trim().ifEmpty { c.name })
+                    } else {
+                        val i = field.substringAfter(':').toInt()
+                        val list = (c.chores + List(3) { "" }).take(3).toMutableList()
+                        list[i] = text.trim()
+                        c.copy(chores = list.filter { it.isNotEmpty() }, done = emptyMap())
+                    }
+                }
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+// ─── Pomodoro ───────────────────────────────────────────────────────────────
+
+@Composable
+fun PomodoroSection(vm: LauncherViewModel, settings: PomodoroSettings) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row2("Travail", "${settings.workMinutes} min", onClick = { editing = "work" })
+        Row2("Pause", "${settings.breakMinutes} min", onClick = { editing = "break" })
+        Row2(
+            "Mode Focus pendant le travail",
+            if (settings.autoFocus) "Oui · remis comme avant à la pause" else "Non",
+            onClick = { vm.updatePomodoroSettings(settings.workMinutes, settings.breakMinutes, !settings.autoFocus) },
+        ) {
+            Text(if (settings.autoFocus) "OUI" else "NON", style = Fern.type.libelle, color = Fern.colors.pistache)
+        }
+        Text(
+            "Une notification sonne à la fin du travail et de la pause, même si tu es dans une autre appli.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+    }
+    editing?.let { field ->
+        TextInputDialog(
+            title = if (field == "work") "Minutes de travail" else "Minutes de pause",
+            initial = (if (field == "work") settings.workMinutes else settings.breakMinutes).toString(),
+            onConfirm = { text ->
+                val n = text.trim().toIntOrNull()
+                if (n != null) {
+                    if (field == "work") vm.updatePomodoroSettings(n, settings.breakMinutes, settings.autoFocus)
+                    else vm.updatePomodoroSettings(settings.workMinutes, n, settings.autoFocus)
+                }
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+// ─── Temps d'écran ──────────────────────────────────────────────────────────
+
+@Composable
+fun ScreenTimeSection(vm: LauncherViewModel, settings: ScreenTimeSettings, hasFocusApps: Boolean) {
+    var editing by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            if (hasFocusApps) {
+                "Le widget compte le temps passé aujourd'hui sur les applis du mode Focus (Paramètres → Focus)."
+            } else {
+                "Le widget compte le temps passé aujourd'hui sur toutes les applis. Ajoute des applis dans Focus pour ne compter qu'elles."
+            },
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        Row2("Repère quotidien", "${settings.goalMinutes} min · pas une limite, juste un repère", onClick = { editing = true })
+        Row2("Accès aux données d'utilisation", "À autoriser une fois pour Fern", onClick = vm::openUsageAccess)
+    }
+    if (editing) {
+        TextInputDialog(
+            title = "Repère en minutes",
+            initial = settings.goalMinutes.toString(),
+            onConfirm = { text ->
+                text.trim().toIntOrNull()?.let { n -> vm.updateScreenTime { it.copy(goalMinutes = n.coerceIn(5, 24 * 60)) } }
+                editing = false
+            },
+            onDismiss = { editing = false },
         )
     }
 }

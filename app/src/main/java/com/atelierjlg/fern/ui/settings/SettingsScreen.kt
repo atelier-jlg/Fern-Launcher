@@ -75,7 +75,11 @@ private enum class Section(val title: String) {
     Tiroir("Tiroir"),
     Alternance("Alternance"),
     Carnet("Carnet du jour"),
-    Lieu("Lieu (ciel)"),
+    Cours("Cours du jour"),
+    Chat("Le chat"),
+    Pomodoro("Pomodoro"),
+    TempsEcran("Temps d'écran"),
+    Lieu("Lieu (ciel, météo)"),
     Sauvegarde("Sauvegarde"),
     APropos("À propos"),
 }
@@ -139,6 +143,10 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 Section.Tiroir -> drawerSection(vm, config.drawer)
                 Section.Alternance -> item { AlternanceSection(vm, config.alternance) }
                 Section.Carnet -> item { CarnetSection(vm, config.carnet) }
+                Section.Cours -> item { CoursSection(vm, config.cours) }
+                Section.Chat -> item { ChatSection(vm, config.chat) }
+                Section.Pomodoro -> item { PomodoroSection(vm, config.pomodoro) }
+                Section.TempsEcran -> item { ScreenTimeSection(vm, config.screenTime, config.focus.blockedApps.isNotEmpty()) }
                 Section.Lieu -> item { PlaceSection(vm, config.place) }
                 Section.Sauvegarde -> item { BackupSection(vm) }
                 Section.APropos -> item { AboutSection() }
@@ -536,9 +544,15 @@ private fun PlaceSection(vm: LauncherViewModel, place: com.atelierjlg.fern.data.
     var editing by remember { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Sert au widget Ciel (lever et coucher du soleil). Pas de GPS : tu indiques ta ville une fois.",
+            "Sert aux widgets Ciel (lever et coucher du soleil) et Météo. Pas de GPS : tu indiques ta ville une fois.",
             style = Fern.type.nomApp,
             color = Fern.colors.lichen,
+        )
+        ToggleRow(
+            title = "Météo sous l'horloge",
+            subtitle = "Ex. « MARDI 6 OCTOBRE · 14° PLUIE ». Via Open-Meteo (sans compte ni pistage).",
+            checked = place.weatherOnClock,
+            onChange = { on -> vm.updatePlace { it.copy(weatherOnClock = on) }; if (on) vm.refreshWeather(force = true) },
         )
         SettingRow(title = "Ville", subtitle = place.name, onClick = { editing = "name" })
         SettingRow(title = "Latitude", subtitle = place.latitude.toString(), onClick = { editing = "lat" })
@@ -566,6 +580,7 @@ private fun PlaceSection(vm: LauncherViewModel, place: com.atelierjlg.fern.data.
                     }
                 }
                 editing = null
+                vm.refreshWeather(force = true)
             },
             onDismiss = { editing = null },
         )

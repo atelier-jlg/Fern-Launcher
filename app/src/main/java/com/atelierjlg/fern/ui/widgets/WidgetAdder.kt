@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -27,6 +29,8 @@ import com.atelierjlg.fern.LauncherViewModel
 import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.AlternanceBlock
 import com.atelierjlg.fern.data.CarnetBlock
+import com.atelierjlg.fern.data.MaisonBlock
+import com.atelierjlg.fern.data.MaisonKind
 import com.atelierjlg.fern.data.RevisionsBlock
 import com.atelierjlg.fern.data.HomeBlock
 import com.atelierjlg.fern.data.MusicBlock
@@ -110,7 +114,7 @@ fun WidgetAdder(vm: LauncherViewModel, pageId: String, onDone: () -> Unit) {
             onDismissRequest = onDone,
             title = { Text("Ajouter un widget") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     for ((label, block) in listOf<Pair<String, () -> HomeBlock>>(
                         "Ciel · soleil et lune" to { SkyBlock(newId()) },
                         "Musique · ce qui joue" to { MusicBlock(newId()) },
@@ -118,6 +122,12 @@ fun WidgetAdder(vm: LauncherViewModel, pageId: String, onDone: () -> Unit) {
                         "Alternance · école ou entreprise" to { AlternanceBlock(newId()) },
                         "Révisions · cartes AnkiDroid" to { RevisionsBlock(newId()) },
                         "Carnet du jour · humeur, habitudes, note" to { CarnetBlock(newId()) },
+                        "Cours du jour · prochain cours, examens" to { MaisonBlock(newId(), MaisonKind.Cours) },
+                        "Le chat · il dort, s'étire, veille" to { MaisonBlock(newId(), MaisonKind.Chat) },
+                        "Météo · en pixel art" to { MaisonBlock(newId(), MaisonKind.Meteo) },
+                        "Plante · pousse avec ton Carnet" to { MaisonBlock(newId(), MaisonKind.Plante) },
+                        "Pomodoro · 25 min, mode Focus" to { MaisonBlock(newId(), MaisonKind.Pomodoro) },
+                        "Temps d'écran · une jauge douce" to { MaisonBlock(newId(), MaisonKind.TempsEcran) },
                     )) {
                         TextButton(onClick = { vm.addBlock(pageId, block()); onDone() }, modifier = Modifier.fillMaxWidth()) {
                             Text(label, modifier = Modifier.fillMaxWidth())

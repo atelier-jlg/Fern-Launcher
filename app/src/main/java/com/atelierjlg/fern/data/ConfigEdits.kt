@@ -218,6 +218,7 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is AlternanceBlock -> copy(id = newId())
     is RevisionsBlock -> copy(id = newId())
     is CarnetBlock -> copy(id = newId())
+    is MaisonBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -303,13 +304,15 @@ val HomeBlock.span: Int
         is AlternanceBlock -> if (half) 2 else 4
         is RevisionsBlock -> if (half) 2 else 4
         is CarnetBlock -> if (half) 2 else 4
+        is MaisonBlock -> if (half) 2 else 4
         is ClockBlock, is AppRowBlock -> 4
     }
 
 /** Peut-on changer la largeur de cet élément (bouton ⇔) ? */
 val HomeBlock.canChangeWidth: Boolean
     get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock ||
-        this is SpacerBlock || this is AlternanceBlock || this is RevisionsBlock || this is CarnetBlock
+        this is SpacerBlock || this is AlternanceBlock || this is RevisionsBlock || this is CarnetBlock ||
+        this is MaisonBlock
 
 /** Bouton ⇔ : widgets entier ↔ demi ; espaces entier → demi → quart → entier. */
 fun LauncherConfig.cycleWidth(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
@@ -322,6 +325,7 @@ fun LauncherConfig.cycleWidth(pageId: String, blockId: String) = updateBlock(pag
         is AlternanceBlock -> b.copy(half = !b.half)
         is RevisionsBlock -> b.copy(half = !b.half)
         is CarnetBlock -> b.copy(half = !b.half)
+        is MaisonBlock -> b.copy(half = !b.half)
         else -> b
     }
 }
@@ -365,7 +369,8 @@ fun LauncherConfig.removeSticker(pageId: String, stickerId: String) =
 
 /** Tous les fichiers de stickers encore utilisés (tous Spaces confondus). */
 val LauncherConfig.usedStickerFiles: Set<String>
-    get() = spaces.flatMap { it.pages }.flatMap { it.stickers }.map { it.file }.toSet()
+    get() = spaces.flatMap { it.pages }.flatMap { it.stickers }.map { it.file }.toSet() +
+        listOfNotNull(chat.dayImage, chat.nightImage)
 
 // ─── Alternance & carnet ────────────────────────────────────────────────────
 
@@ -390,3 +395,64 @@ fun LauncherConfig.setWidgetSize(pageId: String, blockId: String, columns: Int, 
     updateBlock(pageId, blockId) { b ->
         if (b is AppWidgetBlock) b.copy(columns = columns.coerceIn(1, ROW_COLUMNS), heightDp = rows.coerceIn(1, 6) * WIDGET_CELL_HEIGHT_DP) else b
     }
+
+// ─── Widgets maison v0.14 ───────────────────────────────────────────────────
+
+fun LauncherConfig.updateCours(transform: (CoursSettings) -> CoursSettings) = copy(cours = transform(cours))
+
+fun LauncherConfig.updateChat(transform: (ChatSettings) -> ChatSettings) = copy(chat = transform(chat))
+
+fun LauncherConfig.updateScreenTime(transform: (ScreenTimeSettings) -> ScreenTimeSettings) =
+    copy(screenTime = transform(screenTime))
+
+/** Coche / décoche une tâche du chat pour ce jour (on garde 14 jours). */
+fun LauncherConfig.toggleChore(date: String, index: Int): LauncherConfig {
+    val today = chat.done[date].orEmpty()
+    val updated = if (index in today) today - index else today + index
+    val done = (chat.done + (date to updated)).toSortedMap().entries.toList().takeLast(14).associate { it.key to it.value }
+    return copy(chat = chat.copy(done = done))
+}
+
+/** Réglages du Pomodoro (durées, Focus auto) sans toucher au minuteur en cours. */
+fun LauncherConfig.updatePomodoroSettings(workMinutes: Int, breakMinutes: Int, autoFocus: Boolean) =
+    copy(pomodoro = pomodoro.copy(workMinutes = workMinutes.coerceIn(1, 120), breakMinutes = breakMinutes.coerceIn(1, 60), autoFocus = autoFocus))
+
+/** Lance une séance de travail. Avec `autoFocus`, le mode Focus s'allume (et on retient s'il l'était déjà). */
+fun LauncherConfig.startPomodoro(now: Long): LauncherConfig {
+    val p = pomodoro
+    val wasOn = if (p.phase == PomodoroPhase.Travail) p.focusBefore else focus.enabled
+    return copy(
+        pomodoro = p.copy(phase = PomodoroPhase.Travail, startedAt = now, endsAt = now + p.workMinutes * 60_000L, focusBefore = wasOn),
+        focus = if (p.autoFocus) focus.copy(enabled = true) else focus,
+    )
+}
+
+/** Arrête tout ; si le Focus avait été allumé par le Pomodoro, on le remet comme avant. */
+fun LauncherConfig.stopPomodoro(): LauncherConfig {
+    val p = pomodoro
+    val restoredFocus = if (p.phase == PomodoroPhase.Travail && p.autoFocus) focus.copy(enabled = p.focusBefore) else focus
+    return copy(pomodoro = p.copy(phase = PomodoroPhase.Arret, startedAt = 0, endsAt = 0), focus = restoredFocus)
+}
+
+/**
+ * Fait avancer le minuteur : travail fini → pause (Focus remis comme avant) ; pause finie → arrêt.
+ * Appelée régulièrement, et au retour sur Fern (le téléphone a pu rester en veille longtemps).
+ */
+fun LauncherConfig.tickPomodoro(now: Long): LauncherConfig {
+    var c = this
+    if (c.pomodoro.phase == PomodoroPhase.Travail && now >= c.pomodoro.endsAt) {
+        val p = c.pomodoro
+        c = c.copy(
+            pomodoro = p.copy(phase = PomodoroPhase.Pause, startedAt = p.endsAt, endsAt = p.endsAt + p.breakMinutes * 60_000L),
+            focus = if (p.autoFocus) c.focus.copy(enabled = p.focusBefore) else c.focus,
+        )
+    }
+    if (c.pomodoro.phase == PomodoroPhase.Pause && now >= c.pomodoro.endsAt) {
+        c = c.copy(pomodoro = c.pomodoro.copy(phase = PomodoroPhase.Arret, startedAt = 0, endsAt = 0))
+    }
+    return c
+}
+
+/** Y a-t-il un widget de ce type quelque part (pour ne pas calculer pour rien) ? */
+fun LauncherConfig.hasMaison(kind: MaisonKind): Boolean =
+    spaces.flatMap { it.pages }.flatMap { it.blocks }.any { it is MaisonBlock && it.kind == kind }

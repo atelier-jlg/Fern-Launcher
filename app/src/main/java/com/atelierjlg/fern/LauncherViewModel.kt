@@ -55,6 +55,28 @@ import com.atelierjlg.fern.data.updateAlternance
 import com.atelierjlg.fern.data.updateCarnetDay
 import com.atelierjlg.fern.data.updateCarnetSettings
 import com.atelierjlg.fern.widgets.Anki
+import com.atelierjlg.fern.data.ChatSettings
+import com.atelierjlg.fern.data.CoursSettings
+import com.atelierjlg.fern.data.MaisonKind
+import com.atelierjlg.fern.data.PomodoroPhase
+import com.atelierjlg.fern.data.ScreenTimeSettings
+import com.atelierjlg.fern.data.hasMaison
+import com.atelierjlg.fern.data.startPomodoro
+import com.atelierjlg.fern.data.stopPomodoro
+import com.atelierjlg.fern.data.tickPomodoro
+import com.atelierjlg.fern.data.toggleChore
+import com.atelierjlg.fern.data.updateChat
+import com.atelierjlg.fern.data.updateCours
+import com.atelierjlg.fern.data.updatePomodoroSettings
+import com.atelierjlg.fern.data.updateScreenTime
+import com.atelierjlg.fern.system.PomodoroAlarm
+import com.atelierjlg.fern.widgets.Agenda
+import com.atelierjlg.fern.widgets.CalendarInfo
+import com.atelierjlg.fern.widgets.CoursState
+import com.atelierjlg.fern.widgets.ScreenTime
+import com.atelierjlg.fern.widgets.ScreenTimeState
+import com.atelierjlg.fern.widgets.Weather
+import com.atelierjlg.fern.widgets.WeatherCodes
 import com.atelierjlg.fern.data.Sticker
 import com.atelierjlg.fern.data.addSticker
 import com.atelierjlg.fern.data.removeSticker
@@ -196,7 +218,143 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             while (true) {
                 _nextEvent.value = withContext(Dispatchers.IO) { searchRepository.nextEvent() }
+                refreshCours()
+                refreshScreenTime()
                 delay(5 * 60_000L)
+            }
+        }
+    }
+
+    // ─── Météo, cours, chat, plante, Pomodoro, temps d'écran (v0.14) ────────
+
+    private val _weather = MutableStateFlow<Weather?>(null)
+    val weather: StateFlow<Weather?> = _weather.asStateFlow()
+    private val weatherFile: File get() = File(getApplication<Application>().filesDir, "weather.json")
+
+    /** Recharge la météo si elle a plus de 30 min (ou tout de suite avec `force`). */
+    fun refreshWeather(force: Boolean = false) {
+        val c = config.value
+        if (!c.place.weatherOnClock && !c.hasMaison(MaisonKind.Meteo)) return
+        val last = _weather.value
+        if (!force && last != null && System.currentTimeMillis() - last.fetchedAt < 30 * 60_000L) return
+        viewModelScope.launch {
+            val fresh = withContext(Dispatchers.IO) { WeatherCodes.fetch(c.place.latitude, c.place.longitude) }
+            if (fresh != null) {
+                _weather.value = fresh
+                withContext(Dispatchers.IO) { runCatching { weatherFile.writeText(FernJson.encodeToString(Weather.serializer(), fresh)) } }
+            } else if (force) {
+                toast("Météo indisponible (pas de réseau ?)")
+            }
+        }
+    }
+
+    private val _cours = MutableStateFlow(CoursState())
+    val cours: StateFlow<CoursState> = _cours.asStateFlow()
+
+    fun refreshCours() {
+        val c = config.value
+        if (!c.hasMaison(MaisonKind.Cours)) return
+        viewModelScope.launch {
+            _cours.value = withContext(Dispatchers.IO) {
+                Agenda.coursState(getApplication(), c.cours.calendarIds, c.cours.examKeywords)
+            }
+        }
+    }
+
+    /** Les agendas Android (pour choisir ceux du widget Cours). */
+    suspend fun calendars(): List<CalendarInfo> = withContext(Dispatchers.IO) { Agenda.calendars(getApplication()) }
+
+    fun updateCours(transform: (CoursSettings) -> CoursSettings) {
+        store.update { it.updateCours(transform) }
+        refreshCours()
+    }
+
+    fun openEventId(eventId: Long) = startSafely(
+        Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)),
+    )
+
+    fun updateChat(transform: (ChatSettings) -> ChatSettings) = store.update { it.updateChat(transform) }
+
+    fun toggleChore(index: Int) = store.update { it.toggleChore(todayIso(), index) }
+
+    /** Copie une image choisie pour le chat (jour ou nuit) dans le dossier des stickers. */
+    fun importChatImage(night: Boolean, uri: Uri) {
+        viewModelScope.launch {
+            val name = "${newId()}.img"
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                        stickerFile(name).outputStream().use { input.copyTo(it) }
+                    } ?: error("illisible")
+                }.isSuccess
+            }
+            if (ok) {
+                store.update { c -> c.updateChat { if (night) it.copy(nightImage = name) else it.copy(dayImage = name) } }
+            } else {
+                toast("Impossible de lire cette image")
+            }
+        }
+    }
+
+    fun startPomodoro() {
+        val now = System.currentTimeMillis()
+        store.update { it.startPomodoro(now) }
+        val p = config.value.pomodoro
+        PomodoroAlarm.schedule(getApplication(), p.endsAt, p.endsAt + p.breakMinutes * 60_000L)
+    }
+
+    fun stopPomodoro() {
+        store.update { it.stopPomodoro() }
+        PomodoroAlarm.cancel(getApplication())
+    }
+
+    private fun tickPomodoro() = store.update { it.tickPomodoro(System.currentTimeMillis()) }
+
+    fun updatePomodoroSettings(workMinutes: Int, breakMinutes: Int, autoFocus: Boolean) =
+        store.update { it.updatePomodoroSettings(workMinutes, breakMinutes, autoFocus) }
+
+    private val _screenTime = MutableStateFlow(ScreenTimeState())
+    val screenTime: StateFlow<ScreenTimeState> = _screenTime.asStateFlow()
+
+    fun refreshScreenTime() {
+        val c = config.value
+        if (!c.hasMaison(MaisonKind.TempsEcran)) return
+        viewModelScope.launch {
+            val context = getApplication<Application>()
+            _screenTime.value = withContext(Dispatchers.IO) {
+                if (!ScreenTime.hasAccess(context)) return@withContext ScreenTimeState(hasAccess = false)
+                val times = runCatching { ScreenTime.today(context) }.getOrDefault(emptyMap())
+                // Les applis du mode Focus (clé « paquet/activité@profil ») ; sinon toutes.
+                val focusPackages = c.focus.blockedApps.map { it.substringBefore('/') }.toSet()
+                val selected = if (focusPackages.isEmpty()) times else times.filterKeys { it in focusPackages }
+                val labels = apps.value.all.associate { it.packageName to it.label }
+                ScreenTimeState(
+                    hasAccess = true,
+                    totalMs = selected.values.sum(),
+                    top = selected.entries.sortedByDescending { it.value }.take(3).map { (labels[it.key] ?: it.key) to it.value },
+                    focusOnly = focusPackages.isNotEmpty(),
+                )
+            }
+        }
+    }
+
+    fun updateScreenTime(transform: (ScreenTimeSettings) -> ScreenTimeSettings) = store.update { it.updateScreenTime(transform) }
+
+    fun openUsageAccess() = startSafely(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+
+    // Placé après les propriétés ci-dessus : en Kotlin, un bloc init ne voit que ce qui est déclaré avant lui.
+    init {
+        // Pomodoro : on regarde toutes les 10 secondes si une phase est finie.
+        viewModelScope.launch {
+            while (true) {
+                if (config.value.pomodoro.phase != PomodoroPhase.Arret) tickPomodoro()
+                delay(10_000L)
+            }
+        }
+        // Météo : on recharge la dernière connue (fichier), en attendant Internet.
+        viewModelScope.launch {
+            _weather.value = withContext(Dispatchers.IO) {
+                runCatching { FernJson.decodeFromString(Weather.serializer(), weatherFile.readText()) }.getOrNull()
             }
         }
     }
@@ -252,6 +410,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Fern revient au premier plan. */
     fun onForeground() {
         refreshAnki()
+        refreshWeather()
+        refreshCours()
+        refreshScreenTime()
+        if (config.value.pomodoro.phase != PomodoroPhase.Arret) tickPomodoro()
         widgetHost.startListening()
         music.start()
         checkSchedule()

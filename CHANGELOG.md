@@ -3,6 +3,28 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.14.0 (code 16) — 2026-10-06
+
+Six nouveaux widgets (mode édition → + Widget). Ils sont en demi-largeur au départ, ⇔ pour passer en pleine largeur.
+
+- **Cours du jour** : le cours en cours ou le prochain (heure, salle), tiré de l'agenda Android
+  (Proton via ICSx⁵), et « EXAMEN DANS 12 J » repéré dans les titres (partiel, DS, examen…).
+  Les semaines en entreprise, il affiche « Semaine VINCI · ESB dans 20 j ».
+  Paramètres → Cours du jour : agendas à lire, mots qui signalent un examen.
+- **Le chat** : en pixel art, il dort la nuit (avec des « z »), s'étire le matin et cligne des yeux
+  la journée. Tâches du jour à cocher (gamelle, litière). Tu peux mettre tes propres PNG (jour / nuit).
+- **Météo** en pixel art (pluie et neige animées) : température, min / max, demain.
+  Via Open-Meteo, sans compte ni pistage. Aussi **sous l'horloge** (« MARDI 6 OCTOBRE · 14° PLUIE »),
+  désactivable dans Paramètres → Lieu.
+- **Plante** : une fougère qui grandit (1 à 7 frondes) avec les habitudes cochées dans le Carnet
+  sur 7 jours, et qui pâlit si rien depuis 2 jours.
+- **Pomodoro** : une crosse de fougère qui se déroule pendant 25 min ; le **mode Focus s'active**
+  tout seul et revient comme avant à la pause. Notification à la fin du travail et de la pause.
+- **Temps d'écran doux** : temps passé aujourd'hui sur les applis du mode Focus (ou toutes),
+  une jauge par rapport à un repère, sans rouge ni alerte. À autoriser une fois
+  (« Accès aux données d'utilisation »).
+- CI : la Release (APK signé) est publiée automatiquement à chaque nouveau numéro de version.
+
 ## v0.13.0 (code 15) — 2026-10-06
 
 - **Alternance · calendrier ESB 2026/27** : Paramètres → Alternance → « Charger le calendrier ESB 2026/27 »

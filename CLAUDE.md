@@ -124,7 +124,9 @@ app/src/main/java/com/atelierjlg/fern/
 - Numéro dans `gradle.properties` : `fernVersionName` (lisible) et `fernVersionCode` (entier, toujours croissant).
 - Chaque version a une entrée dans `CHANGELOG.md`.
 - APK produit : `fern-launcher-vX.Y.Z-release.apk`. Version visible en bas du tiroir (et plus tard dans Paramètres → À propos).
-- Release : pousser un tag `vX.Y.Z` → la CI vérifie qu'il correspond à `gradle.properties` et publie l'APK.
+- Release : automatique. À chaque push sur la branche avec un `fernVersionName` pas encore publié, la CI crée le
+  tag `vX.Y.Z` et la Release avec l'APK signé (le proxy des sessions cloud refuse de pousser des tags).
+  Ensuite : télécharger l'APK de la Release et l'envoyer à Jules (il ne peut pas dézipper sur son téléphone).
 - Signature : secrets GitHub `FERN_KEYSTORE_BASE64` + `FERN_KEYSTORE_PASSWORD` (alias `fern`). Même clé pour toujours,
   sinon Android refuse les mises à jour. Jules garde la clé `.jks` en lieu sûr ; elle n'est jamais dans le dépôt.
 
@@ -145,7 +147,10 @@ app/src/main/java/com/atelierjlg/fern/
 9. ✅ Demi-largeur (2 éléments côte à côte), espace vide, stickers en placement libre. *(v0.9.0)*
 10. ✅ Lignes de 4 colonnes : éléments en 1/2/4 colonnes, espaces réglables, « + Appli ». *(v0.10.0)*
 11. ✅ Widgets Alternance, Révisions (AnkiDroid, lotus), Carnet du jour (→ Obsidian). *(v0.11.0)*
-12. À venir : nouveaux widgets (à choisir avec Jules), glisser-déposer des blocs au doigt.
+12. ✅ Taille des widgets Android en cases ; calendrier d'alternance ESB 2026/27. *(v0.12.0 – v0.13.0)*
+13. ✅ Widgets Cours du jour, Le chat, Météo (+ sous l'horloge), Plante, Pomodoro, Temps d'écran. *(v0.14.0)*
+14. À venir : glisser-déposer des blocs au doigt ; idées de widgets non retenues pour l'instant :
+    Naolib, Budget, Courses, Les miens.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

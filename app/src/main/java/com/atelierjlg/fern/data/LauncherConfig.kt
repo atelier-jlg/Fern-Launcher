@@ -46,6 +46,10 @@ data class LauncherConfig(
     val appFamilies: Map<String, Family> = emptyMap(),
     val alternance: AlternanceSettings = AlternanceSettings(),
     val carnet: CarnetSettings = CarnetSettings(),
+    val cours: CoursSettings = CoursSettings(),
+    val chat: ChatSettings = ChatSettings(),
+    val pomodoro: PomodoroSettings = PomodoroSettings(),
+    val screenTime: ScreenTimeSettings = ScreenTimeSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -213,6 +217,66 @@ data class RevisionsBlock(override val id: String, val half: Boolean = true) : H
 @SerialName("carnet")
 data class CarnetBlock(override val id: String, val half: Boolean = false) : HomeBlock()
 
+/** Les widgets maison de la v0.14 (un seul type de bloc, `kind` dit lequel). */
+@Serializable
+enum class MaisonKind(val label: String) {
+    Cours("Cours du jour"),
+    Chat("Le chat"),
+    Meteo("Météo"),
+    Plante("Plante"),
+    Pomodoro("Pomodoro"),
+    TempsEcran("Temps d'écran"),
+}
+
+@Serializable
+@SerialName("maison")
+data class MaisonBlock(override val id: String, val kind: MaisonKind, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Cours du jour » : quels agendas lire, et quels mots signalent un examen. */
+@Serializable
+data class CoursSettings(
+    /** Agendas Android à lire (ceux d'ICSx⁵ par exemple) ; vide = tous. */
+    val calendarIds: Set<Long> = emptySet(),
+    val examKeywords: List<String> = listOf("examen", "partiel", "ds", "controle", "soutenance", "oral", "qcm", "rendu"),
+)
+
+/** Widget « Le chat » : son nom, ses images (facultatives) et les petites tâches du jour. */
+@Serializable
+data class ChatSettings(
+    val name: String = "Le chat",
+    /** Images PNG de Jules (dossier stickers/) ; null = le chat en pixel art dessiné par Fern. */
+    val dayImage: String? = null,
+    val nightImage: String? = null,
+    val chores: List<String> = listOf("Gamelle", "Litière"),
+    /** Jour (2026-10-06) → tâches faites. On garde 14 jours. */
+    val done: Map<String, Set<Int>> = emptyMap(),
+)
+
+@Serializable
+enum class PomodoroPhase { Arret, Travail, Pause }
+
+/** Minuteur Pomodoro : réglages + l'état en cours (gardé même si Fern est fermé). */
+@Serializable
+data class PomodoroSettings(
+    val workMinutes: Int = 25,
+    val breakMinutes: Int = 5,
+    /** Active le mode Focus pendant le travail, puis remet comme avant. */
+    val autoFocus: Boolean = true,
+    val phase: PomodoroPhase = PomodoroPhase.Arret,
+    /** Début et fin de la phase en cours (millisecondes depuis 1970). */
+    val startedAt: Long = 0,
+    val endsAt: Long = 0,
+    /** Le mode Focus était-il déjà actif avant le Pomodoro ? */
+    val focusBefore: Boolean = false,
+)
+
+/** Widget « Temps d'écran doux ». */
+@Serializable
+data class ScreenTimeSettings(
+    /** Un repère (pas une limite) pour la jauge, en minutes par jour. */
+    val goalMinutes: Int = 60,
+)
+
 @Serializable
 enum class AltType { Ecole, Entreprise, Mission }
 
@@ -255,12 +319,14 @@ data class CarnetSettings(
     val days: Map<String, CarnetDay> = emptyMap(),
 )
 
-/** Où se trouve Jules (pour le soleil et la lune). */
+/** Où se trouve Jules (pour le soleil, la lune et la météo). */
 @Serializable
 data class PlaceSettings(
     val name: String = "Nantes",
     val latitude: Double = 47.2184,
     val longitude: Double = -1.5536,
+    /** Afficher la météo à côté de la date, sous l'horloge (demande Internet, via Open-Meteo). */
+    val weatherOnClock: Boolean = true,
 )
 
 @Serializable

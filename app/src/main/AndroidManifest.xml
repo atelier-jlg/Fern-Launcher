@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Ouvrir l'écran « Désinstaller » d'une appli depuis le tiroir. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
@@ -10,6 +11,17 @@
 
     <!-- Widget Révisions : lire les cartes à réviser dans AnkiDroid (demandé si Jules accepte). -->
     <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
+
+    <!-- Widget Météo : Open-Meteo (gratuit, sans compte, sans pistage). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Widget Pomodoro : notification à la fin du travail et de la pause. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Widget Temps d'écran : « Accès aux données d'utilisation », à autoriser à la main. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Gestes : ouvrir le volet des notifications / réglages rapides. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
@@ -95,6 +107,11 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- Pomodoro : réveil à la fin du travail / de la pause. -->
+        <receiver
+            android:name=".system.PomodoroReceiver"
+            android:exported="false" />
 
         <!-- Verrouillage de l'écran par double appui (à activer dans Accessibilité). -->
         <service

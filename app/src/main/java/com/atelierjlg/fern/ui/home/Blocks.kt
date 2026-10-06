@@ -211,8 +211,9 @@ private fun rememberNow(): LocalDateTime {
 
 private val dateFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
 
+/** L'horloge ; `weatherLine` (ex. « 14° · PLUIE ») s'ajoute après la date si on l'a. */
 @Composable
-fun ClockView() {
+fun ClockView(weatherLine: String? = null) {
     val now = rememberNow()
     val context = LocalContext.current
     val colors = Fern.colors
@@ -241,7 +242,7 @@ fun ClockView() {
             color = colors.creme,
         )
         Text(
-            text = now.format(dateFormat).uppercase(Locale.FRENCH),
+            text = now.format(dateFormat).uppercase(Locale.FRENCH) + (weatherLine?.let { " · $it" } ?: ""),
             style = Fern.type.libelle,
             color = colors.lichen,
             modifier = Modifier.padding(start = 4.dp),

@@ -85,6 +85,16 @@ import com.atelierjlg.fern.ui.widgets.MusicWidget
 import com.atelierjlg.fern.ui.widgets.SkyWidget
 import com.atelierjlg.fern.ui.widgets.WidgetAdder
 import com.atelierjlg.fern.data.ClockBlock
+import com.atelierjlg.fern.data.MaisonBlock
+import com.atelierjlg.fern.data.MaisonKind
+import com.atelierjlg.fern.system.PomodoroAlarm
+import com.atelierjlg.fern.ui.widgets.ChatWidget
+import com.atelierjlg.fern.ui.widgets.CoursWidget
+import com.atelierjlg.fern.ui.widgets.MeteoWidget
+import com.atelierjlg.fern.ui.widgets.PlanteWidget
+import com.atelierjlg.fern.ui.widgets.PomodoroWidget
+import com.atelierjlg.fern.ui.widgets.TempsEcranWidget
+import com.atelierjlg.fern.widgets.Plant
 import com.atelierjlg.fern.data.DOCK_SIZE
 import com.atelierjlg.fern.data.HomeBlock
 import com.atelierjlg.fern.data.HomePage
@@ -482,7 +492,11 @@ private fun BlockView(
     place: PlaceSettings,
 ) {
     when (block) {
-        is ClockBlock -> ClockView()
+        is ClockBlock -> {
+            val weather by vm.weather.collectAsStateWithLifecycle()
+            val onClock = vm.config.collectAsStateWithLifecycle().value.place.weatherOnClock
+            ClockView(weatherLine = weather?.takeIf { onClock }?.let { "${it.temperature}° ${it.kind.label.uppercase()}" })
+        }
         is AppRowBlock -> AppRowView(
             slots = block.apps,
             refFor = { SlotRef.Block(page.id, block.id, it) },
@@ -554,6 +568,7 @@ private fun BlockView(
                 onSendToObsidian = vm::sendNoteToObsidian,
             )
         }
+        is MaisonBlock -> MaisonView(vm, block)
         is AppBlock -> Slot(
             app = apps.find(block.app),
             ref = SlotRef.Block(page.id, block.id, 0),
@@ -578,6 +593,62 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is AlternanceBlock -> "Alternance"
     is RevisionsBlock -> "Révisions"
     is CarnetBlock -> "Carnet"
+    is MaisonBlock -> block.kind.label
+}
+
+/** Les widgets maison de la v0.14, chacun branché sur le ViewModel. */
+@Composable
+private fun MaisonView(vm: LauncherViewModel, block: MaisonBlock) {
+    val config by vm.config.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    when (block.kind) {
+        MaisonKind.Meteo -> {
+            val weather by vm.weather.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { vm.refreshWeather() }
+            MeteoWidget(weather, config.place.name, compact = block.half, onRefresh = { vm.refreshWeather(force = true) })
+        }
+        MaisonKind.Cours -> {
+            val cours by vm.cours.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { vm.refreshCours() }
+            val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.refreshCours() }
+            CoursWidget(
+                state = cours,
+                alternance = config.alternance,
+                compact = block.half,
+                onAllow = { permission.launch(android.Manifest.permission.READ_CALENDAR) },
+                onOpenEvent = vm::openEventId,
+            )
+        }
+        MaisonKind.Chat -> ChatWidget(
+            settings = config.chat,
+            compact = block.half,
+            imageFile = vm::stickerFile,
+            onToggleChore = vm::toggleChore,
+        )
+        MaisonKind.Plante -> {
+            val state = remember(config.carnet) {
+                Plant.state(config.carnet.days, java.time.LocalDate.now(), config.carnet.habits.size)
+            }
+            PlanteWidget(state, compact = block.half)
+        }
+        MaisonKind.Pomodoro -> {
+            // Android 13+ : il faut demander le droit d'afficher la notification de fin.
+            val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startPomodoro() }
+            PomodoroWidget(
+                settings = config.pomodoro,
+                compact = block.half,
+                onStart = {
+                    if (PomodoroAlarm.canNotify(context)) vm.startPomodoro() else permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                },
+                onStop = vm::stopPomodoro,
+            )
+        }
+        MaisonKind.TempsEcran -> {
+            val screenTime by vm.screenTime.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { vm.refreshScreenTime() }
+            TempsEcranWidget(screenTime, config.screenTime.goalMinutes, compact = block.half, onAllow = vm::openUsageAccess)
+        }
+    }
 }
 
 @Composable
