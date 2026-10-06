@@ -3,6 +3,12 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.21.2 (code 30) — 2026-10-06
+
+- **« Faire de Fern l'écran d'accueil »** : en haut des Paramètres tant que Fern n'est pas le lanceur
+  par défaut. Ouvre la demande d'Android (rôle « Accueil »), ou à défaut les réglages
+  « Applications par défaut » (utile sur Xiaomi / HyperOS).
+
 ## v0.21.1 (code 29) — 2026-10-06
 
 - **Widget Chat** : la tâche « Litière » est retirée (il ne reste que la Gamelle, 2 fois par jour).

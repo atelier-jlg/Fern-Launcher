@@ -432,6 +432,29 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Ouvre le choix du fond d'écran d'Android. */
     fun openWallpaperPicker() = startSafely(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Fond d'écran"))
 
+    /** Fern est-il le lanceur par défaut (rôle « Accueil » d'Android) ? */
+    fun isDefaultHome(): Boolean {
+        val roles = getApplication<Application>().getSystemService(android.app.role.RoleManager::class.java)
+        return roles?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) ?: false
+    }
+
+    /** La demande système « Utiliser Fern comme appli d'accueil ? » (null si indisponible). */
+    fun homeRoleRequest(): Intent? {
+        val roles = getApplication<Application>().getSystemService(android.app.role.RoleManager::class.java) ?: return null
+        if (!roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) return null
+        return roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME)
+    }
+
+    /** Les réglages « Applications par défaut » d'Android (plan B, ex. sur Xiaomi). */
+    fun openDefaultAppsSettings() {
+        val ok = runCatching {
+            getApplication<Application>().startActivity(
+                Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.isSuccess
+        if (!ok) startSafely(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+    }
+
     fun openUsageAccess() = startSafely(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
 
     // Placé après les propriétés ci-dessus : en Kotlin, un bloc init ne voit que ce qui est déclaré avant lui.

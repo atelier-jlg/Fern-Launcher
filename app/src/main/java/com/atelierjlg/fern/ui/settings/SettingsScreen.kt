@@ -131,8 +131,12 @@ fun SettingsScreen(vm: LauncherViewModel) {
             modifier = Modifier.weight(1f),
         ) {
             when (section) {
-                null -> items(Section.entries.toList()) { s ->
-                    SettingRow(title = s.title, onClick = { section = s })
+                null -> {
+                    // Fern n'est pas encore le lanceur par défaut : un bouton pour le devenir.
+                    item { DefaultHomeRow(vm) }
+                    items(Section.entries.toList()) { s ->
+                        SettingRow(title = s.title, onClick = { section = s })
+                    }
                 }
                 Section.Theme -> item { ThemeSection(vm, config.theme, config.savedThemes) }
                 Section.Icones -> item { IconsSection(vm, config.icons) }
@@ -153,6 +157,28 @@ fun SettingsScreen(vm: LauncherViewModel) {
             }
         }
     }
+}
+
+/**
+ * « Définir Fern comme écran d'accueil » : demande le rôle « Accueil » à Android (fenêtre système).
+ * Sur certains Xiaomi, la fenêtre ne s'ouvre pas : on bascule alors vers les réglages « Applications par défaut ».
+ */
+@Composable
+private fun DefaultHomeRow(vm: LauncherViewModel) {
+    var isDefault by remember { mutableStateOf(vm.isDefaultHome()) }
+    val request = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        isDefault = vm.isDefaultHome()
+        if (!isDefault) vm.openDefaultAppsSettings()
+    }
+    if (isDefault) return
+    SettingRow(
+        title = "Faire de Fern l'écran d'accueil",
+        subtitle = "Fern n'est pas encore ton lanceur par défaut · toucher pour le choisir",
+        onClick = {
+            val intent = vm.homeRoleRequest()
+            if (intent != null) request.launch(intent) else vm.openDefaultAppsSettings()
+        },
+    )
 }
 
 // ─── Briques communes ───────────────────────────────────────────────────────
