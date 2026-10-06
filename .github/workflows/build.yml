@@ -51,8 +51,13 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/fern.jks"
             echo "FERN_KEYSTORE_PATH=$RUNNER_TEMP/fern.jks" >> "$GITHUB_ENV"
+            echo "SIGNATURE=" >> "$GITHUB_ENV"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::Secret FERN_KEYSTORE_BASE64 absent : impossible de publier une Release non signée."
+            exit 1
           else
-            echo "::warning::Secret FERN_KEYSTORE_BASE64 absent : APK signé avec une clé de debug jetable. Ne pas l'installer comme version définitive."
+            echo "::warning::Secret FERN_KEYSTORE_BASE64 absent : APK signé avec une clé de debug jetable (NON-SIGNE). Ne pas l'installer."
+            echo "SIGNATURE=-NON-SIGNE" >> "$GITHUB_ENV"
           fi
 
       - name: Compiler
@@ -62,7 +67,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fern-launcher-v${{ steps.version.outputs.name }}
+          name: fern-launcher-v${{ steps.version.outputs.name }}${{ env.SIGNATURE }}
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 

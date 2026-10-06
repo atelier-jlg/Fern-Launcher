@@ -66,8 +66,10 @@ android {
 }
 
 // Nom du fichier produit : fern-launcher-v0.1.0-release.apk
+// Sans la vraie clé, le nom le dit clairement pour ne pas l'installer par erreur.
 base {
-    archivesName.set("fern-launcher-v$fernVersionName")
+    val suffix = if (keystorePath != null) "" else "-NON-SIGNE"
+    archivesName.set("fern-launcher-v$fernVersionName$suffix")
 }
 
 dependencies {
