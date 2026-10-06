@@ -222,7 +222,7 @@ fun ChatWidget(
     WidgetCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.size(if (compact) 64.dp else 84.dp)) {
+                Box(Modifier.size(if (compact) 72.dp else 100.dp)) {
                     if (custom != null) {
                         // Image de Jules : une respiration lente (elle gonfle un tout petit peu).
                         val breath by rememberInfiniteTransition(label = "souffle").animateFloat(
@@ -254,7 +254,7 @@ fun ChatWidget(
                         )
                         PixelSprite(
                             CatSprites.heart,
-                            mapOf('h' to colors.roseCarmin),
+                            CatSprites.heartPalette,
                             Modifier
                                 .align(if (moment == CatMoment.Nuit) Alignment.CenterEnd else Alignment.TopEnd)
                                 .size(if (compact) 16.dp else 20.dp)

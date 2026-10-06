@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.16.2 (code 20) — 2026-10-06
+
+- **Chat en plus haute définition** : environ 40 px de haut au lieu de 17. Vrais yeux verts en amande,
+  marbrage écaille de tortue naturel, liseré caramel sur le nez, intérieur des oreilles rose,
+  moustaches et petit bâillement le matin.
+- Les sprites sont générés par `design/tools/chat_sprites.py` (Python) : formes simples → pixels.
+  Pour retoucher le chat : modifier le script, puis `python3 design/tools/chat_sprites.py`.
+
 ## v0.16.1 (code 19) — 2026-10-06
 
 - **Le chat ressemble au tien** : écaille de tortue (brun très foncé marbré de caramel),
