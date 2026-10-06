@@ -38,6 +38,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.produceState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.atelierjlg.fern.ui.common.GlyphButton
 import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
@@ -394,9 +395,12 @@ fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
                 vm.shareText("Code Fern pour le widget Chat (Paramètres → Le chat → Rejoindre) : ${settings.sync.topic}")
             })
             Row2("Serveur", settings.sync.server, onClick = { editing = "server" })
+            val syncError by vm.chatSyncError.collectAsStateWithLifecycle()
             if (settings.sync.pending.isNotEmpty()) {
-                Text("${settings.sync.pending.size} changement(s) en attente de réseau", style = Fern.type.nomApp, color = Fern.colors.lichen)
+                Text("${settings.sync.pending.size} changement(s) en attente", style = Fern.type.nomApp, color = Fern.colors.lichen)
             }
+            syncError?.let { Text(it, style = Fern.type.nomApp, color = Fern.colors.roseCarmin) }
+            PillButton("Réessayer maintenant", onClick = { vm.syncChat() })
             PillButton("Arrêter le partage", onClick = { vm.stopChatSync() })
         }
         Text("TÂCHES DU JOUR", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))

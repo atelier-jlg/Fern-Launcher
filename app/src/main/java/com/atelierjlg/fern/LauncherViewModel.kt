@@ -334,6 +334,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 if (sent.isNotEmpty()) store.update { it.removeSentChatEvents(sent) }
                 val received = withContext(Dispatchers.IO) { ChatRelay.poll(sync.server, sync.topic, config.value.chat.sync.lastId) }
                 if (received != null) store.update { it.applyChatEvents(received.first, received.second, deviceId) }
+                _chatSyncError.value = ChatRelay.lastError
             } finally {
                 syncing = false
                 if (syncAgain) {
@@ -343,6 +344,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    /** Le dernier problème de partage (null = tout va bien), affiché dans Paramètres → Le chat. */
+    private val _chatSyncError = MutableStateFlow<String?>(null)
+    val chatSyncError: StateFlow<String?> = _chatSyncError.asStateFlow()
 
     /** Crée un partage (nouveau code secret) ou en rejoint un (code reçu). */
     fun startChatSync(code: String?) {

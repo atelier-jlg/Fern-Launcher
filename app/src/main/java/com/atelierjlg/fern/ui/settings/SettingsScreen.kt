@@ -587,6 +587,15 @@ private fun PlaceSection(vm: LauncherViewModel, place: com.atelierjlg.fern.data.
             checked = place.weatherOnClock,
             onChange = { on -> vm.updatePlace { it.copy(weatherOnClock = on) }; if (on) vm.refreshWeather(force = true) },
         )
+        // Pour comprendre un souci de réseau : la dernière erreur de la météo, et un bouton pour réessayer.
+        val weather by vm.weather.collectAsStateWithLifecycle()
+        SettingRow(
+            title = "Météo",
+            subtitle = com.atelierjlg.fern.widgets.WeatherCodes.lastError?.let { "Erreur · $it" }
+                ?: weather?.let { "${it.temperature}° ${it.kind.label} · toucher pour actualiser" }
+                ?: "Pas encore chargée · toucher pour actualiser",
+            onClick = { vm.refreshWeather(force = true) },
+        )
         SettingRow(title = "Ville", subtitle = place.name, onClick = { editing = "name" })
         SettingRow(title = "Latitude", subtitle = place.latitude.toString(), onClick = { editing = "lat" })
         SettingRow(title = "Longitude", subtitle = place.longitude.toString(), onClick = { editing = "lon" })

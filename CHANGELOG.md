@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.21.3 (code 31) — 2026-10-06
+
+- **Diagnostic réseau** : Paramètres → Le chat affiche la **dernière erreur** du partage
+  (serveur introuvable, délai, HTTP…) et un bouton **Réessayer maintenant**.
+  Paramètres → Lieu affiche l'état de la **météo** (ou son erreur) ; toucher pour actualiser.
+- Requêtes vers ntfy / Open-Meteo : en-têtes explicites (User-Agent, Content-Type).
+
 ## v0.21.2 (code 30) — 2026-10-06
 
 - **« Faire de Fern l'écran d'accueil »** : en haut des Paramètres tant que Fern n'est pas le lanceur

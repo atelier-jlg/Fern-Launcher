@@ -57,32 +57,67 @@ object ChatRelay {
         return events to lastId
     }
 
+    /** Ce qui a coincé lors du dernier échange avec le relais (affiché dans Paramètres → Le chat). */
+    @Volatile
+    var lastError: String? = null
+        private set
+
+    private fun describe(e: Throwable): String = when (e) {
+        is java.net.UnknownHostException -> "Serveur introuvable (pas de réseau, ou DNS / bloqueur)"
+        is java.net.SocketTimeoutException -> "Le serveur ne répond pas (délai dépassé)"
+        is javax.net.ssl.SSLException -> "Connexion sécurisée refusée (${e.javaClass.simpleName})"
+        is SecurityException -> "Accès à Internet refusé pour Fern"
+        else -> "${e.javaClass.simpleName} : ${e.message ?: "?"}"
+    }
+
+    private fun open(url: String): HttpURLConnection =
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            setRequestProperty("User-Agent", "FernLauncher")
+        }
+
     /** Envoie un changement. true si le serveur l'a bien reçu. (À appeler sur Dispatchers.IO.) */
     fun send(server: String, topic: String, event: ChatEvent): Boolean = runCatching {
-        val connection = URL("${server.trimEnd('/')}/$topic").openConnection() as HttpURLConnection
+        val connection = open("${server.trimEnd('/')}/$topic")
         connection.requestMethod = "POST"
         connection.doOutput = true
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
+        connection.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
         try {
             connection.outputStream.use { it.write(encode(event).toByteArray()) }
-            connection.responseCode in 200..299
+            val code = connection.responseCode
+            if (code in 200..299) {
+                lastError = null
+                true
+            } else {
+                val body = runCatching { connection.errorStream?.bufferedReader()?.use { it.readText() } }.getOrNull()
+                lastError = "Envoi refusé par le serveur (HTTP $code) ${body?.take(120) ?: ""}".trim()
+                false
+            }
         } finally {
             connection.disconnect()
         }
-    }.getOrDefault(false)
+    }.getOrElse { e ->
+        lastError = "Envoi impossible · " + describe(e)
+        false
+    }
 
     /** Les nouveaux messages depuis `lastId` (ou les 12 dernières heures). Null si pas de réseau. */
     fun poll(server: String, topic: String, lastId: String): Pair<List<ChatEvent>, String>? = runCatching {
         val since = URLEncoder.encode(lastId.ifEmpty { "12h" }, "UTF-8")
-        val connection = URL("${server.trimEnd('/')}/$topic/json?poll=1&since=$since").openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
+        val connection = open("${server.trimEnd('/')}/$topic/json?poll=1&since=$since")
         try {
-            if (connection.responseCode != 200) return null
+            val code = connection.responseCode
+            if (code != 200) {
+                lastError = "Lecture refusée par le serveur (HTTP $code)"
+                return null
+            }
             parsePoll(connection.inputStream.bufferedReader().use { it.readText() })
         } finally {
             connection.disconnect()
         }
-    }.getOrNull()
+    }.getOrElse { e ->
+        lastError = "Lecture impossible · " + describe(e)
+        null
+    }
 }

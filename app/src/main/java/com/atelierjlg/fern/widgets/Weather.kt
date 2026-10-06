@@ -87,16 +87,31 @@ object WeatherCodes {
         )
     }.getOrNull()
 
+    /** Le dernier problème de téléchargement (null = tout va bien), affiché dans Paramètres → Lieu. */
+    @Volatile
+    var lastError: String? = null
+        private set
+
     /** Télécharge la météo (à appeler hors de l'écran : Dispatchers.IO). */
     fun fetch(latitude: Double, longitude: Double): Weather? = runCatching {
         val connection = URL(url(latitude, longitude)).openConnection() as HttpURLConnection
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
+        connection.setRequestProperty("User-Agent", "FernLauncher")
         try {
-            if (connection.responseCode != 200) return null
-            parse(connection.inputStream.bufferedReader().use { it.readText() })
+            val code = connection.responseCode
+            if (code != 200) {
+                lastError = "Open-Meteo a répondu HTTP $code"
+                return null
+            }
+            val weather = parse(connection.inputStream.bufferedReader().use { it.readText() })
+            lastError = if (weather == null) "Réponse d'Open-Meteo illisible" else null
+            weather
         } finally {
             connection.disconnect()
         }
-    }.getOrNull()
+    }.getOrElse { e ->
+        lastError = "${e.javaClass.simpleName} : ${e.message ?: "?"}"
+        null
+    }
 }
