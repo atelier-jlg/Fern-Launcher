@@ -69,6 +69,10 @@ import com.atelierjlg.fern.data.ChatEvent
 import com.atelierjlg.fern.data.applyChatEvents
 import com.atelierjlg.fern.data.removeSentChatEvents
 import com.atelierjlg.fern.data.toggleChoreShared
+import com.atelierjlg.fern.data.ruleFor
+import com.atelierjlg.fern.data.setChoreRule
+import com.atelierjlg.fern.data.ChoreRule
+import com.atelierjlg.fern.widgets.ChatSchedule
 import com.atelierjlg.fern.widgets.ChatRelay
 import com.atelierjlg.fern.data.updateChat
 import com.atelierjlg.fern.data.updateCours
@@ -282,7 +286,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /** Coche une tâche ; si le partage est actif, l'autre téléphone est prévenu tout de suite. */
     fun toggleChore(index: Int) {
-        store.update { it.toggleChoreShared(todayIso(), index, deviceId) }
+        // La « période » dépend du rythme de la tâche (gamelle : matin / soir ; litière : semaine).
+        val key = ChatSchedule.periodKey(config.value.chat.ruleFor(index), java.time.LocalDateTime.now())
+        store.update { it.toggleChoreShared(key, index, deviceId) }
         syncChat()
     }
 
@@ -294,6 +300,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val prefs = getApplication<Application>().getSharedPreferences("fern-device", android.content.Context.MODE_PRIVATE)
         prefs.getString("id", null) ?: ChatRelay.newDeviceId().also { prefs.edit().putString("id", it).apply() }
     }
+
+    fun setChoreRule(index: Int, rule: ChoreRule) = store.update { it.setChoreRule(index, rule) }
 
     /** Fern est-il à l'écran ? (On ne lit le relais que dans ce cas : économie de batterie.) */
     private var inForeground = false

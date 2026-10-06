@@ -3,6 +3,15 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.18.0 (code 25) — 2026-10-06
+
+- **Rythme des tâches du chat** :
+  - **Gamelle** : 2 fois par jour, la case se décoche toute seule à **12 h** et à **minuit**
+    (et le cœur du chat disparaît jusqu'au prochain repas).
+  - **Litière** : 1 fois par semaine, remise à zéro le **samedi à 18 h**.
+  - Réglable dans Paramètres → Le chat → Rythme (2 fois / 1 fois par jour / 1 fois par semaine,
+    jour et heure pour l'hebdomadaire). Le partage avec ta compagne suit les mêmes périodes.
+
 ## v0.17.2 (code 24) — 2026-10-06
 
 - **La grille occupe tout l'écran** : les pages commencent juste sous la barre d'état

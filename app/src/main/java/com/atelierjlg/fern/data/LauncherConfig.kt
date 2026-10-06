@@ -259,16 +259,38 @@ data class ChatSettings(
      */
     val images: Map<CatPose, String> = emptyMap(),
     val chores: List<String> = listOf("Gamelle", "Litière"),
-    /** Jour (2026-10-06) → tâches faites. On garde 14 jours. */
+    /** Le rythme de chaque tâche (même ordre que `chores`) : gamelle 2 fois par jour, litière le samedi soir. */
+    val rules: List<ChoreRule> = listOf(ChoreRule(ChoreFreq.DeuxParJour), ChoreRule(ChoreFreq.Hebdomadaire)),
+    /**
+     * Période → tâches faites. Une « période » dépend du rythme de la tâche :
+     * « 2026-10-06-matin », « 2026-10-06-soir », « 2026-10-06 » ou « 2026-10-03-semaine ».
+     * Une nouvelle période = la case se décoche toute seule. On garde les 30 dernières.
+     */
     val done: Map<String, Set<Int>> = emptyMap(),
     /** Partage des cases avec un proche (ex. ta compagne), via un relais ntfy. */
     val sync: ChatSync = ChatSync(),
 )
 
+/** À quel rythme une tâche du chat revient. */
+@Serializable
+enum class ChoreFreq(val label: String) {
+    DeuxParJour("2 fois par jour · remise à zéro à 0 h et 12 h"),
+    Quotidien("1 fois par jour · remise à zéro à 0 h"),
+    Hebdomadaire("1 fois par semaine"),
+}
+
+/** Le rythme d'une tâche. Pour une tâche hebdomadaire : le jour (1 = lundi … 7 = dimanche) et l'heure de remise à zéro. */
+@Serializable
+data class ChoreRule(
+    val freq: ChoreFreq = ChoreFreq.Quotidien,
+    val day: Int = 6,
+    val hour: Int = 18,
+)
+
 /** Un changement de case, envoyé à l'autre téléphone : ce jour-là, telle tâche, cochée ou non. */
 @Serializable
 data class ChatEvent(
-    /** Jour (2026-10-06). */
+    /** La période (voir ChatSettings.done), ex. « 2026-10-06-soir ». */
     val d: String,
     /** Numéro de la tâche, et son nom (on retrouve la tâche par son nom si l'ordre diffère). */
     val i: Int,

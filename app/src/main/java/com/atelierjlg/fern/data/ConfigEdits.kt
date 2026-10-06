@@ -405,7 +405,7 @@ fun LauncherConfig.updateChat(transform: (ChatSettings) -> ChatSettings) = copy(
 fun LauncherConfig.updateScreenTime(transform: (ScreenTimeSettings) -> ScreenTimeSettings) =
     copy(screenTime = transform(screenTime))
 
-/** Coche / décoche une tâche du chat pour ce jour (on garde 14 jours). */
+/** Coche / décoche une tâche du chat pour cette période (voir ChatSettings.done ; on garde 30 périodes). */
 fun LauncherConfig.toggleChore(date: String, index: Int): LauncherConfig =
     setChore(date, index, index !in chat.done[date].orEmpty())
 
@@ -413,7 +413,7 @@ fun LauncherConfig.toggleChore(date: String, index: Int): LauncherConfig =
 fun LauncherConfig.setChore(date: String, index: Int, value: Boolean): LauncherConfig {
     val day = chat.done[date].orEmpty()
     val updated = if (value) day + index else day - index
-    val done = (chat.done + (date to updated)).toSortedMap().entries.toList().takeLast(14).associate { it.key to it.value }
+    val done = (chat.done + (date to updated)).toSortedMap().entries.toList().takeLast(30).associate { it.key to it.value }
     return copy(chat = chat.copy(done = done))
 }
 
@@ -489,3 +489,13 @@ fun LauncherConfig.tickPomodoro(now: Long): LauncherConfig {
 /** Y a-t-il un widget de ce type quelque part (pour ne pas calculer pour rien) ? */
 fun LauncherConfig.hasMaison(kind: MaisonKind): Boolean =
     spaces.flatMap { it.pages }.flatMap { it.blocks }.any { it is MaisonBlock && it.kind == kind }
+
+/** Le rythme de la tâche n° `index` (par défaut : une fois par jour). */
+fun ChatSettings.ruleFor(index: Int): ChoreRule = rules.getOrNull(index) ?: ChoreRule()
+
+/** Change le rythme d'une tâche du chat. */
+fun LauncherConfig.setChoreRule(index: Int, rule: ChoreRule): LauncherConfig {
+    val list = (chat.rules + List((index + 1 - chat.rules.size).coerceAtLeast(0)) { ChoreRule() }).toMutableList()
+    list[index] = rule
+    return copy(chat = chat.copy(rules = list))
+}

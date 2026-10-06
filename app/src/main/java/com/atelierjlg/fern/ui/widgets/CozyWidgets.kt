@@ -61,6 +61,7 @@ import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.widgets.Alternance
 import com.atelierjlg.fern.widgets.CoursState
+import com.atelierjlg.fern.widgets.ChatSchedule
 import com.atelierjlg.fern.widgets.Plant
 import com.atelierjlg.fern.widgets.ScreenTime
 import com.atelierjlg.fern.widgets.ScreenTimeState
@@ -199,16 +200,16 @@ fun ChatWidget(
     onToggleChore: (Int) -> Unit,
 ) {
     val colors = Fern.colors
-    var hour by remember { mutableIntStateOf(LocalTime.now().hour) }
+    // L'heure, rafraîchie chaque minute : à midi et minuit, la gamelle se décoche toute seule.
+    var now by remember { mutableStateOf(java.time.LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(60_000)
-            hour = LocalTime.now().hour
+            delay(60_000 - System.currentTimeMillis() % 60_000)
+            now = java.time.LocalDateTime.now()
         }
     }
-    val moment = catMoment(hour)
-    val today = LocalDate.now().toString()
-    val done = settings.done[today].orEmpty()
+    val moment = catMoment(now.hour)
+    val done = ChatSchedule.doneNow(settings, now)
     val fed = settings.chores.isNotEmpty() && 0 in done
     // Quelle image de Jules montrer (la nuit et le matin reprennent celle de la journée).
     val custom = when {

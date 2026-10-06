@@ -26,6 +26,9 @@ import com.atelierjlg.fern.data.AltType
 import com.atelierjlg.fern.data.AlternanceSettings
 import com.atelierjlg.fern.data.CarnetSettings
 import com.atelierjlg.fern.data.CatPose
+import com.atelierjlg.fern.data.ChoreFreq
+import com.atelierjlg.fern.data.ruleFor
+import com.atelierjlg.fern.widgets.ChatSchedule
 import com.atelierjlg.fern.data.ChatSettings
 import com.atelierjlg.fern.data.CoursSettings
 import com.atelierjlg.fern.data.PomodoroSettings
@@ -404,6 +407,23 @@ fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
         )
         for (i in 0 until 3) {
             Row2("Tâche ${i + 1}", settings.chores.getOrNull(i) ?: "—", onClick = { editing = "chore:$i" })
+            if (i < settings.chores.size) {
+                // Le rythme : toucher pour passer de « 2 fois par jour » à « 1 fois par jour » à « 1 fois par semaine ».
+                val rule = settings.ruleFor(i)
+                Row2("   Rythme", ChatSchedule.describe(rule), onClick = {
+                    val next = ChoreFreq.entries[(rule.freq.ordinal + 1) % ChoreFreq.entries.size]
+                    vm.setChoreRule(i, rule.copy(freq = next))
+                })
+                if (rule.freq == ChoreFreq.Hebdomadaire) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 18.dp)) {
+                        PillButton(ChatSchedule.dayName(rule.day), onClick = { vm.setChoreRule(i, rule.copy(day = rule.day % 7 + 1)) })
+                        PillButton("${rule.hour} h", onClick = {
+                            val hours = listOf(8, 12, 18, 20, 21)
+                            vm.setChoreRule(i, rule.copy(hour = hours.firstOrNull { it > rule.hour } ?: hours.first()))
+                        })
+                    }
+                }
+            }
         }
     }
     editing?.let { field ->
