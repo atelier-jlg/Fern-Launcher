@@ -134,13 +134,13 @@ fun PillButton(
 
 /** Un bouton rond minuscule avec un symbole (↑ ↓ ✕ ✎), pour les barres d'outils d'édition. */
 @Composable
-fun GlyphButton(glyph: String, onClick: () -> Unit, enabled: Boolean = true) {
+fun GlyphButton(glyph: String, onClick: () -> Unit, enabled: Boolean = true, size: Dp = 32.dp) {
     val colors = Fern.colors
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .padding(2.dp)
-            .size(32.dp)
+            .size(size)
             .background(colors.lierre, CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
     ) {

@@ -98,6 +98,8 @@ data class HomePage(
     val id: String,
     val title: String,
     val blocks: List<HomeBlock> = emptyList(),
+    /** Stickers posés par-dessus, en placement libre. */
+    val stickers: List<Sticker> = emptyList(),
 )
 
 /** Un élément posé sur une page. `sealed` = la liste des types possibles est fermée. */
@@ -138,22 +140,44 @@ data class AppWidgetBlock(
     /** L'appli qui fournit le widget (pour l'afficher en mode édition). */
     val provider: String,
     val heightDp: Int = 180,
+    /** true = demi-largeur (2×2), à côté d'un autre élément. */
+    val half: Boolean = false,
 ) : HomeBlock()
 
 /** Widget maison « Ciel » : arc du soleil le jour, phase de lune la nuit. */
 @Serializable
 @SerialName("ciel")
-data class SkyBlock(override val id: String) : HomeBlock()
+data class SkyBlock(override val id: String, val half: Boolean = false) : HomeBlock()
 
 /** Widget maison « Musique » : ce qui joue, pochette en deux tons carmin et rose. */
 @Serializable
 @SerialName("musique")
-data class MusicBlock(override val id: String) : HomeBlock()
+data class MusicBlock(override val id: String, val half: Boolean = false) : HomeBlock()
 
 /** Widget maison « Contexte » : moment de la journée, prochain événement, note du jour. */
 @Serializable
 @SerialName("contexte")
-data class ContextBlock(override val id: String, val note: String = "") : HomeBlock()
+data class ContextBlock(override val id: String, val note: String = "", val half: Boolean = false) : HomeBlock()
+
+/** Une demi-place vide : pour laisser de l'air (ou poser un sticker) à côté d'un pack. */
+@Serializable
+@SerialName("espace")
+data class SpacerBlock(override val id: String) : HomeBlock()
+
+/**
+ * Un sticker posé librement sur une page (sans grille).
+ * Position du centre en fraction de la page (0 à 1), taille en dp, rotation en degrés.
+ */
+@Serializable
+data class Sticker(
+    val id: String,
+    /** Nom du fichier image dans le dossier privé `stickers/`. */
+    val file: String,
+    val x: Float = 0.5f,
+    val y: Float = 0.5f,
+    val sizeDp: Float = 140f,
+    val rotation: Float = 0f,
+)
 
 /** Où se trouve Jules (pour le soleil et la lune). */
 @Serializable

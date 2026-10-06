@@ -94,7 +94,7 @@ private val hm = DateTimeFormatter.ofPattern("H:mm")
  * la nuit, la phase de la lune (toucher ouvre Stellarium s'il est installé).
  */
 @Composable
-fun SkyWidget(place: PlaceSettings) {
+fun SkyWidget(place: PlaceSettings, compact: Boolean = false) {
     val now = rememberMinute()
     val context = LocalContext.current
     val colors = Fern.colors
@@ -116,6 +116,11 @@ fun SkyWidget(place: PlaceSettings) {
                 .firstNotNullOfOrNull { pm.getLaunchIntentForPackage(it) }
                 ?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
         }
+    }
+
+    if (compact) {
+        SkyCompact(isDay, sunrise, sunset, time, place, openStellarium)
+        return
     }
 
     WidgetCard(onClick = openStellarium) {
@@ -191,6 +196,7 @@ private fun duotone(dark: Color, light: Color): ColorFilter {
 
 @Composable
 fun MusicWidget(
+    compact: Boolean = false,
     nowPlaying: NowPlaying?,
     hasAccess: Boolean,
     onPlayPause: () -> Unit,
@@ -200,6 +206,11 @@ fun MusicWidget(
 ) {
     val context = LocalContext.current
     val colors = Fern.colors
+    if (compact && hasAccess && nowPlaying != null) {
+        MusicCompact(nowPlaying, onPlayPause, onNext, onPrevious, onOpen)
+        return
+    }
+
     WidgetCard(onClick = nowPlaying?.let { { onOpen(it.packageName) } }) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(60.dp)) {
             when {
@@ -255,6 +266,95 @@ fun MusicWidget(
                         ControlButton("⏭", onNext)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Ciel en demi-largeur : le dessin en grand, les heures en dessous. */
+@Composable
+private fun SkyCompact(
+    isDay: Boolean,
+    sunrise: LocalTime?,
+    sunset: LocalTime?,
+    time: LocalTime,
+    place: PlaceSettings,
+    onClick: (() -> Unit)?,
+) {
+    val colors = Fern.colors
+    WidgetCard(onClick = onClick) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text((if (isDay) "Ciel · ${place.name}" else "Ciel de nuit").uppercase(), style = Fern.type.libelle, color = colors.lichen, maxLines = 1)
+            if (isDay && sunrise != null && sunset != null) {
+                val total = (sunset.toSecondOfDay() - sunrise.toSecondOfDay()).toFloat()
+                val progress = ((time.toSecondOfDay() - sunrise.toSecondOfDay()) / total).coerceIn(0f, 1f)
+                Canvas(Modifier.fillMaxWidth().height(70.dp)) {
+                    val r = minOf(size.width / 2, size.height) - 8.dp.toPx()
+                    val c = Offset(size.width / 2, size.height - 2.dp.toPx())
+                    drawArc(
+                        color = colors.lichen.copy(alpha = 0.5f),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = false,
+                        topLeft = Offset(c.x - r, c.y - r),
+                        size = Size(2 * r, 2 * r),
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                    val angle = PI * (1 - progress)
+                    drawCircle(colors.pistache, radius = 7.dp.toPx(), center = Offset(c.x + r * cos(angle).toFloat(), c.y - r * sin(angle).toFloat()))
+                }
+                Text("↑ ${sunrise.format(hm)}  ↓ ${sunset.format(hm)}", style = Fern.type.corps, color = colors.creme)
+            } else {
+                val phase = Astro.moonPhase(System.currentTimeMillis())
+                val illumination = Astro.moonIllumination(phase)
+                Canvas(Modifier.fillMaxWidth().height(70.dp)) {
+                    val r = size.height / 2
+                    val c = Offset(size.width / 2, size.height / 2)
+                    drawCircle(colors.creme, radius = r, center = c)
+                    val shift = (2 * r * (1 - illumination)).toFloat() * (if (phase < 0.5) -1 else 1)
+                    drawCircle(colors.mousse, radius = r, center = Offset(c.x + shift, c.y))
+                    drawCircle(colors.lichen, radius = r, center = c, style = Stroke(width = 1.dp.toPx()))
+                }
+                Text(Astro.moonPhaseName(phase), style = Fern.type.corps, color = colors.creme, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Musique en demi-largeur : la pochette en grand, le titre, les boutons. */
+@Composable
+private fun MusicCompact(
+    nowPlaying: NowPlaying,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val colors = Fern.colors
+    WidgetCard(onClick = { onOpen(nowPlaying.packageName) }) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(colors.carmin),
+            ) {
+                nowPlaying.art?.let {
+                    Image(
+                        bitmap = it,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        colorFilter = duotone(colors.carmin, colors.roseCarmin),
+                        modifier = Modifier.fillMaxWidth().height(90.dp),
+                    )
+                }
+            }
+            Text(nowPlaying.title, style = Fern.type.corps, color = colors.creme, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                ControlButton("⏮", onPrevious)
+                ControlButton(if (nowPlaying.playing) "⏸" else "▶", onPlayPause)
+                ControlButton("⏭", onNext)
             }
         }
     }

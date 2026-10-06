@@ -86,6 +86,7 @@ fun BlockToolbar(
     onDelete: () -> Unit,
     onRename: (() -> Unit)? = null,
     onResize: (() -> Unit)? = null,
+    onToggleHalf: (() -> Unit)? = null,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -96,11 +97,12 @@ fun BlockToolbar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (onRename != null) GlyphButton("✎", onClick = onRename)
-        if (onResize != null) GlyphButton("↕", onClick = onResize)
-        GlyphButton("↑", onClick = onUp)
-        GlyphButton("↓", onClick = onDown)
-        GlyphButton("✕", onClick = onDelete)
+        if (onRename != null) GlyphButton("✎", onClick = onRename, size = 28.dp)
+        if (onResize != null) GlyphButton("↕", onClick = onResize, size = 28.dp)
+        if (onToggleHalf != null) GlyphButton("⇔", onClick = onToggleHalf, size = 28.dp)
+        GlyphButton("↑", onClick = onUp, size = 28.dp)
+        GlyphButton("↓", onClick = onDown, size = 28.dp)
+        GlyphButton("✕", onClick = onDelete, size = 28.dp)
     }
 }
 

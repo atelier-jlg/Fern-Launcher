@@ -210,6 +210,7 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is SkyBlock -> copy(id = newId())
     is MusicBlock -> copy(id = newId())
     is ContextBlock -> copy(id = newId())
+    is SpacerBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -273,3 +274,66 @@ fun LauncherConfig.updateIcons(transform: (IconSettings) -> IconSettings) = copy
 /** Range une appli dans une famille (null = revenir au classement automatique). */
 fun LauncherConfig.setAppFamily(key: String, family: Family?) =
     copy(appFamilies = if (family == null) appFamilies - key else appFamilies + (key to family))
+
+// ─── Demi-largeur & stickers ────────────────────────────────────────────────
+
+/** Les éléments qui tiennent en demi-largeur (2×2) et peuvent se mettre côte à côte. */
+val HomeBlock.isHalf: Boolean
+    get() = when (this) {
+        is PackBlock, is SpacerBlock -> true
+        is AppWidgetBlock -> half
+        is SkyBlock -> half
+        is MusicBlock -> half
+        is ContextBlock -> half
+        is ClockBlock, is AppRowBlock -> false
+    }
+
+/** Peut-on passer cet élément de pleine largeur à demi-largeur (et inversement) ? */
+val HomeBlock.canToggleHalf: Boolean
+    get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock
+
+fun LauncherConfig.toggleHalf(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
+    when (b) {
+        is AppWidgetBlock -> b.copy(half = !b.half)
+        is SkyBlock -> b.copy(half = !b.half)
+        is MusicBlock -> b.copy(half = !b.half)
+        is ContextBlock -> b.copy(half = !b.half)
+        else -> b
+    }
+}
+
+/** Regroupe les blocs en lignes : deux éléments en demi-largeur consécutifs partagent une ligne. */
+fun groupRows(blocks: List<HomeBlock>): List<List<HomeBlock>> {
+    val rows = mutableListOf<List<HomeBlock>>()
+    var pending: HomeBlock? = null
+    for (block in blocks) {
+        if (block.isHalf) {
+            val waiting = pending
+            if (waiting == null) {
+                pending = block
+            } else {
+                rows.add(listOf(waiting, block))
+                pending = null
+            }
+        } else {
+            pending?.let { rows.add(listOf(it)) }
+            pending = null
+            rows.add(listOf(block))
+        }
+    }
+    pending?.let { rows.add(listOf(it)) }
+    return rows
+}
+
+fun LauncherConfig.addSticker(pageId: String, sticker: Sticker) =
+    updatePage(pageId) { it.copy(stickers = it.stickers + sticker) }
+
+fun LauncherConfig.updateSticker(pageId: String, sticker: Sticker) =
+    updatePage(pageId) { page -> page.copy(stickers = page.stickers.map { if (it.id == sticker.id) sticker else it }) }
+
+fun LauncherConfig.removeSticker(pageId: String, stickerId: String) =
+    updatePage(pageId) { page -> page.copy(stickers = page.stickers.filterNot { it.id == stickerId }) }
+
+/** Tous les fichiers de stickers encore utilisés (tous Spaces confondus). */
+val LauncherConfig.usedStickerFiles: Set<String>
+    get() = spaces.flatMap { it.pages }.flatMap { it.stickers }.map { it.file }.toSet()

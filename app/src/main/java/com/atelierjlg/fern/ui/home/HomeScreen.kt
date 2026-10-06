@@ -58,6 +58,14 @@ import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.MusicBlock
 import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.SkyBlock
+import com.atelierjlg.fern.data.SpacerBlock
+import com.atelierjlg.fern.data.canToggleHalf
+import com.atelierjlg.fern.data.groupRows
+import com.atelierjlg.fern.data.isHalf
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import com.atelierjlg.fern.ui.widgets.AppWidgetView
 import com.atelierjlg.fern.ui.widgets.ContextWidget
 import com.atelierjlg.fern.ui.widgets.MusicWidget
@@ -287,7 +295,12 @@ private fun PageView(
     var newPack by remember { mutableStateOf(false) }
     var addingWidget by remember { mutableStateOf(false) }
     val place = vm.config.collectAsStateWithLifecycle().value.place
+    // Choisir une image dans la galerie / les fichiers : elle devient un sticker de cette page.
+    val stickerPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { vm.importSticker(page.id, it) }
+    }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -327,13 +340,14 @@ private fun PageView(
                                 onDelete = { vm.removeBlock(page.id, block.id) },
                                 onRename = if (block is PackBlock) ({ renamingPack = block }) else null,
                                 onResize = if (block is AppWidgetBlock) ({ vm.cycleWidgetHeight(page.id, block.id) }) else null,
+                                onToggleHalf = if (block.canToggleHalf) ({ vm.toggleHalf(page.id, block.id) }) else null,
                             )
                         }
                         BlockView(vm, page, block, apps, actions, place)
                     }
                 }
-                // Un pack seul sur sa ligne garde sa demi-largeur.
-                if (row.size == 1 && row[0] is PackBlock) Spacer(Modifier.weight(1f))
+                // Un élément en demi-largeur seul sur sa ligne garde sa demi-largeur.
+                if (row.size == 1 && row[0].isHalf) Spacer(Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
         }
@@ -346,9 +360,22 @@ private fun PageView(
                 PillButton("+ Horloge", onClick = { vm.addBlock(page.id, ClockBlock(id = newId())) })
             }
             Spacer(Modifier.height(8.dp))
-            PillButton("+ Widget", onClick = { addingWidget = true })
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("+ Widget", onClick = { addingWidget = true })
+                PillButton("+ Sticker", onClick = { stickerPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                PillButton("+ Espace", onClick = { vm.addBlock(page.id, SpacerBlock(id = newId())) })
+            }
             Spacer(Modifier.height(120.dp))
         }
+    }
+    // Les stickers, posés librement par-dessus (déplaçables en mode édition).
+    StickerLayer(
+        stickers = page.stickers,
+        editing = actions.editing,
+        stickerFile = vm::stickerFile,
+        onChange = { vm.updateSticker(page.id, it) },
+        onDelete = { vm.removeSticker(page.id, it.id) },
+    )
     }
 
     if (renamingPage) {
@@ -417,11 +444,12 @@ private fun BlockView(
             apps = apps,
             actions = actions,
         )
-        is SkyBlock -> SkyWidget(place)
+        is SkyBlock -> SkyWidget(place, compact = block.half)
         is MusicBlock -> {
             val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
             val access by vm.musicAccess.collectAsStateWithLifecycle()
             MusicWidget(
+                compact = block.half,
                 nowPlaying = nowPlaying,
                 hasAccess = access,
                 onPlayPause = vm::musicPlayPause,
@@ -440,6 +468,14 @@ private fun BlockView(
             )
         }
         is AppWidgetBlock -> AppWidgetView(vm.widgetHost, block.appWidgetId, block.heightDp)
+        is SpacerBlock -> if (actions.editing) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .border(1.dp, Fern.colors.moussePale, RoundedCornerShape(28.dp)),
+            )
+        }
     }
 }
 
@@ -451,28 +487,7 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is MusicBlock -> "Musique"
     is ContextBlock -> "Contexte"
     is AppWidgetBlock -> block.provider
-}
-
-/** Regroupe les blocs en lignes : deux packs consécutifs partagent une ligne. */
-private fun groupRows(blocks: List<HomeBlock>): List<List<HomeBlock>> {
-    val rows = mutableListOf<List<HomeBlock>>()
-    var pending: PackBlock? = null
-    for (block in blocks) {
-        if (block is PackBlock) {
-            if (pending == null) {
-                pending = block
-            } else {
-                rows.add(listOf(pending, block))
-                pending = null
-            }
-        } else {
-            pending?.let { rows.add(listOf(it)) }
-            pending = null
-            rows.add(listOf(block))
-        }
-    }
-    pending?.let { rows.add(listOf(it)) }
-    return rows
+    is SpacerBlock -> "Espace"
 }
 
 @Composable

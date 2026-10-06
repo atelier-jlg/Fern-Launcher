@@ -3,6 +3,22 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.9.0 (code 11) — 2026-10-06
+
+Côte à côte et stickers.
+
+- **Demi-largeur (2×2)** : deux éléments « petits » se placent côte à côte, dans n'importe
+  quelle combinaison — pack + pack, pack + widget, widget + widget…
+  - Les packs sont toujours en demi-largeur.
+  - Les widgets (Ciel, Musique, Contexte, widgets Android) passent de pleine à demi-largeur
+    avec le bouton **⇔** en mode édition. Ciel et Musique ont une version compacte.
+  - **+ Espace** : une demi-place vide, pour aérer ou poser un sticker à côté d'un pack.
+- **Stickers en placement libre** (+ Sticker en mode édition) : choisis un PNG dans ta galerie
+  ou tes fichiers. En mode édition : **un doigt pour déplacer, deux doigts pour agrandir
+  et tourner**, ✕ pour retirer. Hors mode édition, ils ne gênent pas les touches.
+- Note : les images des stickers ne sont pas incluses dans la sauvegarde (fichier JSON) ;
+  seules leurs positions le sont.
+
 ## v0.8.0 (code 10) — 2026-10-06
 
 Icônes et familles.

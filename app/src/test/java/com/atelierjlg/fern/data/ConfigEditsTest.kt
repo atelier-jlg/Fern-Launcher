@@ -133,6 +133,33 @@ class ConfigEditsTest {
     }
 
     @Test
+    fun halfBlocksShareRows() {
+        val blocks = listOf(
+            ClockBlock("c"),
+            PackBlock("p1", "A"),
+            SkyBlock("s", half = true),
+            PackBlock("p2", "B"),
+            MusicBlock("m"),
+            SpacerBlock("e"),
+            PackBlock("p3", "C"),
+        )
+        val rows = groupRows(blocks).map { row -> row.map { it.id } }
+        assertEquals(listOf(listOf("c"), listOf("p1", "s"), listOf("p2"), listOf("m"), listOf("e", "p3")), rows)
+    }
+
+    @Test
+    fun toggleHalfAndStickers() {
+        val withSky = sample().addBlock("p1", SkyBlock("s"))
+        val toggled = withSky.toggleHalf("p1", "s")
+        assertTrue(toggled.activeSpace.pages[0].blocks.last().isHalf)
+        val sticker = Sticker("st", "chat.png")
+        val moved = toggled.addSticker("p1", sticker).updateSticker("p1", sticker.copy(x = 0.2f))
+        assertEquals(0.2f, moved.activeSpace.pages[0].stickers.single().x)
+        assertEquals(setOf("chat.png"), moved.usedStickerFiles)
+        assertTrue(moved.removeSticker("p1", "st").activeSpace.pages[0].stickers.isEmpty())
+    }
+
+    @Test
     fun jsonRoundTrip() {
         val config = sample().countLaunch("x@0").countLaunch("x@0")
         val text = FernJson.encodeToString(LauncherConfig.serializer(), config)

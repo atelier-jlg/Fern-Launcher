@@ -142,7 +142,8 @@ app/src/main/java/com/atelierjlg/fern/
 6. ✅ Spaces + planning + Focus. *(v0.6.0)*
 7. ✅ Widgets : Ciel, Musique, Contexte, widgets Android. *(v0.7.0)*
 8. ✅ Icônes : plaques par famille (Arcticons recoloré), packs d'icônes, familles dans le tiroir. *(v0.8.0)*
-9. À venir : stickers PNG, widgets Alternance /
+9. ✅ Demi-largeur (2 éléments côte à côte), espace vide, stickers en placement libre. *(v0.9.0)*
+10. À venir : widgets Alternance /
    Révisions (AnkiDroid) / Carnet, glisser-déposer libre en mode édition.
 
 ## Décisions de détail (session du 2026-10-06)

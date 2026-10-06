@@ -44,6 +44,13 @@ import com.atelierjlg.fern.search.ShortcutResult
 import com.atelierjlg.fern.data.AppWidgetBlock
 import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.Sticker
+import com.atelierjlg.fern.data.addSticker
+import com.atelierjlg.fern.data.removeSticker
+import com.atelierjlg.fern.data.toggleHalf
+import com.atelierjlg.fern.data.updateSticker
+import com.atelierjlg.fern.data.usedStickerFiles
+import java.io.File
 import com.atelierjlg.fern.data.Family
 import com.atelierjlg.fern.data.IconSettings
 import com.atelierjlg.fern.data.setAppFamily
@@ -232,6 +239,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 delay(60_000L - System.currentTimeMillis() % 60_000L)
             }
         }
+        // Stickers orphelins (supprimés, ou d'une ancienne sauvegarde) : on fait le ménage.
+        viewModelScope.launch(Dispatchers.IO) { cleanupStickers() }
         // Style d'icônes : on recharge les icônes quand il change.
         viewModelScope.launch {
             store.config.map { it.icons }.distinctUntilChanged().collect { repository.setIconSettings(it) }
@@ -578,6 +587,44 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun addTo(ref: SlotRef, app: AppEntry) = store.update { it.setSlot(ref, app.key) }
 
     fun freeDestinations() = config.value.freeDestinations()
+
+    fun toggleHalf(pageId: String, blockId: String) = store.update { it.toggleHalf(pageId, blockId) }
+
+    // ─── Stickers ────────────────────────────────────────────────────────────
+
+    private val stickerDir: File get() = File(getApplication<Application>().filesDir, "stickers").apply { mkdirs() }
+
+    fun stickerFile(name: String): File = File(stickerDir, name)
+
+    /** Copie l'image choisie dans le dossier privé de Fern et la pose au centre de la page. */
+    fun importSticker(pageId: String, uri: Uri) {
+        viewModelScope.launch {
+            val name = "${newId()}.img"
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                        stickerFile(name).outputStream().use { input.copyTo(it) }
+                    } ?: error("illisible")
+                }.isSuccess
+            }
+            if (ok) {
+                store.update { it.addSticker(pageId, Sticker(id = newId(), file = name)) }
+                toast("Sticker ajouté : déplace-le au doigt, pince pour agrandir ou tourner")
+            } else {
+                toast("Impossible de lire cette image")
+            }
+        }
+    }
+
+    fun updateSticker(pageId: String, sticker: Sticker) = store.update { it.updateSticker(pageId, sticker) }
+
+    fun removeSticker(pageId: String, stickerId: String) = store.update { it.removeSticker(pageId, stickerId) }
+
+    /** Supprime les fichiers de stickers qui ne sont plus utilisés nulle part. */
+    private fun cleanupStickers() {
+        val used = config.value.usedStickerFiles
+        stickerDir.listFiles()?.filter { it.name !in used }?.forEach { it.delete() }
+    }
 
     fun addBlock(pageId: String, block: HomeBlock) = store.update { it.addBlock(pageId, block) }
     fun removeBlock(pageId: String, blockId: String) {
