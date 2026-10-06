@@ -312,16 +312,8 @@ private fun PageView(
                 GlyphButton("✕", onClick = { confirmDelete = true }, enabled = pageCount > 1)
             }
             Spacer(Modifier.height(12.dp))
-        } else if (index > 0 && page.title.isNotBlank()) {
-            // Titre discret : un simple libellé en capitales (pas de grand titre).
-            Text(
-                page.title.uppercase(),
-                style = Fern.type.libelle,
-                color = colors.lichen,
-                modifier = Modifier.padding(start = 6.dp),
-            )
-            Spacer(Modifier.height(10.dp))
         }
+        // Hors mode édition, le titre de la page n'est pas affiché (choix de Jules).
 
         for (row in groupRows(page.blocks)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
