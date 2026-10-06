@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.16.1 (code 19) — 2026-10-06
+
+- **Le chat ressemble au tien** : écaille de tortue (brun très foncé marbré de caramel),
+  yeux verts, pattes claires, avec un fin contour pour bien ressortir sur la carte sombre.
+
 ## v0.16.0 (code 18) — 2026-10-06
 
 - **Chat partagé** : Paramètres → Le chat → Partage. « Créer un partage » donne un code secret

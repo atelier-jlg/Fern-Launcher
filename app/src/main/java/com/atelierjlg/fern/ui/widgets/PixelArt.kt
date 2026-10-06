@@ -16,15 +16,27 @@ import kotlin.math.floor
  * C'est comme dessiner sur du papier quadrillé : facile à retoucher à la main.
  */
 
-/** Dessine un sprite, centré horizontalement et posé en bas de la zone, pixels bien carrés. */
+/**
+ * Dessine un sprite, centré horizontalement et posé en bas de la zone, pixels bien carrés.
+ * `outline` : un contour d'un pixel autour du dessin (style sticker), utile pour un sujet sombre sur fond sombre.
+ */
 @Composable
-fun PixelSprite(rows: List<String>, palette: Map<Char, Color>, modifier: Modifier = Modifier) {
+fun PixelSprite(rows: List<String>, palette: Map<Char, Color>, modifier: Modifier = Modifier, outline: Color? = null) {
     Canvas(modifier) {
-        val cols = rows.maxOf { it.length }
-        val cell = floor(minOf(size.width / cols, size.height / rows.size))
+        // +2 colonnes / lignes de marge pour le contour.
+        val cols = rows.maxOf { it.length } + 2
+        val cell = floor(minOf(size.width / cols, size.height / (rows.size + 2)))
         if (cell <= 0f) return@Canvas
-        val left = (size.width - cell * cols) / 2
-        val top = size.height - cell * rows.size
+        val left = (size.width - cell * cols) / 2 + cell
+        val top = size.height - cell * (rows.size + 1)
+        fun filled(x: Int, y: Int) = rows.getOrNull(y)?.getOrNull(x)?.let { palette.containsKey(it) } == true
+        if (outline != null) {
+            for (y in -1..rows.size) for (x in -1..cols - 2) {
+                if (!filled(x, y) && (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1))) {
+                    drawRect(outline, Offset(left + x * cell, top + y * cell), Size(cell + 0.5f, cell + 0.5f))
+                }
+            }
+        }
         rows.forEachIndexed { y, line ->
             line.forEachIndexed { x, ch ->
                 val color = palette[ch] ?: return@forEachIndexed
@@ -35,9 +47,41 @@ fun PixelSprite(rows: List<String>, palette: Map<Char, Color>, modifier: Modifie
     }
 }
 
-/** Le chat. b = pelage, s = ombre, p = rose (nez, oreilles), e = yeux, d = yeux fermés, t = queue, z = « z ». */
+/**
+ * Le chat, d'après la photo : écaille de tortue (brun très foncé marbré de caramel), yeux verts,
+ * pattes claires. b = pelage, k = taches sombres, o = taches caramel, s = ombre, p = rose (nez, joues),
+ * e = yeux, d = yeux fermés, t = queue, w = pattes claires.
+ */
 object CatSprites {
-    val sitA = listOf(
+    /** Ses vraies couleurs (pas celles du thème : c'est son pelage !). */
+    val palette = mapOf(
+        'b' to Color(0xFF3B2A22),
+        't' to Color(0xFF3B2A22),
+        'k' to Color(0xFF211713),
+        'o' to Color(0xFFB07A45),
+        's' to Color(0xFF2A1E19),
+        'p' to Color(0xFFD98C8C),
+        'e' to Color(0xFF8FC46A),
+        'd' to Color(0xFF140E0B),
+        'w' to Color(0xFFE8DCC6),
+    )
+
+    /**
+     * Le marbrage « écaille de tortue » : des taches caramel et sombres posées par plaques de 2×2 pixels,
+     * toujours au même endroit (calcul fixe, pas de hasard) pour que le chat ne change pas d'une image à l'autre.
+     */
+    private fun tortie(rows: List<String>): List<String> = rows.mapIndexed { y, line ->
+        line.mapIndexed { x, ch ->
+            if (ch != 'b' && ch != 't') return@mapIndexed ch
+            when (((x / 2) * 7 + (y / 2) * 13 + (x / 2) * (y / 2)) % 6) {
+                0, 3 -> 'o'
+                1 -> 'k'
+                else -> ch
+            }
+        }.joinToString("")
+    }
+
+    private val rawSit = listOf(
         "..b......b....",
         "..bb....bb....",
         "..bpb..bpb....",
@@ -54,32 +98,33 @@ object CatSprites {
         ".bbbbbbbbbb.t.",
         ".sbbbbbbbbs.t.",
         ".sbbbbbbbbstt.",
-        "..ss.ss.ss....",
+        "..ww.ww.ww....",
     )
+    val sitA = tortie(rawSit)
 
     /** Même pose, yeux fermés (clignement) et queue de l'autre côté. */
-    val sitB = sitA.mapIndexed { i, line ->
+    val sitB = rawSit.mapIndexed { i, line ->
         when (i) {
             5 -> ".bbdbbbbdbb..."
             11, 12 -> line.substring(0, 11) + "..t"
             13 -> line.substring(0, 11) + ".t."
             else -> line
         }
-    }
+    }.let { tortie(it) }
 
     /** Content (nourri) : yeux en « ^ », joues roses, queue qui remue (2 images). */
-    val happyA = sitA.mapIndexed { i, line ->
+    val happyA = rawSit.mapIndexed { i, line ->
         when (i) {
             4 -> ".bbebbbbebb..."
             5 -> ".bebebbebeb..."
             6 -> ".bpbbppbbpb..."
             else -> line
         }
-    }
+    }.let { tortie(it) }
     val happyB = happyA.mapIndexed { i, line ->
         when (i) {
-            11, 12 -> line.substring(0, 11) + "..t"
-            13 -> line.substring(0, 11) + ".t."
+            11, 12 -> line.substring(0, 11) + "..k"
+            13 -> line.substring(0, 11) + ".k."
             else -> line
         }
     }
@@ -95,7 +140,7 @@ object CatSprites {
     )
 
     /** L'étirement du matin : les pattes avant en avant, le dos qui s'allonge. */
-    val stretch = listOf(
+    val stretch = tortie(listOf(
         "..................",
         "..................",
         "..................",
@@ -111,12 +156,12 @@ object CatSprites {
         ".bdbbdbbbbbbbbbb..",
         ".bbppbb.....bbbb..",
         "bbbbbbbb.....bb...",
-        "ssssssss.....ss...",
+        "wwssssss.....ww...",
         "..................",
-    )
+    ))
 
     /** Endormi, roulé en boule. */
-    val sleep = listOf(
+    val sleep = tortie(listOf(
         ".......................",
         ".......................",
         ".......................",
@@ -134,7 +179,7 @@ object CatSprites {
         "tbbbbbbbbbbbbbbbbbbbs..",
         ".sssssssssssssssssss...",
         ".......................",
-    )
+    ))
 }
 
 /** Les icônes du temps (12 × 12). c = nuage, w = reflet, y = soleil, m = lune, r = pluie, n = neige, l = éclair, f = brume. */

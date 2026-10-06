@@ -218,10 +218,6 @@ fun ChatWidget(
         else -> settings.images[CatPose.Jour]
     }
     val customHappy = fed && settings.images[CatPose.Content] != null && moment != CatMoment.Nuit
-    val palette = mapOf(
-        'b' to colors.creme, 's' to colors.lichen, 'p' to colors.roseCarmin,
-        'e' to colors.nuit, 'd' to colors.sousBois, 't' to colors.creme,
-    )
 
     WidgetCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -246,7 +242,7 @@ fun ChatWidget(
                             // Sinon : un clignement de temps en temps (1 image sur 6).
                             else -> if (rememberFrame(700, frames = 6) == 5) CatSprites.sitB else CatSprites.sitA
                         }
-                        PixelSprite(sprite, palette, Modifier.fillMaxWidth().fillMaxHeight())
+                        PixelSprite(sprite, CatSprites.palette, Modifier.fillMaxWidth().fillMaxHeight(), outline = colors.lichen.copy(alpha = 0.55f))
                     }
                     if (fed && !customHappy) {
                         // Le petit cœur à côté de la tête, qui bat doucement.
