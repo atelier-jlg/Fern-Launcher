@@ -31,6 +31,7 @@ data class LauncherConfig(
     /** Clé d'appli → nombre de lancements (pour le tri par fréquence). */
     val launchCounts: Map<String, Int> = emptyMap(),
     val drawer: DrawerSettings = DrawerSettings(),
+    val search: SearchSettings = SearchSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -99,6 +100,17 @@ data class DrawerSettings(
     val columns: Int = 4,
     /** Ouvrir directement l'appli quand la recherche ne donne qu'un résultat. */
     val autoLaunchSingleResult: Boolean = false,
+)
+
+/** Réglages de la recherche (glisser vers le bas). */
+@Serializable
+data class SearchSettings(
+    /** Adresse de recherche web ; %s est remplacé par le texte cherché. */
+    val webSearchUrl: String = "https://duckduckgo.com/?q=%s",
+    /** Navigateur à utiliser (null = Firefox s'il est installé, sinon le navigateur par défaut). */
+    val browserPackage: String? = null,
+    /** Chercher aussi dans les contacts, l'agenda, les raccourcis, et faire les calculs. */
+    val extended: Boolean = false,
 )
 
 const val DEFAULT_SPACE_ID = "perso"

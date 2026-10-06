@@ -151,3 +151,6 @@ fun LauncherConfig.renameApp(key: String, name: String) =
 
 fun LauncherConfig.updateDrawer(transform: (DrawerSettings) -> DrawerSettings) =
     copy(drawer = transform(drawer))
+
+fun LauncherConfig.updateSearch(transform: (SearchSettings) -> SearchSettings) =
+    copy(search = transform(search))

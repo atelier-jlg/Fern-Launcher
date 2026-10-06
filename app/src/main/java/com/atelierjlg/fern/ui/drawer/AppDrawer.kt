@@ -33,6 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -66,6 +67,8 @@ import com.atelierjlg.fern.ui.common.FernSearchField
 import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.search.SearchExtras
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Tout ce que le tiroir sait faire, regroupé pour ne pas avoir 15 paramètres. */
@@ -97,6 +100,10 @@ fun AppDrawer(
     focusSearch: Boolean,
     versionName: String,
     actions: DrawerActions,
+    searchExtras: suspend (String) -> SearchExtras,
+    searchVersion: Int,
+    searchActions: SearchActions,
+    webLabel: String,
 ) {
     val colors = Fern.colors
     var query by remember { mutableStateOf("") }
@@ -106,8 +113,17 @@ fun AppDrawer(
 
     val searching = query.isNotBlank()
     val results = remember(apps, query) { apps.search(query) }
-    val drawerItems = remember(apps, settings.sort, launchCounts, searching, results) {
-        if (searching) results.map { DrawerItem.App(it) } else buildDrawerItems(apps, settings.sort, launchCounts)
+    val drawerItems = remember(apps, settings.sort, launchCounts) {
+        buildDrawerItems(apps, settings.sort, launchCounts)
+    }
+    // Contacts, agenda, raccourcis, calcul : cherchés en arrière-plan, 150 ms après la dernière touche.
+    val extras by produceState(SearchExtras.Empty, query, searchVersion) {
+        value = if (query.isBlank()) {
+            SearchExtras.Empty
+        } else {
+            delay(150)
+            searchExtras(query)
+        }
     }
 
     // Option « ouverture directe » : un seul résultat → on le lance.
@@ -135,7 +151,23 @@ fun AppDrawer(
     val gridState = rememberLazyGridState()
     val pullToClose = rememberPullToClose(actions.onClose)
     val columns = if (settings.style == DrawerStyle.Liste) 1 else settings.columns.coerceIn(3, 6)
-    val showSections = !searching && settings.sort == DrawerSort.Alphabetique
+    val showSections = settings.sort == DrawerSort.Alphabetique
+
+    // Le menu d'appui long d'une appli (identique dans la grille et dans les résultats).
+    val appCell: @Composable (AppEntry, Boolean) -> Unit = { app, asRow ->
+        AppCell(
+            app = app,
+            asRow = asRow,
+            onClick = { actions.onLaunch(app) },
+            menu = listOf(
+                "Ajouter à…" to { addingApp = app },
+                "Renommer" to { renamingApp = app },
+                "Masquer" to { actions.onSetHidden(app, true) },
+                "Infos de l'appli" to { actions.onAppInfo(app) },
+                "Désinstaller" to { actions.onUninstall(app) },
+            ),
+        )
+    }
 
     Column(
         Modifier
@@ -148,62 +180,49 @@ fun AppDrawer(
             DrawerChips(settings = settings, onSettings = actions.onSettings)
         }
 
-        Row(Modifier.weight(1f)) {
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = if (showSections) 4.dp else 20.dp,
-                    top = 8.dp,
-                    bottom = 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(if (columns == 1) 0.dp else 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                // Avec la recherche, le meilleur résultat est en bas, près du pouce.
-                reverseLayout = searching,
-                modifier = Modifier
-                    .weight(1f)
-                    .nestedScroll(pullToClose),
-            ) {
-                items(
-                    drawerItems,
-                    key = { it.id },
-                    span = { item -> if (item is DrawerItem.Header) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
-                ) { item ->
-                    when (item) {
-                        is DrawerItem.Header -> Text(
-                            text = item.letter,
-                            style = Fern.type.libelle,
-                            color = colors.roseCarmin,
-                            modifier = Modifier.padding(start = 4.dp, top = 6.dp),
-                        )
-                        is DrawerItem.App -> AppCell(
-                            app = item.app,
-                            asRow = columns == 1,
-                            onClick = { actions.onLaunch(item.app) },
-                            menu = listOf(
-                                "Ajouter à…" to { addingApp = item.app },
-                                "Renommer" to { renamingApp = item.app },
-                                "Masquer" to { actions.onSetHidden(item.app, true) },
-                                "Infos de l'appli" to { actions.onAppInfo(item.app) },
-                                "Désinstaller" to { actions.onUninstall(item.app) },
-                            ),
-                        )
+        if (searching) {
+            SearchResults(
+                query = query,
+                apps = results,
+                extras = extras,
+                webLabel = webLabel,
+                fromBottom = true,
+                appCell = { app -> appCell(app, false) },
+                actions = searchActions,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Row(Modifier.weight(1f)) {
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Fixed(columns),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = if (showSections) 4.dp else 20.dp,
+                        top = 8.dp,
+                        bottom = 16.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(if (columns == 1) 0.dp else 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScroll(pullToClose),
+                ) {
+                    items(
+                        drawerItems,
+                        key = { it.id },
+                        span = { item -> if (item is DrawerItem.Header) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                    ) { item ->
+                        when (item) {
+                            is DrawerItem.Header -> Text(
+                                text = item.letter,
+                                style = Fern.type.libelle,
+                                color = colors.roseCarmin,
+                                modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                            )
+                            is DrawerItem.App -> appCell(item.app, columns == 1)
+                        }
                     }
-                }
-                if (searching && results.isEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            text = "Aucune appli pour « $query »".uppercase(),
-                            style = Fern.type.libelle,
-                            color = colors.moussePale,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(vertical = 32.dp),
-                        )
-                    }
-                }
-                if (!searching) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         DrawerFooter(
                             hiddenCount = hiddenApps.size,
@@ -212,9 +231,9 @@ fun AppDrawer(
                         )
                     }
                 }
-            }
-            if (showSections) {
-                AlphabetScroller(items = drawerItems, gridState = gridState)
+                if (showSections) {
+                    AlphabetScroller(items = drawerItems, gridState = gridState)
+                }
             }
         }
 
@@ -223,7 +242,10 @@ fun AppDrawer(
             onQueryChange = { query = it },
             placeholder = "Chercher une appli",
             focusRequester = focusRequester,
-            onGo = { results.firstOrNull()?.let(actions.onLaunch) },
+            onGo = {
+                val first = results.firstOrNull()
+                if (first != null) actions.onLaunch(first) else if (searching) searchActions.onWebSearch(query)
+            },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
         )
     }

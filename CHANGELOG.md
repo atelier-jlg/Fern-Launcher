@@ -3,6 +3,21 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.4.0 (code 5) — 2026-10-06
+
+La recherche, comme demandé.
+
+- **Glisser vers le bas** : un panneau de recherche **descend du haut**, barre en haut, clavier ouvert.
+  Glisser vers le haut sur la barre (ou Retour / Accueil) le referme.
+- **Résultats** : tes **applis d'abord**, puis **« Chercher « … » avec Firefox »**.
+  La recherche web s'ouvre comme un lien ordinaire dans Firefox : ton réglage
+  « liens externes en navigation privée » s'applique. Moteur : DuckDuckGo (modifiable plus tard).
+  Si Firefox n'est pas installé, le navigateur par défaut prend le relais.
+- **Entrée** : ouvre la première appli, ou lance la recherche web s'il n'y a pas d'appli.
+- La barre de recherche du **tiroir** (glisser vers le haut) fonctionne pareil, résultats près du pouce.
+- **Recherche étendue** (désactivée par défaut, réglable dans les futurs Paramètres) :
+  contacts (appeler / SMS), agenda (dont Proton via ICSx⁵), raccourcis d'applis, calculatrice.
+
 ## v0.3.0 (code 4) — 2026-10-06
 
 Le tiroir version complète.

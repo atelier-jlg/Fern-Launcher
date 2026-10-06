@@ -1,6 +1,15 @@
 package com.atelierjlg.fern
 
+import android.Manifest
 import android.app.Application
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ContentUris
+import android.content.Intent
+import android.net.Uri
+import android.provider.CalendarContract
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.atelierjlg.fern.apps.AppEntry
@@ -26,6 +35,13 @@ import com.atelierjlg.fern.data.renamePage
 import com.atelierjlg.fern.data.setHidden
 import com.atelierjlg.fern.data.setSlot
 import com.atelierjlg.fern.data.updateDrawer
+import com.atelierjlg.fern.search.Calculator
+import com.atelierjlg.fern.search.ContactResult
+import com.atelierjlg.fern.search.EventResult
+import com.atelierjlg.fern.search.SearchExtras
+import com.atelierjlg.fern.search.SearchRepository
+import com.atelierjlg.fern.search.ShortcutResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +51,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Ce qui est ouvert par-dessus l'accueil. */
 enum class OverlayMode {
@@ -57,6 +74,15 @@ data class OverlayState(
  *
  * Un ViewModel survit aux rotations et aux recréations de l'écran.
  */
+/** Les variantes de Firefox, dans l'ordre de préférence. */
+private val FIREFOX_PACKAGES = listOf(
+    "org.mozilla.firefox",
+    "org.mozilla.fennec_fdroid",
+    "org.mozilla.firefox_beta",
+    "org.mozilla.fenix",
+    "org.mozilla.focus",
+)
+
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AppRepository(application).also { it.start() }
@@ -83,6 +109,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Emplacement en cours de remplissage : le sélecteur d'applis est ouvert. */
     private val _picking = MutableStateFlow<SlotRef?>(null)
     val picking: StateFlow<SlotRef?> = _picking.asStateFlow()
+
+    private val searchRepository = SearchRepository(application)
+
+    /** Augmente quand les autorisations changent : la recherche se relance. */
+    private val _searchVersion = MutableStateFlow(0)
+    val searchVersion: StateFlow<Int> = _searchVersion.asStateFlow()
 
     init {
         // Premier lancement : on pose la disposition de départ dès que la liste des applis est connue.
@@ -138,6 +170,101 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun updateDrawer(transform: (DrawerSettings) -> DrawerSettings) = store.update { it.updateDrawer(transform) }
 
     fun renameApp(app: AppEntry, name: String) = store.update { it.renameApp(app.key, name) }
+
+    // ─── Recherche globale ──────────────────────────────────────────────────
+
+    /**
+     * Contacts, agenda, raccourcis, calcul : seulement si la « recherche étendue » est activée.
+     * Par défaut, la recherche se limite aux applis puis au web.
+     */
+    suspend fun searchExtras(query: String): SearchExtras = withContext(Dispatchers.IO) {
+        if (!config.value.search.extended) return@withContext SearchExtras.Empty
+        val appLabels = apps.value.all.associate { it.packageName to it.label }
+        SearchExtras(
+            calculation = Calculator.evaluate(query)?.let { Calculator.format(it) },
+            contacts = searchRepository.contacts(query),
+            events = searchRepository.events(query),
+            shortcuts = searchRepository.shortcuts(query, appLabels),
+            missingContacts = !searchRepository.hasPermission(Manifest.permission.READ_CONTACTS),
+            missingCalendar = !searchRepository.hasPermission(Manifest.permission.READ_CALENDAR),
+        )
+    }
+
+    fun onPermissionsChanged() = _searchVersion.update { it + 1 }
+
+    private fun startSafely(intent: Intent) {
+        val context = getApplication<Application>()
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            closeOverlay()
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "Aucune appli pour ouvrir ça", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun copyToClipboard(text: String) {
+        val context = getApplication<Application>()
+        context.getSystemService(ClipboardManager::class.java)
+            ?.setPrimaryClip(ClipData.newPlainText("Fern", text))
+        Toast.makeText(context, "Copié : $text", Toast.LENGTH_SHORT).show()
+    }
+
+    fun openContact(contact: ContactResult) = startSafely(Intent(Intent.ACTION_VIEW, contact.uri))
+
+    fun callContact(contact: ContactResult) {
+        contact.phone?.let { startSafely(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", it, null))) }
+    }
+
+    fun messageContact(contact: ContactResult) {
+        contact.phone?.let { startSafely(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", it, null))) }
+    }
+
+    fun openEvent(event: EventResult) = startSafely(
+        Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.eventId))
+            .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.begin),
+    )
+
+    fun startShortcut(shortcut: ShortcutResult) {
+        searchRepository.startShortcut(shortcut)
+        closeOverlay()
+    }
+
+    /** Le navigateur pour la recherche web : celui choisi, sinon Firefox s'il est installé. */
+    private fun browserPackage(): String? {
+        val pm = getApplication<Application>().packageManager
+        val chosen = config.value.search.browserPackage
+        if (chosen != null && pm.getLaunchIntentForPackage(chosen) != null) return chosen
+        return FIREFOX_PACKAGES.firstOrNull { pm.getLaunchIntentForPackage(it) != null }
+    }
+
+    /** « avec Firefox » ou « sur le web », pour le libellé du bouton. */
+    fun webLabel(): String {
+        val pkg = browserPackage() ?: return "sur le web"
+        val name = apps.value.all.firstOrNull { it.packageName == pkg }?.label ?: "Firefox"
+        return "avec $name"
+    }
+
+    /**
+     * Recherche web : on ouvre l'adresse comme un lien ordinaire dans Firefox,
+     * pour qu'il applique ses réglages (onglet privé pour les liens externes).
+     */
+    fun webSearch(query: String) {
+        val url = config.value.search.webSearchUrl.replace("%s", Uri.encode(query))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+        val pkg = browserPackage()
+        if (pkg != null) {
+            try {
+                getApplication<Application>().startActivity(
+                    Intent(intent).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+                closeOverlay()
+                return
+            } catch (e: ActivityNotFoundException) {
+                // On retombe sur le navigateur par défaut.
+            }
+        }
+        startSafely(intent)
+    }
 
     // ─── Mode édition ───────────────────────────────────────────────────────
 
