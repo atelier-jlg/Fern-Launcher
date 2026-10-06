@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.16.3 (code 21) — 2026-10-06
+
+- **Le chat sans carte ni texte** : il est posé directement sur le fond, comme un sticker, en plus grand.
+  Restent seulement les pastilles des tâches (Gamelle, Litière) dessous.
+
 ## v0.16.2 (code 20) — 2026-10-06
 
 - **Chat en plus haute définition** : environ 40 px de haut au lieu de 17. Vrais yeux verts en amande,

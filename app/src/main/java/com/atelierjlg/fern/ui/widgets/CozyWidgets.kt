@@ -219,88 +219,75 @@ fun ChatWidget(
     }
     val customHappy = fed && settings.images[CatPose.Content] != null && moment != CatMoment.Nuit
 
-    WidgetCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.size(if (compact) 72.dp else 100.dp)) {
-                    if (custom != null) {
-                        // Image de Jules : une respiration lente (elle gonfle un tout petit peu).
-                        val breath by rememberInfiniteTransition(label = "souffle").animateFloat(
-                            initialValue = 1f,
-                            targetValue = 1.04f,
-                            animationSpec = infiniteRepeatable(tween(if (moment == CatMoment.Nuit) 2400 else 1400), RepeatMode.Reverse),
-                            label = "souffle",
-                        )
-                        CatImage(imageFile(custom), Modifier.fillMaxWidth().fillMaxHeight().scale(breath))
-                    } else {
-                        val sprite = when {
-                            moment == CatMoment.Nuit -> CatSprites.sleep
-                            // Le matin : étirement, puis assis, puis étirement…
-                            moment == CatMoment.Matin && rememberFrame(1800) == 0 -> CatSprites.stretch
-                            // Nourri : yeux rieurs, la queue qui remue vite.
-                            fed -> if (rememberFrame(450) == 0) CatSprites.happyA else CatSprites.happyB
-                            // Sinon : un clignement de temps en temps (1 image sur 6).
-                            else -> if (rememberFrame(700, frames = 6) == 5) CatSprites.sitB else CatSprites.sitA
-                        }
-                        PixelSprite(sprite, CatSprites.palette, Modifier.fillMaxWidth().fillMaxHeight(), outline = colors.lichen.copy(alpha = 0.55f))
-                    }
-                    if (fed && !customHappy) {
-                        // Le petit cœur à côté de la tête, qui bat doucement.
-                        val beat by rememberInfiniteTransition(label = "coeur").animateFloat(
-                            initialValue = 0.85f,
-                            targetValue = 1.1f,
-                            animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
-                            label = "coeur",
-                        )
-                        PixelSprite(
-                            CatSprites.heart,
-                            CatSprites.heartPalette,
-                            Modifier
-                                .align(if (moment == CatMoment.Nuit) Alignment.CenterEnd else Alignment.TopEnd)
-                                .size(if (compact) 16.dp else 20.dp)
-                                .scale(beat),
-                        )
-                    }
-                    if (moment == CatMoment.Nuit) {
-                        // Des « z » qui montent doucement.
-                        val rise by rememberInfiniteTransition(label = "z").animateFloat(
-                            initialValue = 0f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(tween(2600)),
-                            label = "z",
-                        )
-                        Text(
-                            "z",
-                            style = Fern.type.corps,
-                            color = colors.lichen.copy(alpha = 1f - rise),
-                            modifier = Modifier.align(Alignment.TopEnd).offset(y = (-14 * rise).dp),
-                        )
-                    }
+    // Pas de carte ni de texte : le chat est posé directement sur le fond, comme un sticker.
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Box(Modifier.size(if (compact) 120.dp else 150.dp)) {
+            if (custom != null) {
+                // Image de Jules : une respiration lente (elle gonfle un tout petit peu).
+                val breath by rememberInfiniteTransition(label = "souffle").animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.04f,
+                    animationSpec = infiniteRepeatable(tween(if (moment == CatMoment.Nuit) 2400 else 1400), RepeatMode.Reverse),
+                    label = "souffle",
+                )
+                CatImage(imageFile(custom), Modifier.fillMaxWidth().fillMaxHeight().scale(breath))
+            } else {
+                val sprite = when {
+                    moment == CatMoment.Nuit -> CatSprites.sleep
+                    // Le matin : étirement, puis assis, puis étirement…
+                    moment == CatMoment.Matin && rememberFrame(1800) == 0 -> CatSprites.stretch
+                    // Nourri : yeux rieurs, la queue qui remue vite.
+                    fed -> if (rememberFrame(450) == 0) CatSprites.happyA else CatSprites.happyB
+                    // Sinon : un clignement de temps en temps (1 image sur 6).
+                    else -> if (rememberFrame(700, frames = 6) == 5) CatSprites.sitB else CatSprites.sitA
                 }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(settings.name.uppercase(), style = Fern.type.libelle, color = colors.lichen)
-                    Text(
-                        when {
-                            moment == CatMoment.Nuit -> "Dort · chut"
-                            fed -> "Ventre plein ♥"
-                            moment == CatMoment.Matin -> "S'étire"
-                            else -> "Veille sur toi"
-                        },
-                        style = Fern.type.corps,
-                        color = colors.creme,
-                    )
-                }
+                PixelSprite(sprite, CatSprites.palette, Modifier.fillMaxWidth().fillMaxHeight(), outline = colors.lichen.copy(alpha = 0.55f))
             }
-            if (settings.chores.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    settings.chores.take(if (compact) 2 else 3).forEachIndexed { i, chore ->
-                        PillButton(
-                            text = if (i in done) "✓ $chore" else chore,
-                            accent = i in done,
-                            onClick = { onToggleChore(i) },
-                        )
-                    }
+            if (fed && !customHappy) {
+                // Le petit cœur à côté de la tête, qui bat doucement.
+                val beat by rememberInfiniteTransition(label = "coeur").animateFloat(
+                    initialValue = 0.85f,
+                    targetValue = 1.1f,
+                    animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+                    label = "coeur",
+                )
+                PixelSprite(
+                    CatSprites.heart,
+                    CatSprites.heartPalette,
+                    Modifier
+                        .align(if (moment == CatMoment.Nuit) Alignment.CenterEnd else Alignment.TopEnd)
+                        .size(if (compact) 22.dp else 28.dp)
+                        .scale(beat),
+                )
+            }
+            if (moment == CatMoment.Nuit) {
+                // Des « z » qui montent doucement.
+                val rise by rememberInfiniteTransition(label = "z").animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(2600)),
+                    label = "z",
+                )
+                Text(
+                    "z",
+                    style = Fern.type.corps,
+                    color = colors.lichen.copy(alpha = 1f - rise),
+                    modifier = Modifier.align(Alignment.TopEnd).offset(y = (-14 * rise).dp),
+                )
+            }
+        }
+        if (settings.chores.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                settings.chores.take(if (compact) 2 else 3).forEachIndexed { i, chore ->
+                    PillButton(
+                        text = if (i in done) "✓ $chore" else chore,
+                        accent = i in done,
+                        onClick = { onToggleChore(i) },
+                    )
                 }
             }
         }
