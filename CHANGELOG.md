@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.20.0 (code 27) — 2026-10-06
+
+- **Tiroir** : le bouton Réglages devient un petit **engrenage** dessiné, collé à droite.
+  Le choix 4 / 5 colonnes quitte le tiroir et passe dans **Paramètres → Tiroir → Colonnes de la grille**
+  (5 par défaut).
+- **Textes de recherche** : « Recherche » dans le tiroir ; « Rechercher parmi les applis / sur le web »
+  dans le panneau du haut (glisser vers le bas), sans le titre « Chercher ».
+
 ## v0.19.0 (code 26) — 2026-10-06
 
 - **Packs « famille »** : en mode édition, **+ Famille** pose un pack qui montre les **4 applis les plus

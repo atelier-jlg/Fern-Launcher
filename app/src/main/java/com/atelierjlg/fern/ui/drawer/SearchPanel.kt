@@ -110,12 +110,10 @@ fun SearchPanel(
                 }
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            Text("Chercher".uppercase(), style = Fern.type.libelle, color = colors.lichen)
-            Spacer(Modifier.height(10.dp))
             FernSearchField(
                 query = query,
                 onQueryChange = { query = it },
-                placeholder = "Une appli, ou une recherche web",
+                placeholder = "Rechercher parmi les applis / sur le web",
                 focusRequester = focusRequester,
                 onGo = {
                     val first = results.firstOrNull()

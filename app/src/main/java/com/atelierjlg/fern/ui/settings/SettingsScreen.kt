@@ -446,16 +446,17 @@ private fun LazyListScope.drawerSection(vm: LauncherViewModel, drawer: com.ateli
     item {
         SettingRow(
             title = "Affichage",
-            subtitle = if (drawer.style == DrawerStyle.Grille) "Grille · ${drawer.columns} colonnes" else "Liste",
+            subtitle = if (drawer.style == DrawerStyle.Grille) "Grille" else "Liste",
             onClick = {
-                vm.updateDrawer {
-                    when {
-                        it.style == DrawerStyle.Liste -> it.copy(style = DrawerStyle.Grille, columns = 4)
-                        it.columns < 5 -> it.copy(columns = 5)
-                        else -> it.copy(style = DrawerStyle.Liste)
-                    }
-                }
+                vm.updateDrawer { it.copy(style = if (it.style == DrawerStyle.Grille) DrawerStyle.Liste else DrawerStyle.Grille) }
             },
+        )
+    }
+    item {
+        SettingRow(
+            title = "Colonnes de la grille",
+            subtitle = "${drawer.gridColumns} colonnes",
+            onClick = { vm.updateDrawer { it.copy(gridColumns = if (it.gridColumns >= 5) 4 else 5) } },
         )
     }
     item {

@@ -413,8 +413,11 @@ enum class DrawerSort { Alphabetique, Frequence, Familles }
 data class DrawerSettings(
     val style: DrawerStyle = DrawerStyle.Grille,
     val sort: DrawerSort = DrawerSort.Alphabetique,
-    /** Nombre de colonnes en mode grille (4 ou 5). */
-    val columns: Int = 4,
+    /**
+     * Nombre de colonnes en mode grille (4 ou 5), réglable dans Paramètres → Tiroir.
+     * (Nouveau nom en v0.20 : l'ancien champ « columns » est ignoré, on repart sur 5.)
+     */
+    val gridColumns: Int = 5,
     /** Ouvrir directement l'appli quand la recherche ne donne qu'un résultat. */
     val autoLaunchSingleResult: Boolean = false,
 )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -66,6 +67,7 @@ import com.atelierjlg.fern.ui.common.AppIcon
 import com.atelierjlg.fern.ui.common.AppRow
 import com.atelierjlg.fern.ui.common.FernSearchField
 import com.atelierjlg.fern.ui.common.PillButton
+import com.atelierjlg.fern.ui.common.GearButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.search.SearchExtras
@@ -155,7 +157,7 @@ fun AppDrawer(
 
     val gridState = rememberLazyGridState()
     val pullToClose = rememberPullToClose(actions.onClose)
-    val columns = if (settings.style == DrawerStyle.Liste) 1 else settings.columns.coerceIn(3, 6)
+    val columns = if (settings.style == DrawerStyle.Liste) 1 else settings.gridColumns.coerceIn(3, 6)
     val showSections = settings.sort == DrawerSort.Alphabetique
 
     // Le menu d'appui long d'une appli (identique dans la grille et dans les résultats).
@@ -246,7 +248,7 @@ fun AppDrawer(
         FernSearchField(
             query = query,
             onQueryChange = { query = it },
-            placeholder = "Chercher une appli",
+            placeholder = "Recherche",
             focusRequester = focusRequester,
             onGo = {
                 val first = results.firstOrNull()
@@ -312,7 +314,10 @@ private fun DrawerChips(
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
     ) {
         PillButton(
             text = when (settings.sort) {
@@ -340,13 +345,9 @@ private fun DrawerChips(
                 }
             },
         )
-        if (settings.style == DrawerStyle.Grille) {
-            PillButton(
-                text = "${settings.columns} colonnes",
-                onClick = { onSettings { it.copy(columns = if (it.columns >= 5) 4 else 5) } },
-            )
-        }
-        PillButton(text = "Réglages", onClick = onOpenSettings)
+        // Collé à droite : l'engrenage ouvre les Paramètres.
+        Spacer(Modifier.weight(1f))
+        GearButton(onClick = onOpenSettings)
     }
 }
 

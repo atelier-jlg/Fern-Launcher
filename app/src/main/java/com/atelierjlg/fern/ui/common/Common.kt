@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -145,6 +146,38 @@ fun GlyphButton(glyph: String, onClick: () -> Unit, enabled: Boolean = true, siz
             .clickable(enabled = enabled, onClick = onClick),
     ) {
         Text(glyph, style = Fern.type.corps, color = if (enabled) colors.creme else colors.moussePale)
+    }
+}
+
+/** Un petit bouton rond avec un engrenage dessiné (pas l'emoji ⚙, qui ignore les couleurs du thème). */
+@Composable
+fun GearButton(onClick: () -> Unit, size: Dp = 40.dp) {
+    val colors = Fern.colors
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(size)
+            .background(colors.lierre, CircleShape)
+            .clickable(onClick = onClick),
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.size(size * 0.5f)) {
+            val c = center
+            val r = this.size.minDimension / 2
+            // 8 dents : de petits rectangles arrondis tournés autour du centre.
+            for (i in 0 until 8) {
+                rotate(i * 45f, pivot = c) {
+                    drawRoundRect(
+                        colors.creme,
+                        topLeft = androidx.compose.ui.geometry.Offset(c.x - r * 0.17f, c.y - r),
+                        size = androidx.compose.ui.geometry.Size(r * 0.34f, r * 0.4f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(r * 0.08f),
+                    )
+                }
+            }
+            drawCircle(colors.creme, radius = r * 0.72f, center = c)
+            // Le trou du milieu, de la couleur du bouton.
+            drawCircle(colors.lierre, radius = r * 0.3f, center = c)
+        }
     }
 }
 
