@@ -102,7 +102,7 @@ fun BlockToolbar(
                     "Après" to onDown,
                     onRename?.let { "Renommer" to it },
                     onToggleHalf?.let { "Largeur" to it },
-                    onResize?.let { "Hauteur" to it },
+                    onResize?.let { (if (onToggleHalf == null) "Taille" else "Hauteur") to it },
                     "Supprimer" to onDelete,
                 )
                 for ((text, action) in items) {
@@ -122,7 +122,7 @@ fun BlockToolbar(
             modifier = Modifier.weight(1f),
         )
         if (onRename != null) GlyphButton("✎", onClick = onRename, size = 28.dp)
-        if (onResize != null) GlyphButton("↕", onClick = onResize, size = 28.dp)
+        if (onResize != null) GlyphButton(if (onToggleHalf == null) "⤢" else "↕", onClick = onResize, size = 28.dp)
         if (onToggleHalf != null) GlyphButton("⇔", onClick = onToggleHalf, size = 28.dp)
         GlyphButton("↑", onClick = onUp, size = 28.dp)
         GlyphButton("↓", onClick = onDown, size = 28.dp)

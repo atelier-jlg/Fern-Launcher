@@ -2,6 +2,7 @@ package com.atelierjlg.fern.ui.widgets
 
 import android.content.Intent
 import android.provider.Settings
+import android.appwidget.AppWidgetHostView
 import android.widget.TextView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -452,6 +453,8 @@ fun AppWidgetView(host: WidgetHost, appWidgetId: Int, heightDp: Int) {
                 host.createView(ctx, appWidgetId, widthDp, heightDp)
                     ?: TextView(ctx).apply { text = "Widget indisponible" }
             },
+            // Quand la taille change (⤢ Taille), on prévient le widget pour qu'il s'adapte.
+            update = { view -> (view as? AppWidgetHostView)?.let { host.resize(it, widthDp, heightDp) } },
             modifier = Modifier.fillMaxWidth().height(heightDp.dp),
         )
     }

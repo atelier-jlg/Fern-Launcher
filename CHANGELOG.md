@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.12.0 (code 14) — 2026-10-06
+
+- **Taille des widgets Android** : en mode édition, bouton **⤢ Taille** sur un widget d'une autre appli.
+  Fern propose les tailles en cases (largeur × hauteur : 1×1, 2×1, 2×2, 4×2…) **acceptées par le
+  widget** (taille minimale, redimensionnable ou non). Le widget est prévenu et s'adapte.
+- APK : désormais publié aussi en **Release GitHub** (fichier .apk direct, sans zip).
+- CI : cache des dépendances activé sur la branche (moins de pannes de téléchargement).
+
 ## v0.11.0 (code 13) — 2026-10-06
 
 Les trois widgets qui manquaient (+ Widget en mode édition).

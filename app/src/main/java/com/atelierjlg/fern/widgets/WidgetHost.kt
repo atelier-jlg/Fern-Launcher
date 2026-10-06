@@ -52,6 +52,12 @@ class WidgetHost(context: Context) {
         }.onFailure { Log.w(TAG, "createView $id", it) }.getOrNull()
     }
 
+    /** Informe le widget de sa nouvelle taille (en dp). */
+    @Suppress("DEPRECATION")
+    fun resize(view: AppWidgetHostView, widthDp: Int, heightDp: Int) {
+        runCatching { view.updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp) }
+    }
+
     /** Libère les numéros réservés qui ne sont plus utilisés nulle part. */
     fun cleanup(used: Set<Int>) {
         runCatching { host.appWidgetIds.filterNot { it in used }.forEach { host.deleteAppWidgetId(it) } }

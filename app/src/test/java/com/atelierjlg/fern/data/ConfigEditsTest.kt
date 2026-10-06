@@ -180,6 +180,15 @@ class ConfigEditsTest {
     }
 
     @Test
+    fun widgetSize() {
+        val config = sample().addBlock("p1", AppWidgetBlock("w", appWidgetId = 7, provider = "Météo"))
+        val resized = config.setWidgetSize("p1", "w", columns = 1, rows = 2)
+        val block = resized.activeSpace.pages[0].blocks.last() as AppWidgetBlock
+        assertEquals(1, block.span)
+        assertEquals(2 * WIDGET_CELL_HEIGHT_DP, block.heightDp)
+    }
+
+    @Test
     fun jsonRoundTrip() {
         val config = sample().countLaunch("x@0").countLaunch("x@0")
         val text = FernJson.encodeToString(LauncherConfig.serializer(), config)

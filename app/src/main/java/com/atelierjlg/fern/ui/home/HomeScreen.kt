@@ -60,6 +60,9 @@ import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.SkyBlock
 import com.atelierjlg.fern.data.SpacerBlock
 import com.atelierjlg.fern.data.AppBlock
+import com.atelierjlg.fern.data.WIDGET_CELL_HEIGHT_DP
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.atelierjlg.fern.data.AlternanceBlock
 import com.atelierjlg.fern.data.CarnetBlock
 import com.atelierjlg.fern.data.CarnetDay
@@ -304,6 +307,7 @@ private fun PageView(
     var renamingPack by remember { mutableStateOf<PackBlock?>(null) }
     var newPack by remember { mutableStateOf(false) }
     var addingWidget by remember { mutableStateOf(false) }
+    var resizingWidget by remember { mutableStateOf<AppWidgetBlock?>(null) }
     val place = vm.config.collectAsStateWithLifecycle().value.place
     // Choisir une image dans la galerie / les fichiers : elle devient un sticker de cette page.
     val stickerPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -351,11 +355,11 @@ private fun PageView(
                                 onDelete = { vm.removeBlock(page.id, block.id) },
                                 onRename = if (block is PackBlock) ({ renamingPack = block }) else null,
                                 onResize = when (block) {
-                                    is AppWidgetBlock -> ({ vm.cycleWidgetHeight(page.id, block.id) })
+                                    is AppWidgetBlock -> ({ resizingWidget = block })
                                     is SpacerBlock -> ({ vm.cycleSpacerHeight(page.id, block.id) })
                                     else -> null
                                 },
-                                onToggleHalf = if (block.canChangeWidth) ({ vm.cycleWidth(page.id, block.id) }) else null,
+                                onToggleHalf = if (block.canChangeWidth && block !is AppWidgetBlock) ({ vm.cycleWidth(page.id, block.id) }) else null,
                                 compact = block.span == 1,
                             )
                         }
@@ -424,6 +428,31 @@ private fun PageView(
             initial = pack.title,
             onConfirm = { vm.renamePack(page.id, pack.id, it); renamingPack = null },
             onDismiss = { renamingPack = null },
+        )
+    }
+    resizingWidget?.let { widget ->
+        val options = remember(widget.appWidgetId) { vm.widgetSizeOptions(widget.appWidgetId) }
+        val currentRows = (widget.heightDp + WIDGET_CELL_HEIGHT_DP / 2) / WIDGET_CELL_HEIGHT_DP
+        AlertDialog(
+            onDismissRequest = { resizingWidget = null },
+            title = { Text("Taille de « ${widget.provider} »") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Largeur × hauteur, en cases. Seules les tailles acceptées par le widget sont proposées.")
+                    for (rowOptions in options.chunked(4)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            for ((c, r) in rowOptions) {
+                                PillButton(
+                                    text = "$c×$r",
+                                    accent = c == widget.span && r == currentRows,
+                                    onClick = { vm.setWidgetSize(page.id, widget.id, c, r); resizingWidget = null },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { resizingWidget = null }) { Text("Fermer") } },
         )
     }
     if (addingWidget) {

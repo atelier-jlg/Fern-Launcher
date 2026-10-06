@@ -44,6 +44,11 @@ import com.atelierjlg.fern.search.ShortcutResult
 import com.atelierjlg.fern.data.AppWidgetBlock
 import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.ROW_COLUMNS
+import com.atelierjlg.fern.data.WIDGET_CELL_HEIGHT_DP
+import com.atelierjlg.fern.data.setWidgetSize
+import android.appwidget.AppWidgetProviderInfo
+import android.os.Build
 import com.atelierjlg.fern.data.AlternanceSettings
 import com.atelierjlg.fern.data.CarnetSettings
 import com.atelierjlg.fern.data.updateAlternance
@@ -281,6 +286,41 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    /**
+     * Les tailles possibles pour un widget Android, en (colonnes × cases) :
+     * on respecte la taille minimale déclarée par l'appli, et si elle se laisse redimensionner
+     * (horizontalement / verticalement).
+     */
+    fun widgetSizeOptions(appWidgetId: Int): List<Pair<Int, Int>> {
+        val info = widgetHost.info(appWidgetId) ?: return listOf(4 to 2)
+        val metrics = getApplication<Application>().resources.displayMetrics
+        fun dp(px: Int) = px / metrics.density
+        val screenDp = metrics.widthPixels / metrics.density
+        val cellW = (screenDp - 40f - 3 * 10f) / ROW_COLUMNS
+        val cellH = WIDGET_CELL_HEIGHT_DP.toFloat()
+        val horizontal = info.resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0
+        val vertical = info.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0
+        val minW = dp(if (horizontal && info.minResizeWidth > 0) info.minResizeWidth else info.minWidth)
+        val minH = dp(if (vertical && info.minResizeHeight > 0) info.minResizeHeight else info.minHeight)
+        val maxW = if (Build.VERSION.SDK_INT >= 31 && info.maxResizeWidth > 0) dp(info.maxResizeWidth) else Float.MAX_VALUE
+        val maxH = if (Build.VERSION.SDK_INT >= 31 && info.maxResizeHeight > 0) dp(info.maxResizeHeight) else Float.MAX_VALUE
+        val cols = (1..ROW_COLUMNS).filter { c ->
+            val w = c * cellW + (c - 1) * 10f
+            w + 8f >= minW && (horizontal || c == ROW_COLUMNS || w <= maxW) && w <= maxW + cellW
+        }.ifEmpty { listOf(ROW_COLUMNS) }
+        val rows = (1..5).filter { r ->
+            val h = r * cellH
+            h + 8f >= minH && h <= maxH + cellH
+        }.ifEmpty { listOf(2) }
+        // Non redimensionnable : on ne propose que la plus petite taille qui convient (+ pleine largeur).
+        val allowedCols = if (horizontal) cols else listOf(cols.first()).plus(ROW_COLUMNS).distinct()
+        val allowedRows = if (vertical) rows else listOf(rows.first())
+        return allowedRows.flatMap { r -> allowedCols.map { c -> c to r } }
+    }
+
+    fun setWidgetSize(pageId: String, blockId: String, columns: Int, rows: Int) =
+        store.update { it.setWidgetSize(pageId, blockId, columns, rows) }
 
     fun addAppWidget(pageId: String, appWidgetId: Int, label: String, heightDp: Int) =
         addBlock(pageId, AppWidgetBlock(id = newId(), appWidgetId = appWidgetId, provider = label, heightDp = heightDp))

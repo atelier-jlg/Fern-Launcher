@@ -296,7 +296,7 @@ val HomeBlock.span: Int
         is PackBlock -> 2
         is AppBlock -> 1
         is SpacerBlock -> span.coerceIn(1, ROW_COLUMNS)
-        is AppWidgetBlock -> if (half) 2 else 4
+        is AppWidgetBlock -> if (columns in 1..ROW_COLUMNS) columns else if (half) 2 else 4
         is SkyBlock -> if (half) 2 else 4
         is MusicBlock -> if (half) 2 else 4
         is ContextBlock -> if (half) 2 else 4
@@ -381,3 +381,12 @@ fun LauncherConfig.updateCarnetDay(date: String, transform: (CarnetDay) -> Carne
     val days = (carnet.days + (date to day)).toSortedMap().entries.toList().takeLast(90).associate { it.key to it.value }
     return copy(carnet = carnet.copy(days = days))
 }
+
+/** Hauteur d'une « case » de widget, en dp (une ligne de la grille). */
+const val WIDGET_CELL_HEIGHT_DP = 90
+
+/** Change la taille d'un widget Android : largeur en colonnes, hauteur en cases. */
+fun LauncherConfig.setWidgetSize(pageId: String, blockId: String, columns: Int, rows: Int) =
+    updateBlock(pageId, blockId) { b ->
+        if (b is AppWidgetBlock) b.copy(columns = columns.coerceIn(1, ROW_COLUMNS), heightDp = rows.coerceIn(1, 6) * WIDGET_CELL_HEIGHT_DP) else b
+    }

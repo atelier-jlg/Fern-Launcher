@@ -144,6 +144,8 @@ data class AppWidgetBlock(
     val heightDp: Int = 180,
     /** true = demi-largeur (2×2), à côté d'un autre élément. */
     val half: Boolean = false,
+    /** Largeur en colonnes (1 à 4) choisie dans « Taille » ; 0 = selon `half`. */
+    val columns: Int = 0,
 ) : HomeBlock()
 
 /** Widget maison « Ciel » : arc du soleil le jour, phase de lune la nuit. */
