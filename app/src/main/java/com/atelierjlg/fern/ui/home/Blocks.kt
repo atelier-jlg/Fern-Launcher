@@ -10,6 +10,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.clip
+import com.atelierjlg.fern.data.Family
+import com.atelierjlg.fern.data.topByLaunches
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -249,4 +259,110 @@ fun ClockView(weatherLine: String? = null) {
         )
         Spacer(Modifier.height(8.dp))
     }
+}
+
+/**
+ * Un pack « famille » : les 4 applis de la famille les plus lancées, dans une carte comme un pack.
+ * - Toucher une appli : elle s'ouvre.
+ * - Toucher la carte (ailleurs que sur une appli) : toute la famille s'affiche.
+ * En mode édition, les applis ne se choisissent pas à la main : c'est la famille qui décide.
+ */
+@Composable
+fun FamilyPackCard(
+    family: Family,
+    apps: List<AppEntry>,
+    launchCounts: Map<String, Int>,
+    actions: SlotActions,
+    modifier: Modifier = Modifier,
+) {
+    val colors = Fern.colors
+    var showAll by remember { mutableStateOf(false) }
+    val top = remember(apps, launchCounts) {
+        val byKey = apps.associateBy { it.key }
+        topByLaunches(apps.map { it.key }, launchCounts).mapNotNull { byKey[it] }
+    }
+    Column(
+        modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(colors.mousse.copy(alpha = 0.92f))
+            .clickable(enabled = !actions.editing) { showAll = true }
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp)) {
+            // Une pastille de la couleur de la famille (celle des plaques d'icônes).
+            Box(Modifier.size(8.dp).background(colors.plate(family), CircleShape))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = family.label.uppercase(),
+                style = Fern.type.libelle,
+                color = colors.lichen,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (apps.size > PACK_SIZE) {
+                Text("+${apps.size - PACK_SIZE}", style = Fern.type.libelle, color = colors.roseCarmin)
+            }
+        }
+        if (apps.isEmpty()) {
+            Text("Aucune appli dans cette famille", style = Fern.type.nomApp, color = colors.moussePale, modifier = Modifier.padding(6.dp))
+        }
+        for (row in 0 until 2) {
+            Row(Modifier.fillMaxWidth()) {
+                for (col in 0 until 2) {
+                    val app = top.getOrNull(row * 2 + col)
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+                        if (app != null) {
+                            AppIcon(
+                                app = app,
+                                iconSize = 50.dp,
+                                showLabel = true,
+                                onClick = { if (!actions.editing) actions.onLaunch(app) },
+                                onLongClick = { if (!actions.editing) actions.onEnterEdit() },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAll) {
+        FamilySheet(family, apps, onLaunch = { showAll = false; actions.onLaunch(it) }, onDismiss = { showAll = false })
+    }
+}
+
+/** Toute la famille, en grille de 4, par ordre alphabétique. */
+@Composable
+private fun FamilySheet(family: Family, apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, onDismiss: () -> Unit) {
+    val colors = Fern.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.nuit,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).background(colors.plate(family), CircleShape))
+                Spacer(Modifier.width(10.dp))
+                Text(family.label.uppercase(), style = Fern.type.libelle, color = colors.creme)
+            }
+        },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                for (row in apps.chunked(4)) {
+                    Row(Modifier.fillMaxWidth()) {
+                        for (i in 0 until 4) {
+                            val app = row.getOrNull(i)
+                            Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+                                if (app != null) {
+                                    AppIcon(app = app, iconSize = 48.dp, showLabel = true, onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+    )
 }

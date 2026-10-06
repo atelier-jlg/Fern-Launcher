@@ -217,6 +217,14 @@ data class RevisionsBlock(override val id: String, val half: Boolean = true) : H
 @SerialName("carnet")
 data class CarnetBlock(override val id: String, val half: Boolean = false) : HomeBlock()
 
+/**
+ * Un pack « famille » : les 4 applis les plus lancées d'une famille (Social, Argent…).
+ * Toucher la carte ouvre toute la famille ; toucher une appli la lance.
+ */
+@Serializable
+@SerialName("famille")
+data class FamilyBlock(override val id: String, val family: Family) : HomeBlock()
+
 /** Les widgets maison de la v0.14 (un seul type de bloc, `kind` dit lequel). */
 @Serializable
 enum class MaisonKind(val label: String) {

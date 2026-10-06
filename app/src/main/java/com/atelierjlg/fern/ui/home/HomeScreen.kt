@@ -87,6 +87,8 @@ import com.atelierjlg.fern.ui.widgets.SkyWidget
 import com.atelierjlg.fern.ui.widgets.WidgetAdder
 import com.atelierjlg.fern.data.ClockBlock
 import com.atelierjlg.fern.data.MaisonBlock
+import com.atelierjlg.fern.data.FamilyBlock
+import com.atelierjlg.fern.data.Family
 import com.atelierjlg.fern.data.MaisonKind
 import com.atelierjlg.fern.system.PomodoroAlarm
 import com.atelierjlg.fern.ui.widgets.ChatWidget
@@ -302,6 +304,7 @@ private fun PageView(
     var confirmDelete by remember { mutableStateOf(false) }
     var renamingPack by remember { mutableStateOf<PackBlock?>(null) }
     var newPack by remember { mutableStateOf(false) }
+    var addingFamily by remember { mutableStateOf(false) }
     var addingWidget by remember { mutableStateOf(false) }
     var resizingWidget by remember { mutableStateOf<AppWidgetBlock?>(null) }
     val place = vm.config.collectAsStateWithLifecycle().value.place
@@ -388,6 +391,7 @@ private fun PageView(
                 PillButton("+ Widget", onClick = { addingWidget = true })
                 PillButton("+ Sticker", onClick = { stickerPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
                 PillButton("+ Espace", onClick = { vm.addBlock(page.id, SpacerBlock(id = newId(), span = 4)) })
+                PillButton("+ Famille", onClick = { addingFamily = true })
             }
             Spacer(Modifier.height(120.dp))
         }
@@ -454,6 +458,24 @@ private fun PageView(
     }
     if (addingWidget) {
         WidgetAdder(vm = vm, pageId = page.id, onDone = { addingWidget = false })
+    }
+    if (addingFamily) {
+        // Choix de la famille : le pack affichera ses 4 applis les plus utilisées.
+        AlertDialog(
+            onDismissRequest = { addingFamily = false },
+            title = { Text("Ajouter une famille") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    for (family in Family.entries) {
+                        TextButton(
+                            onClick = { vm.addBlock(page.id, FamilyBlock(id = newId(), family = family)); addingFamily = false },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(family.label, modifier = Modifier.fillMaxWidth()) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { addingFamily = false }) { Text("Annuler") } },
+        )
     }
     if (newPack) {
         TextInputDialog(
@@ -556,6 +578,15 @@ private fun BlockView(
             )
         }
         is MaisonBlock -> MaisonView(vm, block)
+        is FamilyBlock -> {
+            val launchCounts = vm.config.collectAsStateWithLifecycle().value.launchCounts
+            FamilyPackCard(
+                family = block.family,
+                apps = apps.visible.filter { it.family == block.family },
+                launchCounts = launchCounts,
+                actions = actions,
+            )
+        }
         is AppBlock -> Slot(
             app = apps.find(block.app),
             ref = SlotRef.Block(page.id, block.id, 0),
@@ -571,6 +602,7 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is ClockBlock -> "Horloge"
     is AppRowBlock -> "Rangée"
     is PackBlock -> block.title
+    is FamilyBlock -> block.family.label
     is SkyBlock -> "Ciel"
     is MusicBlock -> "Musique"
     is ContextBlock -> "Contexte"

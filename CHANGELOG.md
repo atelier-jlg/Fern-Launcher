@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.19.0 (code 26) — 2026-10-06
+
+- **Packs « famille »** : en mode édition, **+ Famille** pose un pack qui montre les **4 applis les plus
+  utilisées** d'une famille (Social, Argent & courses…), avec une pastille de sa couleur.
+  Toucher une appli l'ouvre ; toucher la carte affiche **toute la famille** (« +8 » indique combien il en reste).
+  Le pack se met à jour tout seul selon tes lancements et tes corrections de familles.
+
 ## v0.18.0 (code 25) — 2026-10-06
 
 - **Rythme des tâches du chat** :

@@ -219,6 +219,7 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is RevisionsBlock -> copy(id = newId())
     is CarnetBlock -> copy(id = newId())
     is MaisonBlock -> copy(id = newId())
+    is FamilyBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -295,6 +296,7 @@ const val ROW_COLUMNS = 4
 val HomeBlock.span: Int
     get() = when (this) {
         is PackBlock -> 2
+        is FamilyBlock -> 2
         is AppBlock -> 1
         is SpacerBlock -> span.coerceIn(1, ROW_COLUMNS)
         is AppWidgetBlock -> if (columns in 1..ROW_COLUMNS) columns else if (half) 2 else 4
@@ -499,3 +501,13 @@ fun LauncherConfig.setChoreRule(index: Int, rule: ChoreRule): LauncherConfig {
     list[index] = rule
     return copy(chat = chat.copy(rules = list))
 }
+
+/**
+ * Les `n` applis les plus lancées parmi `keys` (les autres gardent l'ordre de départ, A–Z).
+ * Sert au pack « famille ».
+ */
+fun topByLaunches(keys: List<String>, launchCounts: Map<String, Int>, n: Int = PACK_SIZE): List<String> =
+    keys.withIndex()
+        .sortedWith(compareByDescending<IndexedValue<String>> { launchCounts[it.value] ?: 0 }.thenBy { it.index })
+        .take(n)
+        .map { it.value }
