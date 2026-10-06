@@ -57,7 +57,7 @@ class ConfigStore(context: Context) {
         return try {
             if (!file.baseFile.exists()) return LauncherConfig()
             val text = file.readFully().decodeToString()
-            FernJson.decodeFromString(LauncherConfig.serializer(), text)
+            FernJson.decodeFromString(LauncherConfig.serializer(), text).migrate()
         } catch (e: Exception) {
             // Fichier illisible : on le met de côté pour ne pas le perdre, et on repart à zéro.
             Log.e(TAG, "Configuration illisible, sauvegardée en .bak", e)

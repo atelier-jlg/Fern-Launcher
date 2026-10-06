@@ -511,3 +511,28 @@ fun topByLaunches(keys: List<String>, launchCounts: Map<String, Int>, n: Int = P
         .sortedWith(compareByDescending<IndexedValue<String>> { launchCounts[it.value] ?: 0 }.thenBy { it.index })
         .take(n)
         .map { it.value }
+
+/** Retire une tâche du chat (et son rythme). Les cases cochées des autres tâches sont remises à zéro. */
+fun LauncherConfig.removeChore(index: Int): LauncherConfig {
+    if (index !in chat.chores.indices) return this
+    return copy(
+        chat = chat.copy(
+            chores = chat.chores.filterIndexed { i, _ -> i != index },
+            rules = chat.rules.filterIndexed { i, _ -> i != index },
+            done = emptyMap(),
+        ),
+    )
+}
+
+/**
+ * Les petites conversions faites au chargement d'un ancien fichier.
+ * - Format 1 → 2 : la tâche « Litière » du widget Chat est retirée (choix de Jules).
+ */
+fun LauncherConfig.migrate(): LauncherConfig {
+    var c = this
+    if (c.schema < 2) {
+        val litiere = c.chat.chores.indexOfFirst { it.equals("Litière", ignoreCase = true) }
+        if (litiere >= 0) c = c.removeChore(litiere)
+    }
+    return c.copy(schema = CURRENT_SCHEMA)
+}

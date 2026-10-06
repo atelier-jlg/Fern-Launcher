@@ -15,11 +15,15 @@ import kotlinx.serialization.json.Json
  */
 
 const val DOCK_SIZE = 4
+
+/** Version actuelle du format de configuration (2 = sans la tâche « Litière » par défaut). */
+const val CURRENT_SCHEMA = 2
 const val PACK_SIZE = 4
 
 @Serializable
 data class LauncherConfig(
-    val schema: Int = 1,
+    /** Version du format, pour les petites conversions au chargement (voir `migrate()`). */
+    val schema: Int = CURRENT_SCHEMA,
     /** false tant que la disposition de départ (packs de Jules) n'a pas été posée. */
     val seeded: Boolean = false,
     val spaces: List<Space> = listOf(Space()),
@@ -266,9 +270,9 @@ data class ChatSettings(
      * Absente = le chat en pixel art dessiné par Fern (la nuit et le matin reprennent l'image du jour).
      */
     val images: Map<CatPose, String> = emptyMap(),
-    val chores: List<String> = listOf("Gamelle", "Litière"),
-    /** Le rythme de chaque tâche (même ordre que `chores`) : gamelle 2 fois par jour, litière le samedi soir. */
-    val rules: List<ChoreRule> = listOf(ChoreRule(ChoreFreq.DeuxParJour), ChoreRule(ChoreFreq.Hebdomadaire)),
+    val chores: List<String> = listOf("Gamelle"),
+    /** Le rythme de chaque tâche (même ordre que `chores`) : la gamelle 2 fois par jour. */
+    val rules: List<ChoreRule> = listOf(ChoreRule(ChoreFreq.DeuxParJour)),
     /**
      * Période → tâches faites. Une « période » dépend du rythme de la tâche :
      * « 2026-10-06-matin », « 2026-10-06-soir », « 2026-10-06 » ou « 2026-10-03-semaine ».

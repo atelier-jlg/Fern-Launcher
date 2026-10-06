@@ -62,6 +62,7 @@ import com.atelierjlg.fern.data.MaisonKind
 import com.atelierjlg.fern.data.PomodoroPhase
 import com.atelierjlg.fern.data.ScreenTimeSettings
 import com.atelierjlg.fern.data.hasMaison
+import com.atelierjlg.fern.data.migrate
 import com.atelierjlg.fern.data.startPomodoro
 import com.atelierjlg.fern.data.stopPomodoro
 import com.atelierjlg.fern.data.tickPomodoro
@@ -915,7 +916,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun importBackup(uri: Uri) {
         viewModelScope.launch {
             val restored = readText(uri)?.let { text ->
-                runCatching { FernJson.decodeFromString(LauncherConfig.serializer(), text) }.getOrNull()
+                runCatching { FernJson.decodeFromString(LauncherConfig.serializer(), text).migrate() }.getOrNull()
             }
             if (restored == null) {
                 toast("Ce fichier n'est pas une sauvegarde Fern")

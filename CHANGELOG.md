@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.21.1 (code 29) — 2026-10-06
+
+- **Widget Chat** : la tâche « Litière » est retirée (il ne reste que la Gamelle, 2 fois par jour).
+  Tu peux toujours ajouter des tâches dans Paramètres → Le chat.
+
 ## v0.21.0 (code 28) — 2026-10-06
 
 - **Pomodoro** : le bouton lancer / arrêter devient un bouton rond **à droite** (▶ pistache pour lancer,
