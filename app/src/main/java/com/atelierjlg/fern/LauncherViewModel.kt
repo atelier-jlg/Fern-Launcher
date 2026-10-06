@@ -41,7 +41,17 @@ import com.atelierjlg.fern.search.EventResult
 import com.atelierjlg.fern.search.SearchExtras
 import com.atelierjlg.fern.search.SearchRepository
 import com.atelierjlg.fern.search.ShortcutResult
+import com.atelierjlg.fern.data.AppWidgetBlock
+import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.PlaceSettings
+import com.atelierjlg.fern.data.newId
+import com.atelierjlg.fern.data.updateBlockById
+import com.atelierjlg.fern.data.updatePlace
+import com.atelierjlg.fern.data.usedAppWidgetIds
+import com.atelierjlg.fern.widgets.MusicController
+import com.atelierjlg.fern.widgets.NowPlaying
+import com.atelierjlg.fern.widgets.WidgetHost
 import com.atelierjlg.fern.data.FocusSettings
 import com.atelierjlg.fern.data.SpaceSchedule
 import com.atelierjlg.fern.data.activeRuleAt
@@ -143,6 +153,70 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     /** Augmente quand les autorisations changent : la recherche se relance. */
     private val _searchVersion = MutableStateFlow(0)
     val searchVersion: StateFlow<Int> = _searchVersion.asStateFlow()
+
+    // ─── Widgets ─────────────────────────────────────────────────────────────
+
+    val widgetHost = WidgetHost(application)
+    private val music = MusicController(application)
+    val nowPlaying: StateFlow<NowPlaying?> = music.nowPlaying
+    val musicAccess: StateFlow<Boolean> = music.hasAccess
+
+    private val _nextEvent = MutableStateFlow<EventResult?>(null)
+    val nextEvent: StateFlow<EventResult?> = _nextEvent.asStateFlow()
+
+    init {
+        // Widgets Android : on libère les numéros réservés qui ne servent plus.
+        widgetHost.cleanup(store.config.value.usedAppWidgetIds)
+        // Prochain événement (widget Contexte) : toutes les 5 minutes.
+        viewModelScope.launch {
+            while (true) {
+                _nextEvent.value = withContext(Dispatchers.IO) { searchRepository.nextEvent() }
+                delay(5 * 60_000L)
+            }
+        }
+    }
+
+    /** Fern revient au premier plan. */
+    fun onForeground() {
+        widgetHost.startListening()
+        music.start()
+        checkSchedule()
+    }
+
+    /** Fern passe en arrière-plan. */
+    fun onBackground() {
+        widgetHost.stopListening()
+        flush()
+    }
+
+    fun musicPlayPause() = music.playPause()
+    fun musicNext() = music.next()
+    fun musicPrevious() = music.previous()
+
+    fun openPackage(packageName: String) {
+        val context = getApplication<Application>()
+        context.packageManager.getLaunchIntentForPackage(packageName)?.let { startSafely(it) }
+    }
+
+    fun setContextNote(pageId: String, blockId: String, note: String) = store.update {
+        it.updateBlockById(pageId, blockId) { b -> if (b is ContextBlock) b.copy(note = note) else b }
+    }
+
+    fun cycleWidgetHeight(pageId: String, blockId: String) = store.update {
+        it.updateBlockById(pageId, blockId) { b ->
+            if (b is AppWidgetBlock) {
+                val sizes = listOf(120, 180, 240, 320)
+                b.copy(heightDp = sizes[(sizes.indexOf(b.heightDp) + 1).mod(sizes.size)])
+            } else {
+                b
+            }
+        }
+    }
+
+    fun addAppWidget(pageId: String, appWidgetId: Int, label: String, heightDp: Int) =
+        addBlock(pageId, AppWidgetBlock(id = newId(), appWidgetId = appWidgetId, provider = label, heightDp = heightDp))
+
+    fun updatePlace(transform: (PlaceSettings) -> PlaceSettings) = store.update { it.updatePlace(transform) }
 
     init {
         // Planning des Spaces : une vérification par minute.
@@ -490,7 +564,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun freeDestinations() = config.value.freeDestinations()
 
     fun addBlock(pageId: String, block: HomeBlock) = store.update { it.addBlock(pageId, block) }
-    fun removeBlock(pageId: String, blockId: String) = store.update { it.removeBlock(pageId, blockId) }
+    fun removeBlock(pageId: String, blockId: String) {
+        // Un widget Android supprimé libère aussi son numéro.
+        val block = config.value.activeSpace.pages.firstOrNull { it.id == pageId }
+            ?.blocks?.firstOrNull { it.id == blockId }
+        if (block is AppWidgetBlock) widgetHost.delete(block.appWidgetId)
+        store.update { it.removeBlock(pageId, blockId) }
+    }
     fun moveBlock(pageId: String, blockId: String, delta: Int) = store.update { it.moveBlock(pageId, blockId, delta) }
     fun renamePack(pageId: String, blockId: String, title: String) = store.update { it.renamePack(pageId, blockId, title) }
 

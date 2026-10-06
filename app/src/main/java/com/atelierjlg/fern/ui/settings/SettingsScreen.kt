@@ -72,6 +72,7 @@ private enum class Section(val title: String) {
     Gestes("Gestes"),
     Recherche("Recherche"),
     Tiroir("Tiroir"),
+    Lieu("Lieu (ciel)"),
     Sauvegarde("Sauvegarde"),
     APropos("À propos"),
 }
@@ -132,6 +133,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 Section.Gestes -> item { GesturesSection(vm, config.gestures) }
                 Section.Recherche -> searchSection(vm, config.search.extended, config.search.webSearchUrl)
                 Section.Tiroir -> drawerSection(vm, config.drawer)
+                Section.Lieu -> item { PlaceSection(vm, config.place) }
                 Section.Sauvegarde -> item { BackupSection(vm) }
                 Section.APropos -> item { AboutSection() }
             }
@@ -453,6 +455,49 @@ private fun LazyListScope.drawerSection(vm: LauncherViewModel, drawer: com.ateli
             subtitle = "Quand la recherche ne trouve qu'une appli, elle s'ouvre toute seule.",
             checked = drawer.autoLaunchSingleResult,
             onChange = { on -> vm.updateDrawer { it.copy(autoLaunchSingleResult = on) } },
+        )
+    }
+}
+
+// ─── Lieu ───────────────────────────────────────────────────────────────────
+
+@Composable
+private fun PlaceSection(vm: LauncherViewModel, place: com.atelierjlg.fern.data.PlaceSettings) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Sert au widget Ciel (lever et coucher du soleil). Pas de GPS : tu indiques ta ville une fois.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        SettingRow(title = "Ville", subtitle = place.name, onClick = { editing = "name" })
+        SettingRow(title = "Latitude", subtitle = place.latitude.toString(), onClick = { editing = "lat" })
+        SettingRow(title = "Longitude", subtitle = place.longitude.toString(), onClick = { editing = "lon" })
+    }
+    editing?.let { field ->
+        TextInputDialog(
+            title = when (field) {
+                "name" -> "Ville"
+                "lat" -> "Latitude (ex. 47.2184)"
+                else -> "Longitude (ex. -1.5536)"
+            },
+            initial = when (field) {
+                "name" -> place.name
+                "lat" -> place.latitude.toString()
+                else -> place.longitude.toString()
+            },
+            onConfirm = { text ->
+                val number = text.replace(',', '.').trim().toDoubleOrNull()
+                vm.updatePlace {
+                    when (field) {
+                        "name" -> it.copy(name = text.trim().ifEmpty { it.name })
+                        "lat" -> if (number != null && number in -90.0..90.0) it.copy(latitude = number) else it
+                        else -> if (number != null && number in -180.0..180.0) it.copy(longitude = number) else it
+                    }
+                }
+                editing = null
+            },
+            onDismiss = { editing = null },
         )
     }
 }

@@ -150,6 +150,39 @@ class SearchRepository(private val context: Context) {
         return results
     }
 
+    /** Le prochain événement des 24 prochaines heures (pour le widget Contexte). */
+    fun nextEvent(): EventResult? {
+        if (!hasPermission(Manifest.permission.READ_CALENDAR)) return null
+        val now = System.currentTimeMillis()
+        val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
+        ContentUris.appendId(builder, now)
+        ContentUris.appendId(builder, now + 24L * 60 * 60 * 1000)
+        return runCatching {
+            context.contentResolver.query(
+                builder.build(),
+                arrayOf(
+                    CalendarContract.Instances.EVENT_ID,
+                    CalendarContract.Instances.TITLE,
+                    CalendarContract.Instances.BEGIN,
+                    CalendarContract.Instances.ALL_DAY,
+                ),
+                "${CalendarContract.Instances.BEGIN} >= ? AND ${CalendarContract.Instances.ALL_DAY} = 0",
+                arrayOf(now.toString()),
+                "${CalendarContract.Instances.BEGIN} ASC",
+            )?.use { c ->
+                if (!c.moveToFirst()) return@use null
+                val begin = c.getLong(2)
+                EventResult(
+                    eventId = c.getLong(0),
+                    title = c.getString(1) ?: "",
+                    begin = begin,
+                    whenLabel = Instant.ofEpochMilli(begin).atZone(ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)),
+                )
+            }
+        }.getOrNull()
+    }
+
     // ─── Raccourcis d'applis ────────────────────────────────────────────────
 
     /** Il faut que Fern soit le lanceur par défaut pour lire les raccourcis. */

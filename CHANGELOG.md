@@ -3,6 +3,23 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.7.0 (code 8) — 2026-10-06
+
+Les widgets.
+
+- **+ Widget** en mode édition (sous les boutons d'une page) :
+  - **Ciel** : le jour, l'arc du soleil avec lever ↑ et coucher ↓ ; la nuit, la phase de la lune
+    (toucher ouvre Stellarium s'il est installé). Calculé sur le téléphone, sans internet ni GPS ;
+    la ville se règle dans Paramètres → Lieu (Nantes par défaut).
+  - **Musique** : titre, artiste, pochette **en deux tons carmin et rose**, boutons ⏮ ⏯ ⏭.
+    Il faut autoriser une fois Fern dans « Accès aux notifications » (bouton dans le widget).
+  - **Contexte** : le moment de la journée, le prochain événement de l'agenda (si autorisé),
+    le coucher du soleil le soir, et une **note du jour** (toucher pour l'écrire).
+  - **Widget d'une autre appli** : tous les widgets Android installés. Android demande une
+    autorisation la première fois, puis l'appli peut proposer de le configurer.
+    En mode édition, **↕** change sa hauteur.
+- Paramètres → **Lieu (ciel)** : ville, latitude, longitude.
+
 ## v0.6.0 (code 7) — 2026-10-06
 
 Spaces et mode Focus.

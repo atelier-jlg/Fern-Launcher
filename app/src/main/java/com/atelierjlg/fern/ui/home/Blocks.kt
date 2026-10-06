@@ -85,6 +85,7 @@ fun BlockToolbar(
     onDown: () -> Unit,
     onDelete: () -> Unit,
     onRename: (() -> Unit)? = null,
+    onResize: (() -> Unit)? = null,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -96,6 +97,7 @@ fun BlockToolbar(
             modifier = Modifier.weight(1f),
         )
         if (onRename != null) GlyphButton("✎", onClick = onRename)
+        if (onResize != null) GlyphButton("↕", onClick = onResize)
         GlyphButton("↑", onClick = onUp)
         GlyphButton("↓", onClick = onDown)
         GlyphButton("✕", onClick = onDelete)

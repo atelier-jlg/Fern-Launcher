@@ -40,6 +40,7 @@ data class LauncherConfig(
     /** Bascule automatique de Space selon l'heure. */
     val spaceSchedule: SpaceSchedule = SpaceSchedule(),
     val focus: FocusSettings = FocusSettings(),
+    val place: PlaceSettings = PlaceSettings(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -123,6 +124,41 @@ data class PackBlock(
     val title: String,
     val apps: List<String?> = List(PACK_SIZE) { null },
 ) : HomeBlock()
+
+/** Un widget Android d'une autre appli (météo, agenda…). */
+@Serializable
+@SerialName("widget")
+data class AppWidgetBlock(
+    override val id: String,
+    /** Numéro attribué par Android à ce widget. */
+    val appWidgetId: Int,
+    /** L'appli qui fournit le widget (pour l'afficher en mode édition). */
+    val provider: String,
+    val heightDp: Int = 180,
+) : HomeBlock()
+
+/** Widget maison « Ciel » : arc du soleil le jour, phase de lune la nuit. */
+@Serializable
+@SerialName("ciel")
+data class SkyBlock(override val id: String) : HomeBlock()
+
+/** Widget maison « Musique » : ce qui joue, pochette en deux tons carmin et rose. */
+@Serializable
+@SerialName("musique")
+data class MusicBlock(override val id: String) : HomeBlock()
+
+/** Widget maison « Contexte » : moment de la journée, prochain événement, note du jour. */
+@Serializable
+@SerialName("contexte")
+data class ContextBlock(override val id: String, val note: String = "") : HomeBlock()
+
+/** Où se trouve Jules (pour le soleil et la lune). */
+@Serializable
+data class PlaceSettings(
+    val name: String = "Nantes",
+    val latitude: Double = 47.2184,
+    val longitude: Double = -1.5536,
+)
 
 @Serializable
 enum class DrawerStyle { Grille, Liste }

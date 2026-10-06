@@ -39,14 +39,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        viewModel.checkSchedule()
+    override fun onStart() {
+        super.onStart()
+        viewModel.onForeground()
     }
 
     override fun onStop() {
         super.onStop()
-        viewModel.flush()
+        viewModel.onBackground()
     }
 
     override fun onNewIntent(intent: Intent) {

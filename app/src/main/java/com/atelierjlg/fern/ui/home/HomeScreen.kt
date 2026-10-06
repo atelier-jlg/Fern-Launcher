@@ -53,6 +53,16 @@ import com.atelierjlg.fern.OverlayMode
 import com.atelierjlg.fern.R
 import com.atelierjlg.fern.apps.AppIndex
 import com.atelierjlg.fern.data.AppRowBlock
+import com.atelierjlg.fern.data.AppWidgetBlock
+import com.atelierjlg.fern.data.ContextBlock
+import com.atelierjlg.fern.data.MusicBlock
+import com.atelierjlg.fern.data.PlaceSettings
+import com.atelierjlg.fern.data.SkyBlock
+import com.atelierjlg.fern.ui.widgets.AppWidgetView
+import com.atelierjlg.fern.ui.widgets.ContextWidget
+import com.atelierjlg.fern.ui.widgets.MusicWidget
+import com.atelierjlg.fern.ui.widgets.SkyWidget
+import com.atelierjlg.fern.ui.widgets.WidgetAdder
 import com.atelierjlg.fern.data.ClockBlock
 import com.atelierjlg.fern.data.DOCK_SIZE
 import com.atelierjlg.fern.data.HomeBlock
@@ -275,6 +285,8 @@ private fun PageView(
     var confirmDelete by remember { mutableStateOf(false) }
     var renamingPack by remember { mutableStateOf<PackBlock?>(null) }
     var newPack by remember { mutableStateOf(false) }
+    var addingWidget by remember { mutableStateOf(false) }
+    val place = vm.config.collectAsStateWithLifecycle().value.place
 
     Column(
         Modifier
@@ -316,9 +328,10 @@ private fun PageView(
                                 onDown = { vm.moveBlock(page.id, block.id, +1) },
                                 onDelete = { vm.removeBlock(page.id, block.id) },
                                 onRename = if (block is PackBlock) ({ renamingPack = block }) else null,
+                                onResize = if (block is AppWidgetBlock) ({ vm.cycleWidgetHeight(page.id, block.id) }) else null,
                             )
                         }
-                        BlockView(page, block, apps, actions)
+                        BlockView(vm, page, block, apps, actions, place)
                     }
                 }
                 // Un pack seul sur sa ligne garde sa demi-largeur.
@@ -334,6 +347,8 @@ private fun PageView(
                 PillButton("+ Rangée", onClick = { vm.addBlock(page.id, AppRowBlock(id = newId())) })
                 PillButton("+ Horloge", onClick = { vm.addBlock(page.id, ClockBlock(id = newId())) })
             }
+            Spacer(Modifier.height(8.dp))
+            PillButton("+ Widget", onClick = { addingWidget = true })
             Spacer(Modifier.height(120.dp))
         }
     }
@@ -363,6 +378,9 @@ private fun PageView(
             onDismiss = { renamingPack = null },
         )
     }
+    if (addingWidget) {
+        WidgetAdder(vm = vm, pageId = page.id, onDone = { addingWidget = false })
+    }
     if (newPack) {
         TextInputDialog(
             title = "Nouveau pack",
@@ -378,7 +396,14 @@ private fun PageView(
 }
 
 @Composable
-private fun BlockView(page: HomePage, block: HomeBlock, apps: AppIndex, actions: SlotActions) {
+private fun BlockView(
+    vm: LauncherViewModel,
+    page: HomePage,
+    block: HomeBlock,
+    apps: AppIndex,
+    actions: SlotActions,
+    place: PlaceSettings,
+) {
     when (block) {
         is ClockBlock -> ClockView()
         is AppRowBlock -> AppRowView(
@@ -394,6 +419,29 @@ private fun BlockView(page: HomePage, block: HomeBlock, apps: AppIndex, actions:
             apps = apps,
             actions = actions,
         )
+        is SkyBlock -> SkyWidget(place)
+        is MusicBlock -> {
+            val nowPlaying by vm.nowPlaying.collectAsStateWithLifecycle()
+            val access by vm.musicAccess.collectAsStateWithLifecycle()
+            MusicWidget(
+                nowPlaying = nowPlaying,
+                hasAccess = access,
+                onPlayPause = vm::musicPlayPause,
+                onNext = { vm.musicNext() },
+                onPrevious = { vm.musicPrevious() },
+                onOpen = vm::openPackage,
+            )
+        }
+        is ContextBlock -> {
+            val nextEvent by vm.nextEvent.collectAsStateWithLifecycle()
+            ContextWidget(
+                note = block.note,
+                nextEvent = nextEvent,
+                place = place,
+                onNoteChange = { vm.setContextNote(page.id, block.id, it) },
+            )
+        }
+        is AppWidgetBlock -> AppWidgetView(vm.widgetHost, block.appWidgetId, block.heightDp)
     }
 }
 
@@ -401,6 +449,10 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is ClockBlock -> "Horloge"
     is AppRowBlock -> "Rangée"
     is PackBlock -> block.title
+    is SkyBlock -> "Ciel"
+    is MusicBlock -> "Musique"
+    is ContextBlock -> "Contexte"
+    is AppWidgetBlock -> block.provider
 }
 
 /** Regroupe les blocs en lignes : deux packs consécutifs partagent une ligne. */

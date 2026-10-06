@@ -52,13 +52,13 @@ val HomeBlock.slots: List<String?>?
     get() = when (this) {
         is AppRowBlock -> apps
         is PackBlock -> apps
-        is ClockBlock -> null
+        else -> null
     }
 
 private fun HomeBlock.withSlots(apps: List<String?>): HomeBlock = when (this) {
     is AppRowBlock -> copy(apps = apps)
     is PackBlock -> copy(apps = apps)
-    is ClockBlock -> this
+    else -> this
 }
 
 // ─── Emplacements d'applis ──────────────────────────────────────────────────
@@ -194,8 +194,9 @@ fun LauncherConfig.addSpace(name: String, copyCurrent: Boolean): LauncherConfig 
         id = newId(),
         name = name.trim().ifEmpty { "Space" },
         // Nouveaux identifiants de pages/blocs pour ne pas mélanger avec l'original.
+        // Les widgets Android ne sont pas copiés : chacun n'existe qu'à un seul endroit.
         pages = base.pages.map { page ->
-            page.copy(id = newId(), blocks = page.blocks.map { it.withNewId() })
+            page.copy(id = newId(), blocks = page.blocks.filterNot { it is AppWidgetBlock }.map { it.withNewId() })
         },
     )
     return copy(spaces = spaces + space, activeSpaceId = space.id)
@@ -205,6 +206,10 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is ClockBlock -> copy(id = newId())
     is AppRowBlock -> copy(id = newId())
     is PackBlock -> copy(id = newId())
+    is AppWidgetBlock -> copy(id = newId())
+    is SkyBlock -> copy(id = newId())
+    is MusicBlock -> copy(id = newId())
+    is ContextBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -248,3 +253,15 @@ fun LauncherConfig.updateFocus(transform: (FocusSettings) -> FocusSettings) = co
 /** Les applis cachées en ce moment : masquées + bloquées par le mode Focus. */
 val LauncherConfig.currentlyHidden: Set<String>
     get() = if (focus.enabled) hiddenApps + focus.blockedApps else hiddenApps
+
+// ─── Widgets ────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.updateBlockById(pageId: String, blockId: String, transform: (HomeBlock) -> HomeBlock) =
+    updateBlock(pageId, blockId, transform)
+
+/** Tous les numéros de widgets Android utilisés (tous Spaces confondus). */
+val LauncherConfig.usedAppWidgetIds: Set<Int>
+    get() = spaces.flatMap { it.pages }.flatMap { it.blocks }.filterIsInstance<AppWidgetBlock>()
+        .map { it.appWidgetId }.toSet()
+
+fun LauncherConfig.updatePlace(transform: (PlaceSettings) -> PlaceSettings) = copy(place = transform(place))
