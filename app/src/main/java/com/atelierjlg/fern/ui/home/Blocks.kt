@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,7 +89,29 @@ fun BlockToolbar(
     onRename: (() -> Unit)? = null,
     onResize: (() -> Unit)? = null,
     onToggleHalf: (() -> Unit)? = null,
+    /** Élément étroit (un quart de largeur) : un seul bouton « ⋯ » qui ouvre un menu. */
+    compact: Boolean = false,
 ) {
+    if (compact) {
+        var open by remember { mutableStateOf(false) }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            GlyphButton("⋯", onClick = { open = true }, size = 28.dp)
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                val items = listOfNotNull(
+                    "Avant" to onUp,
+                    "Après" to onDown,
+                    onRename?.let { "Renommer" to it },
+                    onToggleHalf?.let { "Largeur" to it },
+                    onResize?.let { "Hauteur" to it },
+                    "Supprimer" to onDelete,
+                )
+                for ((text, action) in items) {
+                    DropdownMenuItem(text = { Text(text) }, onClick = { open = false; action() })
+                }
+            }
+        }
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label.uppercase(),

@@ -159,10 +159,25 @@ data class MusicBlock(override val id: String, val half: Boolean = false) : Home
 @SerialName("contexte")
 data class ContextBlock(override val id: String, val note: String = "", val half: Boolean = false) : HomeBlock()
 
-/** Une demi-place vide : pour laisser de l'air (ou poser un sticker) à côté d'un pack. */
+/**
+ * Un espace vide : pour laisser de l'air, une ligne vide, ou poser un sticker à côté d'un pack.
+ * Largeur en colonnes (1, 2 ou 4 sur 4), hauteur en dp.
+ */
 @Serializable
 @SerialName("espace")
-data class SpacerBlock(override val id: String) : HomeBlock()
+data class SpacerBlock(
+    override val id: String,
+    val span: Int = 2,
+    val heightDp: Int = 80,
+) : HomeBlock()
+
+/** Une appli seule (un quart de largeur), à placer où on veut. */
+@Serializable
+@SerialName("appli")
+data class AppBlock(
+    override val id: String,
+    val app: String? = null,
+) : HomeBlock()
 
 /**
  * Un sticker posé librement sur une page (sans grille).

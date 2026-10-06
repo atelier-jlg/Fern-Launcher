@@ -59,9 +59,11 @@ import com.atelierjlg.fern.data.MusicBlock
 import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.SkyBlock
 import com.atelierjlg.fern.data.SpacerBlock
-import com.atelierjlg.fern.data.canToggleHalf
+import com.atelierjlg.fern.data.AppBlock
+import com.atelierjlg.fern.data.ROW_COLUMNS
+import com.atelierjlg.fern.data.canChangeWidth
+import com.atelierjlg.fern.data.span
 import com.atelierjlg.fern.data.groupRows
-import com.atelierjlg.fern.data.isHalf
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -331,7 +333,8 @@ private fun PageView(
         for (row in groupRows(page.blocks)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 for (block in row) {
-                    Column(Modifier.weight(1f)) {
+                    // Chaque élément prend sa largeur en colonnes (sur 4).
+                    Column(Modifier.weight(block.span.toFloat())) {
                         if (actions.editing) {
                             BlockToolbar(
                                 label = blockLabel(block),
@@ -339,15 +342,21 @@ private fun PageView(
                                 onDown = { vm.moveBlock(page.id, block.id, +1) },
                                 onDelete = { vm.removeBlock(page.id, block.id) },
                                 onRename = if (block is PackBlock) ({ renamingPack = block }) else null,
-                                onResize = if (block is AppWidgetBlock) ({ vm.cycleWidgetHeight(page.id, block.id) }) else null,
-                                onToggleHalf = if (block.canToggleHalf) ({ vm.toggleHalf(page.id, block.id) }) else null,
+                                onResize = when (block) {
+                                    is AppWidgetBlock -> ({ vm.cycleWidgetHeight(page.id, block.id) })
+                                    is SpacerBlock -> ({ vm.cycleSpacerHeight(page.id, block.id) })
+                                    else -> null
+                                },
+                                onToggleHalf = if (block.canChangeWidth) ({ vm.cycleWidth(page.id, block.id) }) else null,
+                                compact = block.span == 1,
                             )
                         }
                         BlockView(vm, page, block, apps, actions, place)
                     }
                 }
-                // Un élément en demi-largeur seul sur sa ligne garde sa demi-largeur.
-                if (row.size == 1 && row[0].isHalf) Spacer(Modifier.weight(1f))
+                // Les colonnes restantes de la ligne restent vides (l'élément garde sa largeur).
+                val rest = ROW_COLUMNS - row.sumOf { it.span }
+                if (rest > 0) Spacer(Modifier.weight(rest.toFloat()))
             }
             Spacer(Modifier.height(10.dp))
         }
@@ -355,6 +364,12 @@ private fun PageView(
         if (actions.editing) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("+ Appli", onClick = {
+                    // On crée l'emplacement puis on ouvre tout de suite le choix de l'appli.
+                    val block = AppBlock(id = newId())
+                    vm.addBlock(page.id, block)
+                    vm.pickFor(SlotRef.Block(page.id, block.id, 0))
+                })
                 PillButton("+ Pack", onClick = { newPack = true })
                 PillButton("+ Rangée", onClick = { vm.addBlock(page.id, AppRowBlock(id = newId())) })
                 PillButton("+ Horloge", onClick = { vm.addBlock(page.id, ClockBlock(id = newId())) })
@@ -363,7 +378,7 @@ private fun PageView(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton("+ Widget", onClick = { addingWidget = true })
                 PillButton("+ Sticker", onClick = { stickerPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                PillButton("+ Espace", onClick = { vm.addBlock(page.id, SpacerBlock(id = newId())) })
+                PillButton("+ Espace", onClick = { vm.addBlock(page.id, SpacerBlock(id = newId(), span = 4)) })
             }
             Spacer(Modifier.height(120.dp))
         }
@@ -468,14 +483,23 @@ private fun BlockView(
             )
         }
         is AppWidgetBlock -> AppWidgetView(vm.widgetHost, block.appWidgetId, block.heightDp)
-        is SpacerBlock -> if (actions.editing) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .border(1.dp, Fern.colors.moussePale, RoundedCornerShape(28.dp)),
-            )
-        }
+        is SpacerBlock -> Box(
+            Modifier
+                .fillMaxWidth()
+                .height(block.heightDp.dp)
+                .then(
+                    // Invisible hors mode édition ; en édition, un cadre pour le repérer.
+                    if (actions.editing) Modifier.border(1.dp, Fern.colors.moussePale, RoundedCornerShape(20.dp)) else Modifier,
+                ),
+        )
+        is AppBlock -> Slot(
+            app = apps.find(block.app),
+            ref = SlotRef.Block(page.id, block.id, 0),
+            iconSize = 54.dp,
+            showLabel = true,
+            actions = actions,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -488,6 +512,7 @@ private fun blockLabel(block: HomeBlock) = when (block) {
     is ContextBlock -> "Contexte"
     is AppWidgetBlock -> block.provider
     is SpacerBlock -> "Espace"
+    is AppBlock -> "Appli"
 }
 
 @Composable

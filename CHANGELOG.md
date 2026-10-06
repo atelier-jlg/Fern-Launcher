@@ -3,6 +3,19 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.10.0 (code 12) — 2026-10-06
+
+Placement plus libre.
+
+- **Lignes de 4 colonnes** : chaque élément prend 1 (quart), 2 (demi) ou 4 colonnes (ligne entière),
+  et les éléments se suivent sur la même ligne tant qu'il reste de la place.
+- **+ Espace** ajoute une **ligne vide** : **⇔** change sa largeur (entière → demi → quart),
+  **↕** sa hauteur (40 → 80 → 120 → 200 dp). Invisible hors mode édition.
+  Exemple : horloge, puis une ligne vide, puis ta rangée d'applis.
+- **+ Appli** : une appli seule (un quart de largeur), à placer où tu veux, à côté d'autres applis,
+  d'un pack ou d'un widget. Le choix de l'appli s'ouvre aussitôt.
+- Les éléments étroits ont un menu **⋯** (avant, après, largeur, hauteur, supprimer).
+
 ## v0.9.0 (code 11) — 2026-10-06
 
 Côte à côte et stickers.

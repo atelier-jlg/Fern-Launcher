@@ -52,12 +52,14 @@ val HomeBlock.slots: List<String?>?
     get() = when (this) {
         is AppRowBlock -> apps
         is PackBlock -> apps
+        is AppBlock -> listOf(app)
         else -> null
     }
 
 private fun HomeBlock.withSlots(apps: List<String?>): HomeBlock = when (this) {
     is AppRowBlock -> copy(apps = apps)
     is PackBlock -> copy(apps = apps)
+    is AppBlock -> copy(app = apps.firstOrNull())
     else -> this
 }
 
@@ -95,6 +97,7 @@ fun LauncherConfig.freeDestinations(): List<Destination> {
             val free = (0 until PACK_SIZE).firstOrNull { slots.getOrNull(it) == null } ?: continue
             val name = when (block) {
                 is PackBlock -> "${page.title} · ${block.title}"
+                is AppBlock -> "${page.title} · emplacement d'appli"
                 else -> "${page.title} · rangée d'applis"
             }
             result += Destination(name, SlotRef.Block(page.id, block.id, free))
@@ -211,6 +214,7 @@ private fun HomeBlock.withNewId(): HomeBlock = when (this) {
     is MusicBlock -> copy(id = newId())
     is ContextBlock -> copy(id = newId())
     is SpacerBlock -> copy(id = newId())
+    is AppBlock -> copy(id = newId())
 }
 
 fun LauncherConfig.renameSpace(spaceId: String, name: String) =
@@ -277,51 +281,66 @@ fun LauncherConfig.setAppFamily(key: String, family: Family?) =
 
 // ─── Demi-largeur & stickers ────────────────────────────────────────────────
 
-/** Les éléments qui tiennent en demi-largeur (2×2) et peuvent se mettre côte à côte. */
-val HomeBlock.isHalf: Boolean
+/** Une ligne de l'accueil fait 4 colonnes. */
+const val ROW_COLUMNS = 4
+
+/**
+ * Largeur d'un élément, en colonnes sur 4 : 4 = ligne entière, 2 = demi (2×2), 1 = quart.
+ * Les éléments consécutifs se rangent sur la même ligne tant qu'il reste de la place.
+ */
+val HomeBlock.span: Int
     get() = when (this) {
-        is PackBlock, is SpacerBlock -> true
-        is AppWidgetBlock -> half
-        is SkyBlock -> half
-        is MusicBlock -> half
-        is ContextBlock -> half
-        is ClockBlock, is AppRowBlock -> false
+        is PackBlock -> 2
+        is AppBlock -> 1
+        is SpacerBlock -> span.coerceIn(1, ROW_COLUMNS)
+        is AppWidgetBlock -> if (half) 2 else 4
+        is SkyBlock -> if (half) 2 else 4
+        is MusicBlock -> if (half) 2 else 4
+        is ContextBlock -> if (half) 2 else 4
+        is ClockBlock, is AppRowBlock -> 4
     }
 
-/** Peut-on passer cet élément de pleine largeur à demi-largeur (et inversement) ? */
-val HomeBlock.canToggleHalf: Boolean
-    get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock
+/** Peut-on changer la largeur de cet élément (bouton ⇔) ? */
+val HomeBlock.canChangeWidth: Boolean
+    get() = this is AppWidgetBlock || this is SkyBlock || this is MusicBlock || this is ContextBlock || this is SpacerBlock
 
-fun LauncherConfig.toggleHalf(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
+/** Bouton ⇔ : widgets entier ↔ demi ; espaces entier → demi → quart → entier. */
+fun LauncherConfig.cycleWidth(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
     when (b) {
         is AppWidgetBlock -> b.copy(half = !b.half)
         is SkyBlock -> b.copy(half = !b.half)
         is MusicBlock -> b.copy(half = !b.half)
         is ContextBlock -> b.copy(half = !b.half)
+        is SpacerBlock -> b.copy(span = when (b.span) { 4 -> 2; 2 -> 1; else -> 4 })
         else -> b
     }
 }
 
-/** Regroupe les blocs en lignes : deux éléments en demi-largeur consécutifs partagent une ligne. */
+/** Bouton ↕ d'un espace : 40 → 80 → 120 → 200 dp. */
+fun LauncherConfig.cycleSpacerHeight(pageId: String, blockId: String) = updateBlock(pageId, blockId) { b ->
+    if (b is SpacerBlock) {
+        val heights = listOf(40, 80, 120, 200)
+        b.copy(heightDp = heights[(heights.indexOf(b.heightDp) + 1).mod(heights.size)])
+    } else {
+        b
+    }
+}
+
+/** Regroupe les blocs en lignes de 4 colonnes, dans l'ordre. */
 fun groupRows(blocks: List<HomeBlock>): List<List<HomeBlock>> {
     val rows = mutableListOf<List<HomeBlock>>()
-    var pending: HomeBlock? = null
+    var current = mutableListOf<HomeBlock>()
+    var used = 0
     for (block in blocks) {
-        if (block.isHalf) {
-            val waiting = pending
-            if (waiting == null) {
-                pending = block
-            } else {
-                rows.add(listOf(waiting, block))
-                pending = null
-            }
-        } else {
-            pending?.let { rows.add(listOf(it)) }
-            pending = null
-            rows.add(listOf(block))
+        if (used + block.span > ROW_COLUMNS && current.isNotEmpty()) {
+            rows.add(current)
+            current = mutableListOf()
+            used = 0
         }
+        current.add(block)
+        used += block.span
     }
-    pending?.let { rows.add(listOf(it)) }
+    if (current.isNotEmpty()) rows.add(current)
     return rows
 }
 

@@ -148,10 +148,30 @@ class ConfigEditsTest {
     }
 
     @Test
-    fun toggleHalfAndStickers() {
+    fun appsAndSpacersFillColumns() {
+        val blocks = listOf(
+            AppBlock("a1"), AppBlock("a2"), PackBlock("p", "P"),
+            SpacerBlock("ligne", span = 4, heightDp = 80),
+            AppBlock("a3"), SpacerBlock("q", span = 1), AppBlock("a4"), AppBlock("a5"), AppBlock("a6"),
+        )
+        val rows = groupRows(blocks).map { row -> row.map { it.id } }
+        assertEquals(
+            listOf(listOf("a1", "a2", "p"), listOf("ligne"), listOf("a3", "q", "a4", "a5"), listOf("a6")),
+            rows,
+        )
+        val config = sample().addBlock("p1", SpacerBlock("e", span = 4))
+        val cycled = config.cycleWidth("p1", "e").cycleWidth("p1", "e")
+        assertEquals(1, cycled.activeSpace.pages[0].blocks.last().span)
+        val slot = SlotRef.Block("p1", "x", 0)
+        val withApp = sample().addBlock("p1", AppBlock("x")).setSlot(slot, "cam@0")
+        assertEquals("cam@0", withApp.slotValue(slot))
+    }
+
+    @Test
+    fun widthAndStickers() {
         val withSky = sample().addBlock("p1", SkyBlock("s"))
-        val toggled = withSky.toggleHalf("p1", "s")
-        assertTrue(toggled.activeSpace.pages[0].blocks.last().isHalf)
+        val toggled = withSky.cycleWidth("p1", "s")
+        assertEquals(2, toggled.activeSpace.pages[0].blocks.last().span)
         val sticker = Sticker("st", "chat.png")
         val moved = toggled.addSticker("p1", sticker).updateSticker("p1", sticker.copy(x = 0.2f))
         assertEquals(0.2f, moved.activeSpace.pages[0].stickers.single().x)

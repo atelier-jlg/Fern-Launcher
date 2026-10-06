@@ -47,7 +47,8 @@ import com.atelierjlg.fern.data.FernJson
 import com.atelierjlg.fern.data.Sticker
 import com.atelierjlg.fern.data.addSticker
 import com.atelierjlg.fern.data.removeSticker
-import com.atelierjlg.fern.data.toggleHalf
+import com.atelierjlg.fern.data.cycleSpacerHeight
+import com.atelierjlg.fern.data.cycleWidth
 import com.atelierjlg.fern.data.updateSticker
 import com.atelierjlg.fern.data.usedStickerFiles
 import java.io.File
@@ -588,7 +589,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun freeDestinations() = config.value.freeDestinations()
 
-    fun toggleHalf(pageId: String, blockId: String) = store.update { it.toggleHalf(pageId, blockId) }
+    fun cycleWidth(pageId: String, blockId: String) = store.update { it.cycleWidth(pageId, blockId) }
+
+    fun cycleSpacerHeight(pageId: String, blockId: String) = store.update { it.cycleSpacerHeight(pageId, blockId) }
 
     // ─── Stickers ────────────────────────────────────────────────────────────
 
