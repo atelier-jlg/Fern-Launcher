@@ -97,16 +97,27 @@ Débutant complet en Kotlin/Android. Connaît Python, HTML/CSS, un peu de C# (Ar
 ## Architecture (à garder simple)
 ```
 app/src/main/java/com/atelierjlg/fern/
-├── MainActivity.kt          l'unique écran (catégorie HOME)
-├── LauncherViewModel.kt     l'état (tiroir ouvert ?) et les actions
-├── apps/                    liste des applis (LauncherApps), recherche, lancement
+├── MainActivity.kt          l'unique écran (catégorie HOME), applique le thème
+├── LauncherViewModel.kt     l'état et toutes les actions (le « cerveau »)
+├── apps/                    liste des applis (LauncherApps), AppIndex (renommées/masquées), recherche, tiroir
+├── data/                    LauncherConfig (tout est là, en JSON), ConfigEdits (fonctions pures testées),
+│                            ConfigStore (fichier fern-config.json), DefaultLayout, ThemeData
+├── search/                  calculatrice, contacts / agenda / raccourcis
+├── system/                  accessibilité (verrouiller), notifications (musique), actions système
+├── widgets/                 hôte des widgets Android, musique en cours, calculs soleil/lune
 └── ui/
-    ├── LauncherRoot.kt      assemble accueil + tiroir
-    ├── home/                page d'accueil, gestes, horloge
-    ├── drawer/              tiroir + recherche
-    └── theme/               FernColors (couleurs), FernType (police Bricolage Grotesque)
+    ├── LauncherRoot.kt      empile : accueil, tiroir (bas), recherche (haut), Paramètres, sélecteur
+    ├── home/                pages, blocs (packs, rangées, horloge), dock, mode édition, roue d'applis
+    ├── drawer/              tiroir, panneau de recherche, résultats
+    ├── settings/            onglet Paramètres (thème, Spaces, Focus, gestes, recherche, tiroir, lieu, sauvegarde)
+    ├── widgets/             widgets maison (Ciel, Musique, Contexte) + affichage des widgets Android
+    ├── common/              petits composants réutilisés (icône, pilule, dialogues, sélecteur d'applis)
+    └── theme/               FernColors, FernType (Bricolage Grotesque)
 ```
-- Les couleurs passent **toujours** par `Fern.colors.xxx`, jamais en dur : elles deviendront réglables.
+- **Toute la configuration** vit dans `LauncherConfig` (JSON). Chaque champ a une valeur par défaut :
+  ajouter un champ ne casse jamais un ancien fichier. Modifications = fonctions pures dans `ConfigEdits.kt`,
+  avec tests dans `app/src/test`.
+- Les couleurs passent **toujours** par `Fern.colors.xxx`, jamais en dur : elles viennent du thème actif.
 - Police : `res/font/bricolage_grotesque.ttf` (variable : graisse + largeur 75–100 %). Licence OFL dans `design/`.
 
 ## Versions
@@ -123,12 +134,17 @@ app/src/main/java/com/atelierjlg/fern/
   localement, on s'appuie sur la CI. Pour compiler en local, autoriser `dl.google.com` dans le réseau de l'environnement.
 
 ## Feuille de route
-1. ✅ Socle : projet, CI, APK numéroté, kit dans le dépôt.
-2. 🟡 Cœur : lanceur HOME, liste des applis à jour, lancer / infos / désinstaller. *(v0.1.0)*
-3. Accueil : pages, dock, packs et dossiers, mode édition (glisser-déposer).
-4. Tiroir : styles (grille, liste, pages, tuiles), sections, A–Z, tri par fréquence, applis masquées, renommer.
-5. Recherche globale : contacts, agenda (ICSx⁵), raccourcis, calculatrice.
-6. Gestes (double appui → verrouiller, etc.) + roue radiale.
-7. Paramètres : thèmes, thèmes prédéfinis, export/import de thème, sauvegarde/restauration.
-8. Spaces + planning horaire + mode Focus.
-9. Widgets : d'abord les widgets Android d'autres applis, puis les widgets maison (Contexte, Musique, Ciel…).
+1. ✅ Socle : projet, CI, APK numéroté, kit dans le dépôt. *(v0.1.x)*
+2. ✅ Accueil : pages, dock, packs, mode édition dans l'appli. *(v0.2.0)*
+3. ✅ Tiroir : grille/liste, A–Z, fréquence, masquer, renommer. *(v0.3.0)*
+4. ✅ Recherche : panneau qui descend du haut, applis puis Firefox ; recherche étendue en option. *(v0.4.0)*
+5. ✅ Gestes + roue d'applis + Paramètres + thèmes (export/import) + sauvegarde. *(v0.5.0)*
+6. ✅ Spaces + planning + Focus. *(v0.6.0)*
+7. ✅ Widgets : Ciel, Musique, Contexte, widgets Android. *(v0.7.0)*
+8. À venir : plaques d'icônes rondes par famille (guide Renkin), stickers PNG, widgets Alternance /
+   Révisions (AnkiDroid) / Carnet, glisser-déposer libre en mode édition.
+
+## Décisions de détail (session du 2026-10-06)
+- Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un
+  **lien** dans Firefox (pour que la navigation privée des liens externes s'applique). Moteur par défaut DuckDuckGo.
+- Contacts / agenda / raccourcis / calcul : « recherche étendue », **désactivée par défaut**.
