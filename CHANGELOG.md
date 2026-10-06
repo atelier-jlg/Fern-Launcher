@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.7.1 (code 9) — 2026-10-06
+
+- Les titres de pages (Journée, Pratique…) ne sont plus affichés en gros :
+  simple libellé discret en capitales au-dessus des packs.
+
 ## v0.7.0 (code 8) — 2026-10-06
 
 Les widgets.

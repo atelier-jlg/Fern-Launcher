@@ -313,8 +313,14 @@ private fun PageView(
             }
             Spacer(Modifier.height(12.dp))
         } else if (index > 0 && page.title.isNotBlank()) {
-            Text(page.title.uppercase(), style = Fern.type.titrePage, color = colors.creme)
-            Spacer(Modifier.height(12.dp))
+            // Titre discret : un simple libellé en capitales (pas de grand titre).
+            Text(
+                page.title.uppercase(),
+                style = Fern.type.libelle,
+                color = colors.lichen,
+                modifier = Modifier.padding(start = 6.dp),
+            )
+            Spacer(Modifier.height(10.dp))
         }
 
         for (row in groupRows(page.blocks)) {
