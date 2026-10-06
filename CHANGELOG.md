@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.22.1 (code 33) — 2026-10-06
+
+- **Paramètres → Thème** : noms de couleurs universels (Fond, Cartes, Boutons, Séparateurs, Texte,
+  Texte secondaire, Texte discret, Accent, Accent foncé, Accent clair), sans les noms « nuit », « lichen »…
+- **Couleurs des familles** déplacées dans **Paramètres → Familles** : en dépliant une famille,
+  « Couleur de la plaque » et « Couleur du picto » (toujours enregistrées dans le thème actif).
+
 ## v0.22.0 (code 32) — 2026-10-06
 
 - **Paramètres → Familles** : chaque famille avec sa couleur et son nombre d'applis.

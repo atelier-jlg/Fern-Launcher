@@ -50,11 +50,13 @@ fun FamiliesSection(vm: LauncherViewModel, config: LauncherConfig) {
     var renaming by remember { mutableStateOf<Family?>(null) }
     var adding by remember { mutableStateOf<Family?>(null) }
     var moving by remember { mutableStateOf<AppEntry?>(null) }
+    var editingColor by remember { mutableStateOf<Pair<String, String>?>(null) }
     val colors = Fern.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Touche une famille pour voir ses applis. « Changer » déplace une appli ; ce que tu choisis passe avant le classement automatique.",
+            "Touche une famille pour régler ses couleurs et voir ses applis. « Changer » déplace une appli ; " +
+                "ce que tu choisis passe avant le classement automatique. Les couleurs font partie du thème actif.",
             style = Fern.type.nomApp,
             color = colors.lichen,
         )
@@ -78,6 +80,23 @@ fun FamiliesSection(vm: LauncherViewModel, config: LauncherConfig) {
             }
             if (open == family) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(start = 12.dp)) {
+                    // Les couleurs de la famille (plaque + picto), enregistrées dans le thème actif.
+                    for ((label, key, hex) in config.theme.colors.familyEntries(family)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colors.mousse, RoundedCornerShape(16.dp))
+                                .clickable { editingColor = key to hex }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(label, style = Fern.type.corps, color = colors.creme)
+                                Text(hex, style = Fern.type.nomApp, color = colors.lichen)
+                            }
+                            Swatch(hex)
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PillButton("Renommer", onClick = { renaming = family })
                         PillButton("+ Ajouter une appli", onClick = { adding = family }, accent = true)
@@ -91,6 +110,13 @@ fun FamiliesSection(vm: LauncherViewModel, config: LauncherConfig) {
         }
     }
 
+    editingColor?.let { (key, hex) ->
+        ColorDialog(
+            initial = hex,
+            onConfirm = { vm.setThemeColor(key, it); editingColor = null },
+            onDismiss = { editingColor = null },
+        )
+    }
     renaming?.let { family ->
         TextInputDialog(
             title = "Nom de la famille (vide = « ${family.label} »)",

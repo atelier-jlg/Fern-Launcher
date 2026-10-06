@@ -254,11 +254,11 @@ private fun <T> ChoiceDialog(
     )
 }
 
-private fun parseColor(hex: String): Color =
+internal fun parseColor(hex: String): Color =
     runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(Color.Gray)
 
 @Composable
-private fun Swatch(hex: String, size: Int = 26) {
+internal fun Swatch(hex: String, size: Int = 26) {
     Box(
         Modifier
             .size(size.dp)

@@ -25,23 +25,26 @@ data class ThemeColors(
 ) {
     fun familyColors(family: Family): FamilyColors = families[family] ?: FamilyColors(family.plate, family.trait)
 
-    /** Les couleurs sous forme de liste (nom affiché, clé, valeur), pour l'éditeur. */
+    /** Les couleurs générales sous forme de liste (nom affiché, clé, valeur), pour l'éditeur de thème. */
     fun entries(): List<Triple<String, String, String>> = listOf(
-        Triple("Fond (nuit)", "nuit", nuit),
-        Triple("Cartes (mousse)", "mousse", mousse),
-        Triple("Pilules (lierre)", "lierre", lierre),
-        Triple("Séparateurs (sous-bois)", "sousBois", sousBois),
-        Triple("Texte (crème)", "creme", creme),
-        Triple("Texte secondaire (lichen)", "lichen", lichen),
-        Triple("Texte discret (mousse pâle)", "moussePale", moussePale),
-        Triple("Accent (rose carmin)", "roseCarmin", roseCarmin),
-        Triple("Accent foncé (carmin)", "carmin", carmin),
-        Triple("Accent clair (pistache)", "pistache", pistache),
-    ) + Family.entries.flatMap { f ->
+        Triple("Fond", "nuit", nuit),
+        Triple("Cartes", "mousse", mousse),
+        Triple("Boutons", "lierre", lierre),
+        Triple("Séparateurs", "sousBois", sousBois),
+        Triple("Texte", "creme", creme),
+        Triple("Texte secondaire", "lichen", lichen),
+        Triple("Texte discret", "moussePale", moussePale),
+        Triple("Accent", "roseCarmin", roseCarmin),
+        Triple("Accent foncé", "carmin", carmin),
+        Triple("Accent clair", "pistache", pistache),
+    )
+
+    /** Les deux couleurs d'une famille (plaque, picto), pour Paramètres → Familles. */
+    fun familyEntries(f: Family): List<Triple<String, String, String>> {
         val c = familyColors(f)
-        listOf(
-            Triple("Plaque · ${f.label}", "plaque:${f.name}", c.plate),
-            Triple("Picto · ${f.label}", "trait:${f.name}", c.trait),
+        return listOf(
+            Triple("Couleur de la plaque", "plaque:${f.name}", c.plate),
+            Triple("Couleur du picto", "trait:${f.name}", c.trait),
         )
     }
 
