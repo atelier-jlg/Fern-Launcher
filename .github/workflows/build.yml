@@ -2,6 +2,8 @@
 #
 # - À chaque push : l'APK est disponible dans l'onglet « Actions » (section Artifacts).
 # - Sur un tag « v0.2.0 » : une « Release » est créée avec l'APK à télécharger.
+# - Sur un push (hors pull request) avec un numéro de version pas encore publié : la Release
+#   (et son tag) sont créés automatiquement, avec l'APK signé.
 name: Build APK
 
 on:
@@ -47,6 +49,15 @@ jobs:
             exit 1
           fi
 
+      - name: Cette version est-elle déjà publiée ?
+        id: published
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${{ steps.version.outputs.name }}" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Préparer la clé de signature
         env:
           KEYSTORE_BASE64: ${{ secrets.FERN_KEYSTORE_BASE64 }}
@@ -75,9 +86,13 @@ jobs:
           if-no-files-found: error
 
       - name: Publier la Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'push' && env.SIGNATURE == '' && steps.published.outputs.exists == 'false')
         uses: softprops/action-gh-release@v2
         with:
           name: Fern Launcher v${{ steps.version.outputs.name }}
+          tag_name: v${{ steps.version.outputs.name }}
+          target_commitish: ${{ github.sha }}
           files: app/build/outputs/apk/release/*.apk
           generate_release_notes: true
