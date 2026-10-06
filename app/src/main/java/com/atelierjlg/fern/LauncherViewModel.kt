@@ -65,7 +65,11 @@ import com.atelierjlg.fern.data.hasMaison
 import com.atelierjlg.fern.data.startPomodoro
 import com.atelierjlg.fern.data.stopPomodoro
 import com.atelierjlg.fern.data.tickPomodoro
-import com.atelierjlg.fern.data.toggleChore
+import com.atelierjlg.fern.data.ChatEvent
+import com.atelierjlg.fern.data.applyChatEvents
+import com.atelierjlg.fern.data.removeSentChatEvents
+import com.atelierjlg.fern.data.toggleChoreShared
+import com.atelierjlg.fern.widgets.ChatRelay
 import com.atelierjlg.fern.data.updateChat
 import com.atelierjlg.fern.data.updateCours
 import com.atelierjlg.fern.data.updatePomodoroSettings
@@ -276,7 +280,82 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun updateChat(transform: (ChatSettings) -> ChatSettings) = store.update { it.updateChat(transform) }
 
-    fun toggleChore(index: Int) = store.update { it.toggleChore(todayIso(), index) }
+    /** Coche une tâche ; si le partage est actif, l'autre téléphone est prévenu tout de suite. */
+    fun toggleChore(index: Int) {
+        store.update { it.toggleChoreShared(todayIso(), index, deviceId) }
+        syncChat()
+    }
+
+    /**
+     * Identifiant de CE téléphone, tiré au hasard une fois. Gardé hors de la config :
+     * ainsi, même si ta compagne importe ta sauvegarde, vos deux Fern restent distincts.
+     */
+    private val deviceId: String by lazy {
+        val prefs = getApplication<Application>().getSharedPreferences("fern-device", android.content.Context.MODE_PRIVATE)
+        prefs.getString("id", null) ?: ChatRelay.newDeviceId().also { prefs.edit().putString("id", it).apply() }
+    }
+
+    /** Fern est-il à l'écran ? (On ne lit le relais que dans ce cas : économie de batterie.) */
+    private var inForeground = false
+    private var syncing = false
+    private var syncAgain = false
+
+    /**
+     * Partage du chat : envoie les changements en attente, puis lit ceux de l'autre téléphone.
+     * Appelé au retour sur l'accueil, toutes les 30 s tant qu'il est affiché, et après chaque case cochée.
+     */
+    fun syncChat() {
+        val sync = config.value.chat.sync
+        if (!sync.enabled || sync.topic.isBlank()) return
+        if (syncing) {
+            // Une relève est déjà en cours : on en refera une juste après (pour la case qu'on vient de cocher).
+            syncAgain = true
+            return
+        }
+        syncing = true
+        viewModelScope.launch {
+            try {
+                val sent = withContext(Dispatchers.IO) {
+                    val ok = mutableListOf<ChatEvent>()
+                    for (event in sync.pending) {
+                        if (ChatRelay.send(sync.server, sync.topic, event)) ok += event else break
+                    }
+                    ok
+                }
+                if (sent.isNotEmpty()) store.update { it.removeSentChatEvents(sent) }
+                val received = withContext(Dispatchers.IO) { ChatRelay.poll(sync.server, sync.topic, config.value.chat.sync.lastId) }
+                if (received != null) store.update { it.applyChatEvents(received.first, received.second, deviceId) }
+            } finally {
+                syncing = false
+                if (syncAgain) {
+                    syncAgain = false
+                    syncChat()
+                }
+            }
+        }
+    }
+
+    /** Crée un partage (nouveau code secret) ou en rejoint un (code reçu). */
+    fun startChatSync(code: String?) {
+        val topic = code?.let { ChatRelay.parseCode(it) } ?: if (code == null) ChatRelay.newTopic() else null
+        if (topic == null) {
+            toast("Code invalide")
+            return
+        }
+        store.update { c ->
+            c.updateChat {
+                it.copy(sync = it.sync.copy(enabled = true, topic = topic, lastId = "", pending = emptyList()))
+            }
+        }
+        syncChat()
+    }
+
+    fun stopChatSync() = store.update { c -> c.updateChat { it.copy(sync = it.sync.copy(enabled = false, pending = emptyList())) } }
+
+    /** Ouvre le menu « Partager » d'Android avec ce texte (Signal, SMS…). */
+    fun shareText(text: String) = startSafely(
+        Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null),
+    )
 
     /** Copie une image (ou animation GIF / WebP) choisie pour le chat dans le dossier des stickers. */
     fun importChatImage(pose: CatPose, uri: Uri) {
@@ -345,6 +424,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     // Placé après les propriétés ci-dessus : en Kotlin, un bloc init ne voit que ce qui est déclaré avant lui.
     init {
+        // Partage du chat : on relève la boîte aux lettres toutes les 30 s, si Fern est à l'écran.
+        viewModelScope.launch {
+            while (true) {
+                delay(30_000L)
+                if (inForeground) syncChat()
+            }
+        }
         // Pomodoro : on regarde toutes les 10 secondes si une phase est finie.
         viewModelScope.launch {
             while (true) {
@@ -415,6 +501,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refreshCours()
         refreshScreenTime()
         if (config.value.pomodoro.phase != PomodoroPhase.Arret) tickPomodoro()
+        inForeground = true
+        syncChat()
         widgetHost.startListening()
         music.start()
         checkSchedule()
@@ -422,6 +510,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     /** Fern passe en arrière-plan. */
     fun onBackground() {
+        inForeground = false
         widgetHost.stopListening()
         flush()
     }

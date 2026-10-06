@@ -374,6 +374,28 @@ fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
                 if (file != null) GlyphButton("✕", onClick = { vm.updateChat { it.copy(images = it.images - pose) } })
             }
         }
+        Text("PARTAGE", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        if (!settings.sync.enabled) {
+            Text(
+                "Partage les cases avec quelqu'un qui a aussi Fern (ta compagne par exemple) : quand l'un coche « Gamelle », " +
+                    "la case se coche chez l'autre. Passe par ntfy.sh (libre, sans compte) ; seuls la date et le nom de la tâche circulent.",
+                style = Fern.type.nomApp,
+                color = Fern.colors.lichen,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("Créer un partage", onClick = { vm.startChatSync(null) }, accent = true)
+                PillButton("Rejoindre", onClick = { editing = "join" })
+            }
+        } else {
+            Row2("Code du partage", settings.sync.topic + " · toucher pour l'envoyer", onClick = {
+                vm.shareText("Code Fern pour le widget Chat (Paramètres → Le chat → Rejoindre) : ${settings.sync.topic}")
+            })
+            Row2("Serveur", settings.sync.server, onClick = { editing = "server" })
+            if (settings.sync.pending.isNotEmpty()) {
+                Text("${settings.sync.pending.size} changement(s) en attente de réseau", style = Fern.type.nomApp, color = Fern.colors.lichen)
+            }
+            PillButton("Arrêter le partage", onClick = { vm.stopChatSync() })
+        }
         Text("TÂCHES DU JOUR", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
         Text(
             "La 1re tâche, c'est le repas : quand elle est cochée, le chat a un petit cœur et une bouille contente.",
@@ -386,11 +408,29 @@ fun ChatSection(vm: LauncherViewModel, settings: ChatSettings) {
     }
     editing?.let { field ->
         TextInputDialog(
-            title = if (field == "name") "Nom du chat" else "Tâche (vide = aucune)",
-            initial = if (field == "name") settings.name else settings.chores.getOrNull(field.substringAfter(':').toInt()) ?: "",
+            title = when (field) {
+                "name" -> "Nom du chat"
+                "join" -> "Code reçu (fern-chat-…)"
+                "server" -> "Serveur ntfy (le même des deux côtés)"
+                else -> "Tâche (vide = aucune)"
+            },
+            initial = when (field) {
+                "name" -> settings.name
+                "join" -> ""
+                "server" -> settings.sync.server
+                else -> settings.chores.getOrNull(field.substringAfter(':').toInt()) ?: ""
+            },
             onConfirm = { text ->
+                if (field == "join") {
+                    vm.startChatSync(text)
+                    editing = null
+                    return@TextInputDialog
+                }
                 vm.updateChat { c ->
-                    if (field == "name") {
+                    if (field == "server") {
+                        val url = text.trim().trimEnd('/')
+                        if (url.startsWith("https://")) c.copy(sync = c.sync.copy(server = url, lastId = "")) else c
+                    } else if (field == "name") {
                         c.copy(name = text.trim().ifEmpty { c.name })
                     } else {
                         val i = field.substringAfter(':').toInt()

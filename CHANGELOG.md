@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.16.0 (code 18) — 2026-10-06
+
+- **Chat partagé** : Paramètres → Le chat → Partage. « Créer un partage » donne un code secret
+  (fern-chat-…) à envoyer à ta compagne ; sur son Fern : « Rejoindre » + le code.
+  Quand l'un coche « Gamelle », la case se coche chez l'autre (et le chat a son cœur des deux côtés).
+  Dans les deux sens, aussi pour décocher. Passe par **ntfy.sh** (libre, sans compte) : rien dans les SMS.
+  Fern relève les changements quand l'accueil est affiché (toutes les 30 s) ; sans réseau, ils partent plus tard.
+
 ## v0.15.0 (code 17) — 2026-10-06
 
 - **Le chat nourri** : quand la 1re tâche (Gamelle) est cochée, il a une **bouille contente**

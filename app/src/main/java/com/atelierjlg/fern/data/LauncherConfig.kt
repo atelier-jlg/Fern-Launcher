@@ -261,6 +261,38 @@ data class ChatSettings(
     val chores: List<String> = listOf("Gamelle", "Litière"),
     /** Jour (2026-10-06) → tâches faites. On garde 14 jours. */
     val done: Map<String, Set<Int>> = emptyMap(),
+    /** Partage des cases avec un proche (ex. ta compagne), via un relais ntfy. */
+    val sync: ChatSync = ChatSync(),
+)
+
+/** Un changement de case, envoyé à l'autre téléphone : ce jour-là, telle tâche, cochée ou non. */
+@Serializable
+data class ChatEvent(
+    /** Jour (2026-10-06). */
+    val d: String,
+    /** Numéro de la tâche, et son nom (on retrouve la tâche par son nom si l'ordre diffère). */
+    val i: Int,
+    val n: String = "",
+    /** true = cochée. */
+    val v: Boolean,
+    /** Le téléphone qui l'a envoyé (pour ignorer nos propres messages). */
+    val from: String,
+)
+
+/**
+ * Le partage du widget Chat entre deux Fern. Les deux téléphones écoutent le même « sujet » ntfy
+ * (un nom secret tiré au hasard) : quand l'un coche, il publie le changement, l'autre le lit.
+ */
+@Serializable
+data class ChatSync(
+    val enabled: Boolean = false,
+    val server: String = "https://ntfy.sh",
+    /** Le code secret partagé (ex. fern-chat-k3v9…). */
+    val topic: String = "",
+    /** Dernier message lu (identifiant ntfy), pour ne relire que les nouveaux. */
+    val lastId: String = "",
+    /** Changements pas encore envoyés (pas de réseau) : renvoyés à la prochaine occasion. */
+    val pending: List<ChatEvent> = emptyList(),
 )
 
 @Serializable

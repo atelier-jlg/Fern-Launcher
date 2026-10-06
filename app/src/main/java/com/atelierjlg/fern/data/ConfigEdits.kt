@@ -406,12 +406,45 @@ fun LauncherConfig.updateScreenTime(transform: (ScreenTimeSettings) -> ScreenTim
     copy(screenTime = transform(screenTime))
 
 /** Coche / décoche une tâche du chat pour ce jour (on garde 14 jours). */
-fun LauncherConfig.toggleChore(date: String, index: Int): LauncherConfig {
-    val today = chat.done[date].orEmpty()
-    val updated = if (index in today) today - index else today + index
+fun LauncherConfig.toggleChore(date: String, index: Int): LauncherConfig =
+    setChore(date, index, index !in chat.done[date].orEmpty())
+
+/** Met une tâche du chat dans l'état voulu (cochée ou non). */
+fun LauncherConfig.setChore(date: String, index: Int, value: Boolean): LauncherConfig {
+    val day = chat.done[date].orEmpty()
+    val updated = if (value) day + index else day - index
     val done = (chat.done + (date to updated)).toSortedMap().entries.toList().takeLast(14).associate { it.key to it.value }
     return copy(chat = chat.copy(done = done))
 }
+
+/** Coche une case ici ET prépare le message pour l'autre téléphone (si le partage est actif). */
+fun LauncherConfig.toggleChoreShared(date: String, index: Int, deviceId: String): LauncherConfig {
+    val toggled = toggleChore(date, index)
+    val sync = chat.sync
+    if (!sync.enabled) return toggled
+    val event = ChatEvent(d = date, i = index, n = chat.chores.getOrNull(index).orEmpty(), v = index in toggled.chat.done[date].orEmpty(), from = deviceId)
+    return toggled.copy(chat = toggled.chat.copy(sync = sync.copy(pending = (sync.pending + event).takeLast(50))))
+}
+
+/**
+ * Applique les changements reçus de l'autre téléphone (dans l'ordre), en ignorant les nôtres.
+ * La tâche est retrouvée par son nom, sinon par son numéro.
+ */
+fun LauncherConfig.applyChatEvents(events: List<ChatEvent>, lastId: String, deviceId: String): LauncherConfig {
+    var c = this
+    for (e in events) {
+        if (e.from == deviceId) continue
+        val byName = c.chat.chores.indexOfFirst { it.equals(e.n, ignoreCase = true) }
+        val index = if (e.n.isNotBlank() && byName >= 0) byName else e.i
+        if (index !in c.chat.chores.indices) continue
+        c = c.setChore(e.d, index, e.v)
+    }
+    return c.copy(chat = c.chat.copy(sync = c.chat.sync.copy(lastId = lastId.ifEmpty { c.chat.sync.lastId })))
+}
+
+/** Les messages envoyés avec succès quittent la file d'attente. */
+fun LauncherConfig.removeSentChatEvents(sent: List<ChatEvent>) =
+    copy(chat = chat.copy(sync = chat.sync.copy(pending = chat.sync.pending - sent.toSet())))
 
 /** Réglages du Pomodoro (durées, Focus auto) sans toucher au minuteur en cours. */
 fun LauncherConfig.updatePomodoroSettings(workMinutes: Int, breakMinutes: Int, autoFocus: Boolean) =
