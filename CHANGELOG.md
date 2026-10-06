@@ -3,6 +3,12 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.17.1 (code 23) — 2026-10-06
+
+- **Widget Musique** : les boutons précédent / lecture-pause / suivant sont de vraies icônes dessinées
+  (couleur du thème) au lieu de caractères qu'Android affichait en emoji orange.
+- Plus d'emoji ailleurs non plus : « ⚙ » remplacé par « Réglages », « ☀ » retiré du widget Contexte.
+
 ## v0.17.0 (code 22) — 2026-10-06
 
 - **Fond d'écran géré par le téléphone** : Fern affiche maintenant le fond d'écran d'Android

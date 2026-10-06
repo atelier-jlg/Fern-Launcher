@@ -346,7 +346,7 @@ private fun DrawerChips(
                 onClick = { onSettings { it.copy(columns = if (it.columns >= 5) 4 else 5) } },
             )
         }
-        PillButton(text = "⚙ Réglages", onClick = onOpenSettings)
+        PillButton(text = "Réglages", onClick = onOpenSettings)
     }
 }
 

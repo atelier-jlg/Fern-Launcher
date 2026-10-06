@@ -262,9 +262,9 @@ fun MusicWidget(
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ControlButton("⏮", onPrevious)
-                        ControlButton(if (nowPlaying.playing) "⏸" else "▶", onPlayPause)
-                        ControlButton("⏭", onNext)
+                        ControlButton(MediaIcon.Precedent, onPrevious)
+                        ControlButton(if (nowPlaying.playing) MediaIcon.Pause else MediaIcon.Lecture, onPlayPause)
+                        ControlButton(MediaIcon.Suivant, onNext)
                     }
                 }
             }
@@ -353,16 +353,16 @@ private fun MusicCompact(
             }
             Text(nowPlaying.title, style = Fern.type.corps, color = colors.creme, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                ControlButton("⏮", onPrevious)
-                ControlButton(if (nowPlaying.playing) "⏸" else "▶", onPlayPause)
-                ControlButton("⏭", onNext)
+                ControlButton(MediaIcon.Precedent, onPrevious)
+                ControlButton(if (nowPlaying.playing) MediaIcon.Pause else MediaIcon.Lecture, onPlayPause)
+                ControlButton(MediaIcon.Suivant, onNext)
             }
         }
     }
 }
 
 @Composable
-private fun ControlButton(glyph: String, onClick: () -> Unit) {
+private fun ControlButton(icon: MediaIcon, onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -371,7 +371,50 @@ private fun ControlButton(glyph: String, onClick: () -> Unit) {
             .background(Fern.colors.lierre)
             .clickable(onClick = onClick),
     ) {
-        Text(glyph, style = Fern.type.corps, color = Fern.colors.creme)
+        MediaIconView(icon, Fern.colors.creme, Modifier.size(16.dp))
+    }
+}
+
+/** Les icônes des boutons de musique. */
+private enum class MediaIcon { Precedent, Lecture, Pause, Suivant }
+
+/**
+ * Les icônes sont dessinées (triangles et barres) plutôt qu'écrites avec des caractères
+ * comme « ⏸ » : Android les affiche sinon en emoji (orange), qui ignorent les couleurs du thème.
+ */
+@Composable
+private fun MediaIconView(icon: MediaIcon, color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        fun triangle(left: Float, right: Float, pointRight: Boolean) {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                if (pointRight) {
+                    moveTo(left, 0f); lineTo(right, h / 2); lineTo(left, h)
+                } else {
+                    moveTo(right, 0f); lineTo(left, h / 2); lineTo(right, h)
+                }
+                close()
+            }
+            drawPath(path, color)
+        }
+        fun bar(left: Float, width: Float) =
+            drawRoundRect(color, Offset(left, 0f), Size(width, h), androidx.compose.ui.geometry.CornerRadius(width / 3))
+        when (icon) {
+            MediaIcon.Lecture -> triangle(w * 0.15f, w * 0.95f, pointRight = true)
+            MediaIcon.Pause -> {
+                bar(w * 0.15f, w * 0.26f)
+                bar(w * 0.59f, w * 0.26f)
+            }
+            MediaIcon.Precedent -> {
+                bar(0f, w * 0.18f)
+                triangle(w * 0.2f, w, pointRight = false)
+            }
+            MediaIcon.Suivant -> {
+                triangle(0f, w * 0.8f, pointRight = true)
+                bar(w * 0.82f, w * 0.18f)
+            }
+        }
     }
 }
 
@@ -393,7 +436,7 @@ fun ContextWidget(
     var editing by remember { mutableStateOf(false) }
     val hour = now.hour
     val (moment, greeting) = when (hour) {
-        in 5..11 -> "Matin" to "Bonjour ☀"
+        in 5..11 -> "Matin" to "Bonjour"
         in 12..17 -> "Journée" to "Bel après-midi"
         in 18..22 -> "Soir" to "Bonsoir"
         else -> "Nuit" to "Douce nuit"

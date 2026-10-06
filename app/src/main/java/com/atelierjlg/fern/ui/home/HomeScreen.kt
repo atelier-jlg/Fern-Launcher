@@ -741,7 +741,7 @@ private fun EditBar(onAddPage: (String) -> Unit, onSettings: () -> Unit, onDone:
         Text("Édition".uppercase(), style = Fern.type.libelle, color = colors.roseCarmin, modifier = Modifier.weight(1f))
         PillButton("+ Page", onClick = { newPage = true })
         Spacer(Modifier.width(6.dp))
-        PillButton("⚙", onClick = onSettings)
+        PillButton("Réglages", onClick = onSettings)
         Spacer(Modifier.width(6.dp))
         PillButton("Terminé", onClick = onDone, accent = true)
     }
