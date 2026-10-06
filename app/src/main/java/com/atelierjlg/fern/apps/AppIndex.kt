@@ -34,7 +34,10 @@ class AppIndex private constructor(
         fun build(apps: List<AppEntry>, config: LauncherConfig): AppIndex {
             val collator = Collator.getInstance(Locale.FRENCH).apply { strength = Collator.PRIMARY }
             val renamed = apps
-                .map { app -> config.renamedApps[app.key]?.let { app.copy(label = it) } ?: app }
+                .map { app ->
+                    val renamed = config.renamedApps[app.key]?.let { app.copy(label = it) } ?: app
+                    config.appFamilies[app.key]?.let { renamed.copy(family = it) } ?: renamed
+                }
                 .sortedWith(compareBy(collator) { it.label })
             return AppIndex(
                 all = renamed,

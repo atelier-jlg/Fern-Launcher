@@ -11,6 +11,8 @@ import androidx.activity.viewModels
 import com.atelierjlg.fern.ui.LauncherRoot
 import com.atelierjlg.fern.ui.theme.FernTheme
 import com.atelierjlg.fern.ui.theme.toFernColors
+import com.atelierjlg.fern.ui.theme.LocalIconMode
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +36,9 @@ class MainActivity : ComponentActivity() {
             val config by viewModel.config.collectAsStateWithLifecycle()
             val colors = remember(config.effectiveTheme.colors) { config.effectiveTheme.colors.toFernColors() }
             FernTheme(colors = colors) {
-                LauncherRoot(viewModel)
+                CompositionLocalProvider(LocalIconMode provides config.icons.mode) {
+                    LauncherRoot(viewModel)
+                }
             }
         }
     }

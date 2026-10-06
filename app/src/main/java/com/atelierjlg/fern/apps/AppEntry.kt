@@ -3,6 +3,7 @@ package com.atelierjlg.fern.apps
 import android.content.ComponentName
 import android.os.UserHandle
 import androidx.compose.ui.graphics.ImageBitmap
+import com.atelierjlg.fern.data.Family
 import java.text.Normalizer
 
 /**
@@ -25,6 +26,10 @@ data class AppEntry(
     val key: String,
     /** Le nom d'origine de l'appli, avant renommage. */
     val originalLabel: String = label,
+    /** Le picto seul (trait blanc sur fond transparent) pour les plaques Fern, s'il existe. */
+    val glyph: ImageBitmap? = null,
+    /** La famille (couleur de plaque, section du tiroir) : auto, ou choisie par Jules. */
+    val family: Family = Family.Organisation,
 ) {
     /** Le nom sans accents ni majuscules, pour la recherche (« Météo » ↔ « meteo »). */
     val searchKey: String = label.normalizeForSearch()

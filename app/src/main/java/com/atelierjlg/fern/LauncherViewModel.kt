@@ -44,6 +44,10 @@ import com.atelierjlg.fern.search.ShortcutResult
 import com.atelierjlg.fern.data.AppWidgetBlock
 import com.atelierjlg.fern.data.ContextBlock
 import com.atelierjlg.fern.data.FernJson
+import com.atelierjlg.fern.data.Family
+import com.atelierjlg.fern.data.IconSettings
+import com.atelierjlg.fern.data.setAppFamily
+import com.atelierjlg.fern.data.updateIcons
 import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.newId
 import com.atelierjlg.fern.data.updateBlockById
@@ -86,6 +90,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -226,6 +232,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 delay(60_000L - System.currentTimeMillis() % 60_000L)
             }
         }
+        // Style d'icônes : on recharge les icônes quand il change.
+        viewModelScope.launch {
+            store.config.map { it.icons }.distinctUntilChanged().collect { repository.setIconSettings(it) }
+        }
         // Premier lancement : on pose la disposition de départ dès que la liste des applis est connue.
         viewModelScope.launch {
             val installed = repository.apps.first { it.isNotEmpty() }
@@ -281,6 +291,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setHidden(app: AppEntry, hidden: Boolean) = store.update { it.setHidden(app.key, hidden) }
 
     fun updateDrawer(transform: (DrawerSettings) -> DrawerSettings) = store.update { it.updateDrawer(transform) }
+
+    fun setAppFamily(app: AppEntry, family: Family?) = store.update { it.setAppFamily(app.key, family) }
+
+    fun updateIcons(transform: (IconSettings) -> IconSettings) = store.update { it.updateIcons(transform) }
+
+    fun installedIconPacks() = repository.iconPacks.installedPacks()
 
     fun renameApp(app: AppEntry, name: String) = store.update { it.renameApp(app.key, name) }
 

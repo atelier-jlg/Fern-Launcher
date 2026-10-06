@@ -76,7 +76,7 @@ fun AppIcon(
             )
             .padding(vertical = 4.dp),
     ) {
-        Image(bitmap = app.icon, contentDescription = app.label, modifier = Modifier.size(iconSize))
+        AppIconImage(app = app, size = iconSize)
         if (showLabel) {
             Spacer(Modifier.height(5.dp))
             Text(

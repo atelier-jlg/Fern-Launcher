@@ -83,6 +83,15 @@ class ConfigEditsTest {
     }
 
     @Test
+    fun familyColorsAndOverrides() {
+        val config = sample().setThemeColor("plaque:Social", "#112233").setAppFamily("x@0", Family.Argent)
+        assertEquals("#112233", config.theme.colors.familyColors(Family.Social).plate)
+        assertEquals(Family.Social.trait, config.theme.colors.familyColors(Family.Social).trait)
+        assertEquals(Family.Argent, config.appFamilies["x@0"])
+        assertNull(config.setAppFamily("x@0", null).appFamilies["x@0"])
+    }
+
+    @Test
     fun themeFileRoundTrip() {
         val file = ThemeFile(theme = ThemePresets.NuitTeal)
         val text = FernJson.encodeToString(ThemeFile.serializer(), file)

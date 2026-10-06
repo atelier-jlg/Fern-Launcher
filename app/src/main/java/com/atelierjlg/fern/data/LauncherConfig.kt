@@ -41,6 +41,9 @@ data class LauncherConfig(
     val spaceSchedule: SpaceSchedule = SpaceSchedule(),
     val focus: FocusSettings = FocusSettings(),
     val place: PlaceSettings = PlaceSettings(),
+    val icons: IconSettings = IconSettings(),
+    /** Familles choisies à la main (clé d'appli → famille) ; sinon classement automatique. */
+    val appFamilies: Map<String, Family> = emptyMap(),
 ) {
     val activeSpace: Space
         get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
@@ -164,7 +167,7 @@ data class PlaceSettings(
 enum class DrawerStyle { Grille, Liste }
 
 @Serializable
-enum class DrawerSort { Alphabetique, Frequence }
+enum class DrawerSort { Alphabetique, Frequence, Familles }
 
 /** Réglages du tiroir. */
 @Serializable

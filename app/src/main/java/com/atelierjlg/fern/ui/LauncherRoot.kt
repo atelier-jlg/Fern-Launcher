@@ -100,6 +100,7 @@ fun LauncherRoot(vm: LauncherViewModel) {
                     onRename = vm::renameApp,
                     onSettings = vm::updateDrawer,
                     onOpenSettings = vm::openSettings,
+                    onSetFamily = vm::setAppFamily,
                 ),
                 searchExtras = vm::searchExtras,
                 searchVersion = searchVersion,

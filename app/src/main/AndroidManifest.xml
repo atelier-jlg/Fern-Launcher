@@ -18,6 +18,19 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Packs d'icônes (Renkin, Arcticons…). -->
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.gau.go.launcherex.theme" />
+        </intent>
+        <intent>
+            <action android:name="com.teslacoilsw.launcher.THEME" />
+        </intent>
         <!-- Navigateurs Firefox possibles pour la recherche web. -->
         <package android:name="org.mozilla.firefox" />
         <package android:name="org.mozilla.fennec_fdroid" />

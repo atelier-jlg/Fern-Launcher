@@ -107,7 +107,7 @@ fun AppRow(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(vertical = 8.dp),
     ) {
-        Image(bitmap = app.icon, contentDescription = null, modifier = Modifier.size(40.dp))
+        AppIconImage(app = app, size = 40.dp)
         Spacer(Modifier.width(14.dp))
         Text(app.label, style = Fern.type.corps, color = Fern.colors.creme, modifier = Modifier.weight(1f))
         if (trailing != null) {

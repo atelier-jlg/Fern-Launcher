@@ -20,7 +20,11 @@ data class ThemeColors(
     val carmin: String = "#8E2733",
     val pistache: String = "#BFE3A3",
     val vague: String = "#98A0A8",
+    /** Couleurs des familles modifiées dans ce thème (les autres gardent celles du guide). */
+    val families: Map<Family, FamilyColors> = emptyMap(),
 ) {
+    fun familyColors(family: Family): FamilyColors = families[family] ?: FamilyColors(family.plate, family.trait)
+
     /** Les couleurs sous forme de liste (nom affiché, clé, valeur), pour l'éditeur. */
     fun entries(): List<Triple<String, String, String>> = listOf(
         Triple("Fond (nuit)", "nuit", nuit),
@@ -33,7 +37,13 @@ data class ThemeColors(
         Triple("Accent (rose carmin)", "roseCarmin", roseCarmin),
         Triple("Accent foncé (carmin)", "carmin", carmin),
         Triple("Accent clair (pistache)", "pistache", pistache),
-    )
+    ) + Family.entries.flatMap { f ->
+        val c = familyColors(f)
+        listOf(
+            Triple("Plaque · ${f.label}", "plaque:${f.name}", c.plate),
+            Triple("Picto · ${f.label}", "trait:${f.name}", c.trait),
+        )
+    }
 
     fun with(key: String, hex: String): ThemeColors = when (key) {
         "nuit" -> copy(nuit = hex)
@@ -47,7 +57,18 @@ data class ThemeColors(
         "carmin" -> copy(carmin = hex)
         "pistache" -> copy(pistache = hex)
         "vague" -> copy(vague = hex)
-        else -> this
+        else -> withFamily(key, hex)
+    }
+
+    private fun withFamily(key: String, hex: String): ThemeColors {
+        val family = Family.entries.firstOrNull { it.name == key.substringAfter(':') } ?: return this
+        val current = familyColors(family)
+        val updated = when (key.substringBefore(':')) {
+            "plaque" -> current.copy(plate = hex)
+            "trait" -> current.copy(trait = hex)
+            else -> return this
+        }
+        return copy(families = families + (family to updated))
     }
 }
 

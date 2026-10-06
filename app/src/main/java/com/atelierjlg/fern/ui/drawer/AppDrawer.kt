@@ -60,6 +60,7 @@ import com.atelierjlg.fern.data.Destination
 import com.atelierjlg.fern.data.DrawerSettings
 import com.atelierjlg.fern.data.DrawerSort
 import com.atelierjlg.fern.data.DrawerStyle
+import com.atelierjlg.fern.data.Family
 import com.atelierjlg.fern.data.SlotRef
 import com.atelierjlg.fern.ui.common.AppIcon
 import com.atelierjlg.fern.ui.common.AppRow
@@ -83,6 +84,8 @@ class DrawerActions(
     val onRename: (AppEntry, String) -> Unit,
     val onSettings: ((DrawerSettings) -> DrawerSettings) -> Unit,
     val onOpenSettings: () -> Unit,
+    /** Range une appli dans une famille (null = automatique). */
+    val onSetFamily: (AppEntry, Family?) -> Unit,
 )
 
 /**
@@ -111,6 +114,7 @@ fun AppDrawer(
     var addingApp by remember { mutableStateOf<AppEntry?>(null) }
     var renamingApp by remember { mutableStateOf<AppEntry?>(null) }
     var showHidden by remember { mutableStateOf(false) }
+    var familyApp by remember { mutableStateOf<AppEntry?>(null) }
 
     val searching = query.isNotBlank()
     val results = remember(apps, query) { apps.search(query) }
@@ -163,6 +167,7 @@ fun AppDrawer(
             menu = listOf(
                 "Ajouter à…" to { addingApp = app },
                 "Renommer" to { renamingApp = app },
+                "Famille…" to { familyApp = app },
                 "Masquer" to { actions.onSetHidden(app, true) },
                 "Infos de l'appli" to { actions.onAppInfo(app) },
                 "Désinstaller" to { actions.onUninstall(app) },
@@ -216,7 +221,7 @@ fun AppDrawer(
                     ) { item ->
                         when (item) {
                             is DrawerItem.Header -> Text(
-                                text = item.letter,
+                                text = item.letter.uppercase(),
                                 style = Fern.type.libelle,
                                 color = colors.roseCarmin,
                                 modifier = Modifier.padding(start = 4.dp, top = 6.dp),
@@ -267,6 +272,28 @@ fun AppDrawer(
             onDismiss = { renamingApp = null },
         )
     }
+    familyApp?.let { app ->
+        AlertDialog(
+            onDismissRequest = { familyApp = null },
+            title = { Text("Famille de ${app.label}") },
+            text = {
+                LazyColumn {
+                    items(listOf<Family?>(null) + Family.entries) { family ->
+                        TextButton(
+                            onClick = { actions.onSetFamily(app, family); familyApp = null },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                (if (family == app.family) "● " else "") + (family?.label ?: "Automatique"),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { familyApp = null }) { Text("Annuler") } },
+        )
+    }
     if (showHidden) {
         HiddenAppsDialog(
             hiddenApps = hiddenApps,
@@ -288,10 +315,20 @@ private fun DrawerChips(
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
     ) {
         PillButton(
-            text = if (settings.sort == DrawerSort.Alphabetique) "A–Z" else "Fréquence",
+            text = when (settings.sort) {
+                DrawerSort.Alphabetique -> "A–Z"
+                DrawerSort.Familles -> "Familles"
+                DrawerSort.Frequence -> "Fréquence"
+            },
             onClick = {
                 onSettings {
-                    it.copy(sort = if (it.sort == DrawerSort.Alphabetique) DrawerSort.Frequence else DrawerSort.Alphabetique)
+                    it.copy(
+                        sort = when (it.sort) {
+                            DrawerSort.Alphabetique -> DrawerSort.Familles
+                            DrawerSort.Familles -> DrawerSort.Frequence
+                            DrawerSort.Frequence -> DrawerSort.Alphabetique
+                        },
+                    )
                 }
             },
         )

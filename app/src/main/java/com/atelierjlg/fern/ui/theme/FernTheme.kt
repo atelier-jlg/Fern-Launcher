@@ -7,6 +7,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.atelierjlg.fern.data.Family
+import com.atelierjlg.fern.data.IconMode
 import com.atelierjlg.fern.data.ThemeColors
 
 /**
@@ -33,7 +35,19 @@ data class FernColors(
     val pistache: Color,
     // Trait de la vague du bandeau
     val vague: Color,
-)
+    /** Couleurs des plaques d'icônes par famille : (plaque, picto). */
+    val families: Map<Family, Pair<Color, Color>> = defaultFamilyColors(),
+) {
+    fun plate(family: Family): Color = families[family]?.first ?: Color.Gray
+    fun glyph(family: Family): Color = families[family]?.second ?: Color.White
+}
+
+private fun hexColor(hex: String, fallback: Color = Color.Gray): Color =
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
+
+/** Les couleurs du guide des icônes. */
+fun defaultFamilyColors(): Map<Family, Pair<Color, Color>> =
+    Family.entries.associateWith { hexColor(it.plate) to hexColor(it.trait) }
 
 /** Les thèmes livrés avec l'appli. Valeurs reprises de design/design-tokens.json. */
 object FernPalettes {
@@ -68,11 +82,18 @@ fun ThemeColors.toFernColors(): FernColors {
         carmin = c(carmin, d.carmin),
         pistache = c(pistache, d.pistache),
         vague = c(vague, d.vague),
+        families = Family.entries.associateWith { f ->
+            val fc = familyColors(f)
+            hexColor(fc.plate) to hexColor(fc.trait)
+        },
     )
 }
 
 private val LocalFernColors = staticCompositionLocalOf { FernPalettes.EstampeNuit }
 private val LocalFernType = staticCompositionLocalOf { FernType.Default }
+
+/** Le style d'icônes en cours (origine, pack ou plaques Fern). */
+val LocalIconMode = staticCompositionLocalOf { IconMode.Origine }
 
 /** Accès au thème depuis n'importe quel écran : `Fern.colors.creme`, `Fern.type.horloge`… */
 object Fern {

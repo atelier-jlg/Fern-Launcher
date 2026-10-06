@@ -1,6 +1,7 @@
 package com.atelierjlg.fern.apps
 
 import com.atelierjlg.fern.data.DrawerSort
+import com.atelierjlg.fern.data.Family
 
 /** Un élément de la liste du tiroir : un en-tête de section (« A ») ou une appli. */
 sealed class DrawerItem {
@@ -25,6 +26,7 @@ fun sectionLetter(label: String): String {
  * Prépare la liste du tiroir.
  * - Alphabétique : sections A, B, C… (les applis arrivent déjà triées).
  * - Fréquence : les plus lancées d'abord, sans sections.
+ * - Familles : sections Communication, Social… (« Admin & sécurité » en dernier), A–Z dans chacune.
  */
 fun buildDrawerItems(
     apps: List<AppEntry>,
@@ -33,6 +35,16 @@ fun buildDrawerItems(
 ): List<DrawerItem> = when (sort) {
     DrawerSort.Frequence ->
         apps.sortedByDescending { launchCounts[it.key] ?: 0 }.map { DrawerItem.App(it) }
+
+    DrawerSort.Familles -> buildList {
+        val byFamily = apps.groupBy { it.family }
+        for (family in Family.entries) {
+            val members = byFamily[family].orEmpty()
+            if (members.isEmpty()) continue
+            add(DrawerItem.Header(family.label))
+            members.forEach { add(DrawerItem.App(it)) }
+        }
+    }
 
     DrawerSort.Alphabetique -> buildList {
         var current: String? = null

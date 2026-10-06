@@ -265,3 +265,11 @@ val LauncherConfig.usedAppWidgetIds: Set<Int>
         .map { it.appWidgetId }.toSet()
 
 fun LauncherConfig.updatePlace(transform: (PlaceSettings) -> PlaceSettings) = copy(place = transform(place))
+
+// ─── Icônes & familles ──────────────────────────────────────────────────────
+
+fun LauncherConfig.updateIcons(transform: (IconSettings) -> IconSettings) = copy(icons = transform(icons))
+
+/** Range une appli dans une famille (null = revenir au classement automatique). */
+fun LauncherConfig.setAppFamily(key: String, family: Family?) =
+    copy(appFamilies = if (family == null) appFamilies - key else appFamilies + (key to family))

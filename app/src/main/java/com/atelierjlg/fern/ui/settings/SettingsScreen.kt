@@ -67,6 +67,7 @@ import com.atelierjlg.fern.ui.theme.Fern
 /** Les rubriques des Paramètres. */
 private enum class Section(val title: String) {
     Theme("Thème"),
+    Icones("Icônes"),
     Spaces("Spaces"),
     Focus("Focus"),
     Gestes("Gestes"),
@@ -128,6 +129,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                     SettingRow(title = s.title, onClick = { section = s })
                 }
                 Section.Theme -> item { ThemeSection(vm, config.theme, config.savedThemes) }
+                Section.Icones -> item { IconsSection(vm, config.icons) }
                 Section.Spaces -> item { SpacesSection(vm, config) }
                 Section.Focus -> item { FocusSection(vm, config) }
                 Section.Gestes -> item { GesturesSection(vm, config.gestures) }
@@ -441,10 +443,20 @@ private fun LazyListScope.drawerSection(vm: LauncherViewModel, drawer: com.ateli
     item {
         SettingRow(
             title = "Tri",
-            subtitle = if (drawer.sort == DrawerSort.Alphabetique) "Alphabétique (A–Z)" else "Les plus utilisées d'abord",
+            subtitle = when (drawer.sort) {
+                DrawerSort.Alphabetique -> "Alphabétique (A–Z)"
+                DrawerSort.Familles -> "Par familles (Communication, Social…)"
+                DrawerSort.Frequence -> "Les plus utilisées d'abord"
+            },
             onClick = {
                 vm.updateDrawer {
-                    it.copy(sort = if (it.sort == DrawerSort.Alphabetique) DrawerSort.Frequence else DrawerSort.Alphabetique)
+                    it.copy(
+                        sort = when (it.sort) {
+                            DrawerSort.Alphabetique -> DrawerSort.Familles
+                            DrawerSort.Familles -> DrawerSort.Frequence
+                            DrawerSort.Frequence -> DrawerSort.Alphabetique
+                        },
+                    )
                 }
             },
         )
@@ -455,6 +467,60 @@ private fun LazyListScope.drawerSection(vm: LauncherViewModel, drawer: com.ateli
             subtitle = "Quand la recherche ne trouve qu'une appli, elle s'ouvre toute seule.",
             checked = drawer.autoLaunchSingleResult,
             onChange = { on -> vm.updateDrawer { it.copy(autoLaunchSingleResult = on) } },
+        )
+    }
+}
+
+// ─── Icônes ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun IconsSection(vm: LauncherViewModel, icons: com.atelierjlg.fern.data.IconSettings) {
+    val packs = remember { vm.installedIconPacks() }
+    var choosingPack by remember { mutableStateOf<String?>(null) } // "pack" ou "glyph"
+
+    fun labelOf(pkg: String?, fallback: String) = packs.firstOrNull { it.packageName == pkg }?.label ?: fallback
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (mode in com.atelierjlg.fern.data.IconMode.entries) {
+            SettingRow(title = mode.label, onClick = { vm.updateIcons { it.copy(mode = mode) } }) {
+                if (icons.mode == mode) Text("✓", style = Fern.type.corps, color = Fern.colors.pistache)
+            }
+        }
+        when (icons.mode) {
+            com.atelierjlg.fern.data.IconMode.Pack -> SettingRow(
+                title = "Pack utilisé",
+                subtitle = labelOf(icons.packPackage, if (packs.isEmpty()) "Aucun pack installé" else "À choisir"),
+                onClick = { choosingPack = "pack" },
+            )
+            com.atelierjlg.fern.data.IconMode.Plaques -> {
+                SettingRow(
+                    title = "Pictos des plaques",
+                    subtitle = labelOf(icons.glyphPackage, "Automatique (Arcticons s'il est installé)"),
+                    onClick = { choosingPack = "glyph" },
+                )
+                Text(
+                    "La couleur des plaques dépend de la famille de l'appli (appui long dans le tiroir → Famille). " +
+                        "Les couleurs des familles se règlent dans Thème. Sans picto disponible, la plaque montre l'initiale.",
+                    style = Fern.type.nomApp,
+                    color = Fern.colors.lichen,
+                )
+            }
+            else -> Unit
+        }
+    }
+
+    choosingPack?.let { target ->
+        ChoiceDialog(
+            title = if (target == "pack") "Pack d'icônes" else "Source des pictos",
+            options = listOf<com.atelierjlg.fern.apps.IconPackInfo?>(null) + packs,
+            label = { it?.label ?: if (target == "pack") "Aucun (icônes d'origine)" else "Automatique" },
+            onPick = { info ->
+                vm.updateIcons {
+                    if (target == "pack") it.copy(packPackage = info?.packageName) else it.copy(glyphPackage = info?.packageName)
+                }
+                choosingPack = null
+            },
+            onDismiss = { choosingPack = null },
         )
     }
 }

@@ -3,17 +3,24 @@ package com.atelierjlg.fern.apps
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Rect
+import android.graphics.Bitmap
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.atelierjlg.fern.data.IconMode
+import com.atelierjlg.fern.data.IconSettings
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +55,18 @@ class AppRepository(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var refreshJob: Job? = null
+
+    val iconPacks = IconPackManager(context)
+
+    /** Réglages d'icônes en cours ; les changer recharge la liste. */
+    @Volatile
+    private var iconSettings = IconSettings()
+
+    fun setIconSettings(settings: IconSettings) {
+        if (settings == iconSettings) return
+        iconSettings = settings
+        refresh()
+    }
 
     private val _apps = MutableStateFlow<List<AppEntry>>(emptyList())
     val apps: StateFlow<List<AppEntry>> = _apps.asStateFlow()
@@ -85,25 +104,60 @@ class AppRepository(private val context: Context) {
 
     private fun loadApps(): List<AppEntry> {
         val self = context.packageName
+        val settings = iconSettings
+        // Un pack vient peut-être d'être installé ou mis à jour : on relit les packs.
+        iconPacks.clearCache()
+        val pack = settings.packPackage?.takeIf { settings.mode == IconMode.Pack }?.let { iconPacks.load(it) }
+        val glyphs = if (settings.mode == IconMode.Plaques) {
+            (settings.glyphPackage ?: iconPacks.findArcticons())?.let { iconPacks.load(it) }
+        } else {
+            null
+        }
         return userManager.userProfiles
             .flatMap { user ->
                 // Un profil verrouillé (espace privé, profil travail en pause) peut refuser.
                 runCatching { launcherApps.getActivityList(null, user) }.getOrDefault(emptyList())
             }
             .filter { it.componentName.packageName != self }
-            .mapNotNull { info -> runCatching { info.toEntry() }.getOrNull() }
+            .mapNotNull { info -> runCatching { info.toEntry(pack, glyphs) }.getOrNull() }
             .sortedWith(compareBy(collator) { it.label })
     }
 
-    private fun LauncherActivityInfo.toEntry() = AppEntry(
-        label = label.toString(),
-        packageName = componentName.packageName,
-        component = componentName,
-        user = user,
+    private fun LauncherActivityInfo.toEntry(pack: IconPack?, glyphs: IconPack?): AppEntry {
+        val appInfo = applicationInfo
+        val isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
+        // Icône : celle du pack choisi si elle existe, sinon l'icône d'origine.
         // getBadgedIcon ajoute la petite mallette sur les applis du profil travail.
-        icon = getBadgedIcon(0).toBitmap(iconSizePx, iconSizePx).asImageBitmap(),
-        key = appKey(componentName, userManager.getSerialNumberForUser(user)),
-    )
+        val iconDrawable = pack?.drawableFor(componentName) ?: getBadgedIcon(0)
+        return AppEntry(
+            label = label.toString(),
+            packageName = componentName.packageName,
+            component = componentName,
+            user = user,
+            icon = iconDrawable.toBitmap(iconSizePx, iconSizePx).asImageBitmap(),
+            key = appKey(componentName, userManager.getSerialNumberForUser(user)),
+            glyph = if (iconSettings.mode == IconMode.Plaques) glyphFor(this, glyphs) else null,
+            family = FamilyClassifier.classify(componentName.packageName, label.toString(), appInfo.category, isSystem),
+        )
+    }
+
+    /**
+     * Le picto blanc d'une appli pour sa plaque : d'abord Arcticons,
+     * sinon l'icône « monochrome » qu'Android 13+ fournit pour beaucoup d'applis.
+     */
+    private fun glyphFor(info: LauncherActivityInfo, glyphs: IconPack?): ImageBitmap? {
+        glyphs?.drawableFor(info.componentName)?.let { fromPack ->
+            return runCatching { fromPack.toBitmap(iconSizePx, iconSizePx).asImageBitmap() }.getOrNull()
+        }
+        if (Build.VERSION.SDK_INT < 33) return null
+        val monochrome = (info.getIcon(0) as? AdaptiveIconDrawable)?.monochrome ?: return null
+        // Les icônes adaptatives ont une grande marge : on ne garde que le centre (2/3).
+        return runCatching {
+            val full = monochrome.toBitmap(iconSizePx, iconSizePx)
+            val margin = iconSizePx / 6
+            Bitmap.createBitmap(full, margin, margin, iconSizePx - 2 * margin, iconSizePx - 2 * margin).asImageBitmap()
+        }.getOrNull()
+    }
 
     // ─── Actions ────────────────────────────────────────────────────────────
 

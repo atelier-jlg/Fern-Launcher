@@ -3,6 +3,22 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.8.0 (code 10) — 2026-10-06
+
+Icônes et familles.
+
+- **Plaques Fern** (style par défaut) : chaque icône devient une plaque ronde de la couleur
+  de sa famille, avec le picto à 70 % recoloré (guide Renkin). Les pictos viennent
+  d'**Arcticons** s'il est installé ; sinon de l'icône monochrome d'Android ; sinon l'initiale.
+  Les plaques **suivent le thème** (et le thème de chaque Space).
+- **Familles** : premier classement automatique (mots-clés + catégorie Android),
+  à corriger par **appui long dans le tiroir → Famille…** (ou « Automatique »).
+- **Tiroir par familles** : la pastille de tri passe par A–Z → **Familles** → Fréquence.
+  « Admin & sécurité » reste discret, en dernier.
+- **Paramètres → Icônes** : Icônes d'origine / **Pack d'icônes installé** (ton pack Renkin,
+  ou n'importe quel pack ADW/Nova) / Plaques Fern ; choix du pack et de la source des pictos.
+- **Paramètres → Thème** : les 8 couleurs de plaque et de picto des familles sont réglables.
+
 ## v0.7.1 (code 9) — 2026-10-06
 
 - Les titres de pages (Journée, Pratique…) ne sont plus affichés sur l'accueil.

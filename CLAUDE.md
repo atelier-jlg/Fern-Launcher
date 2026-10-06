@@ -141,10 +141,13 @@ app/src/main/java/com/atelierjlg/fern/
 5. ✅ Gestes + roue d'applis + Paramètres + thèmes (export/import) + sauvegarde. *(v0.5.0)*
 6. ✅ Spaces + planning + Focus. *(v0.6.0)*
 7. ✅ Widgets : Ciel, Musique, Contexte, widgets Android. *(v0.7.0)*
-8. À venir : plaques d'icônes rondes par famille (guide Renkin), stickers PNG, widgets Alternance /
+8. ✅ Icônes : plaques par famille (Arcticons recoloré), packs d'icônes, familles dans le tiroir. *(v0.8.0)*
+9. À venir : stickers PNG, widgets Alternance /
    Révisions (AnkiDroid) / Carnet, glisser-déposer libre en mode édition.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un
   **lien** dans Firefox (pour que la navigation privée des liens externes s'applique). Moteur par défaut DuckDuckGo.
 - Contacts / agenda / raccourcis / calcul : « recherche étendue », **désactivée par défaut**.
+- Pas de grand titre de page sur l'accueil (seulement en mode édition).
+- Familles : classement auto (`FamilyClassifier`) + corrections de Jules (`appFamilies`), qui passent avant.
