@@ -48,6 +48,8 @@ data class LauncherConfig(
     val icons: IconSettings = IconSettings(),
     /** Familles choisies à la main (clé d'appli → famille) ; sinon classement automatique. */
     val appFamilies: Map<String, Family> = emptyMap(),
+    /** Noms des familles choisis par Jules (sinon le nom du guide : « Social », « Argent & courses »…). */
+    val familyNames: Map<Family, String> = emptyMap(),
     val alternance: AlternanceSettings = AlternanceSettings(),
     val carnet: CarnetSettings = CarnetSettings(),
     val cours: CoursSettings = CoursSettings(),

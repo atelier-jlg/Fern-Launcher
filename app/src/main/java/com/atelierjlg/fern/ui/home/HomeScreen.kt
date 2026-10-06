@@ -110,6 +110,7 @@ import com.atelierjlg.fern.ui.common.GlyphButton
 import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.ui.theme.displayName
 import kotlin.math.abs
 
 
@@ -481,7 +482,7 @@ private fun PageView(
                         TextButton(
                             onClick = { vm.addBlock(page.id, FamilyBlock(id = newId(), family = family)); addingFamily = false },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(family.label, modifier = Modifier.fillMaxWidth()) }
+                        ) { Text(family.displayName(), modifier = Modifier.fillMaxWidth()) }
                     }
                 }
             },

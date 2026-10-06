@@ -92,6 +92,13 @@ fun ThemeColors.toFernColors(): FernColors {
 private val LocalFernColors = staticCompositionLocalOf { FernPalettes.EstampeNuit }
 private val LocalFernType = staticCompositionLocalOf { FernType.Default }
 
+/** Les noms de familles choisis par Jules (voir `displayName`). */
+val LocalFamilyNames = staticCompositionLocalOf { emptyMap<com.atelierjlg.fern.data.Family, String>() }
+
+/** Le nom affiché d'une famille : celui choisi dans Paramètres → Familles, sinon celui du guide. */
+@androidx.compose.runtime.Composable
+fun com.atelierjlg.fern.data.Family.displayName(): String = LocalFamilyNames.current[this] ?: label
+
 /** Le style d'icônes en cours (origine, pack ou plaques Fern). */
 val LocalIconMode = staticCompositionLocalOf { IconMode.Origine }
 

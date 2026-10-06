@@ -51,6 +51,7 @@ import com.atelierjlg.fern.ui.common.EmptySlot
 import com.atelierjlg.fern.ui.common.GlyphButton
 import com.atelierjlg.fern.ui.common.GearButton
 import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.ui.theme.displayName
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -298,7 +299,7 @@ fun FamilyPackCard(
             Box(Modifier.size(8.dp).background(colors.plate(family), CircleShape))
             Spacer(Modifier.width(6.dp))
             Text(
-                text = family.label.uppercase(),
+                text = family.displayName().uppercase(),
                 style = Fern.type.libelle,
                 color = colors.lichen,
                 maxLines = 1,
@@ -349,7 +350,7 @@ private fun FamilySheet(family: Family, apps: List<AppEntry>, onLaunch: (AppEntr
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(colors.plate(family), CircleShape))
                 Spacer(Modifier.width(10.dp))
-                Text(family.label.uppercase(), style = Fern.type.libelle, color = colors.creme)
+                Text(family.displayName().uppercase(), style = Fern.type.libelle, color = colors.creme)
             }
         },
         text = {

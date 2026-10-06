@@ -536,3 +536,9 @@ fun LauncherConfig.migrate(): LauncherConfig {
     }
     return c.copy(schema = CURRENT_SCHEMA)
 }
+
+/** Renomme une famille (nom vide = revenir au nom d'origine). */
+fun LauncherConfig.renameFamily(family: Family, name: String): LauncherConfig {
+    val clean = name.trim()
+    return copy(familyNames = if (clean.isEmpty() || clean == family.label) familyNames - family else familyNames + (family to clean))
+}

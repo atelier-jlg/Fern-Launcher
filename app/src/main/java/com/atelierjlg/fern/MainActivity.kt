@@ -36,7 +36,10 @@ class MainActivity : ComponentActivity() {
             val config by viewModel.config.collectAsStateWithLifecycle()
             val colors = remember(config.effectiveTheme.colors) { config.effectiveTheme.colors.toFernColors() }
             FernTheme(colors = colors) {
-                CompositionLocalProvider(LocalIconMode provides config.icons.mode) {
+                CompositionLocalProvider(
+                    LocalIconMode provides config.icons.mode,
+                    com.atelierjlg.fern.ui.theme.LocalFamilyNames provides config.familyNames,
+                ) {
                     LauncherRoot(viewModel)
                 }
             }

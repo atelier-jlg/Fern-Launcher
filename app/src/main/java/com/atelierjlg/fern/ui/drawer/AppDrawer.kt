@@ -120,8 +120,9 @@ fun AppDrawer(
 
     val searching = query.isNotBlank()
     val results = remember(apps, query) { apps.search(query) }
-    val drawerItems = remember(apps, settings.sort, launchCounts) {
-        buildDrawerItems(apps, settings.sort, launchCounts)
+    val familyNames = com.atelierjlg.fern.ui.theme.LocalFamilyNames.current
+    val drawerItems = remember(apps, settings.sort, launchCounts, familyNames) {
+        buildDrawerItems(apps, settings.sort, launchCounts, familyNames)
     }
     // Contacts, agenda, raccourcis, calcul : cherchés en arrière-plan, 150 ms après la dernière touche.
     val extras by produceState(SearchExtras.Empty, query, searchVersion) {
@@ -286,7 +287,7 @@ fun AppDrawer(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                (if (family == app.family) "● " else "") + (family?.label ?: "Automatique"),
+                                (if (family == app.family) "● " else "") + (family?.let { familyNames[it] ?: it.label } ?: "Automatique"),
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.22.0 (code 32) — 2026-10-06
+
+- **Paramètres → Familles** : chaque famille avec sa couleur et son nombre d'applis.
+  Toucher une famille pour voir ses applis, **Renommer** la famille, **+ Ajouter une appli**,
+  ou **Changer** la famille d'une appli (ou la remettre en automatique).
+  Les noms personnalisés s'affichent partout : tiroir par familles, packs famille.
+
 ## v0.21.3 (code 31) — 2026-10-06
 
 - **Diagnostic réseau** : Paramètres → Le chat affiche la **dernière erreur** du partage

@@ -68,6 +68,7 @@ import com.atelierjlg.fern.ui.theme.Fern
 private enum class Section(val title: String) {
     Theme("Thème"),
     Icones("Icônes"),
+    Familles("Familles"),
     Spaces("Spaces"),
     Focus("Focus"),
     Gestes("Gestes"),
@@ -140,6 +141,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 }
                 Section.Theme -> item { ThemeSection(vm, config.theme, config.savedThemes) }
                 Section.Icones -> item { IconsSection(vm, config.icons) }
+                Section.Familles -> item { FamiliesSection(vm, config) }
                 Section.Spaces -> item { SpacesSection(vm, config) }
                 Section.Focus -> item { FocusSection(vm, config) }
                 Section.Gestes -> item { GesturesSection(vm, config.gestures) }

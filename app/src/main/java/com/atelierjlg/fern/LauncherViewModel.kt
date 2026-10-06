@@ -98,6 +98,7 @@ import java.io.File
 import com.atelierjlg.fern.data.Family
 import com.atelierjlg.fern.data.IconSettings
 import com.atelierjlg.fern.data.setAppFamily
+import com.atelierjlg.fern.data.renameFamily
 import com.atelierjlg.fern.data.updateIcons
 import com.atelierjlg.fern.data.PlaceSettings
 import com.atelierjlg.fern.data.newId
@@ -690,6 +691,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun updateDrawer(transform: (DrawerSettings) -> DrawerSettings) = store.update { it.updateDrawer(transform) }
 
     fun setAppFamily(app: AppEntry, family: Family?) = store.update { it.setAppFamily(app.key, family) }
+
+    fun renameFamily(family: Family, name: String) = store.update { it.renameFamily(family, name) }
 
     fun updateIcons(transform: (IconSettings) -> IconSettings) = store.update { it.updateIcons(transform) }
 

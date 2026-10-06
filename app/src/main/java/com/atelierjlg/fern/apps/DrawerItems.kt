@@ -32,6 +32,8 @@ fun buildDrawerItems(
     apps: List<AppEntry>,
     sort: DrawerSort,
     launchCounts: Map<String, Int>,
+    /** Noms de familles personnalisés (Paramètres → Familles). */
+    familyNames: Map<Family, String> = emptyMap(),
 ): List<DrawerItem> = when (sort) {
     DrawerSort.Frequence ->
         apps.sortedByDescending { launchCounts[it.key] ?: 0 }.map { DrawerItem.App(it) }
@@ -41,7 +43,7 @@ fun buildDrawerItems(
         for (family in Family.entries) {
             val members = byFamily[family].orEmpty()
             if (members.isEmpty()) continue
-            add(DrawerItem.Header(family.label))
+            add(DrawerItem.Header(familyNames[family] ?: family.label))
             members.forEach { add(DrawerItem.App(it)) }
         }
     }
