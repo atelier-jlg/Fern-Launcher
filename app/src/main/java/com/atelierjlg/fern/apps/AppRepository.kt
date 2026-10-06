@@ -102,6 +102,7 @@ class AppRepository(private val context: Context) {
         user = user,
         // getBadgedIcon ajoute la petite mallette sur les applis du profil travail.
         icon = getBadgedIcon(0).toBitmap(iconSizePx, iconSizePx).asImageBitmap(),
+        key = appKey(componentName, userManager.getSerialNumberForUser(user)),
     )
 
     // ─── Actions ────────────────────────────────────────────────────────────

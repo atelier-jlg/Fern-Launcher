@@ -1,33 +1,26 @@
 package com.atelierjlg.fern.ui.drawer
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,27 +29,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.atelierjlg.fern.apps.AppEntry
 import com.atelierjlg.fern.apps.search
+import com.atelierjlg.fern.data.Destination
+import com.atelierjlg.fern.data.SlotRef
+import com.atelierjlg.fern.ui.common.AppIcon
+import com.atelierjlg.fern.ui.common.FernSearchField
+import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
 
 /**
@@ -75,8 +66,14 @@ fun AppDrawer(
     onAppInfo: (AppEntry) -> Unit,
     onUninstall: (AppEntry) -> Unit,
     onClose: () -> Unit,
+    destinations: () -> List<Destination>,
+    onAddTo: (SlotRef, AppEntry) -> Unit,
+    onHide: (AppEntry) -> Unit,
+    onRename: (AppEntry, String) -> Unit,
 ) {
     val colors = Fern.colors
+    var addingApp by remember { mutableStateOf<AppEntry?>(null) }
+    var renamingApp by remember { mutableStateOf<AppEntry?>(null) }
     var query by remember { mutableStateOf("") }
     val results = remember(apps, query) { apps.search(query) }
 
@@ -122,8 +119,13 @@ fun AppDrawer(
                 AppCell(
                     app = app,
                     onClick = { onLaunch(app) },
-                    onAppInfo = { onAppInfo(app) },
-                    onUninstall = { onUninstall(app) },
+                    menu = listOf(
+                        "Ajouter à…" to { addingApp = app },
+                        "Renommer" to { renamingApp = app },
+                        "Masquer" to { onHide(app) },
+                        "Infos de l'appli" to { onAppInfo(app) },
+                        "Désinstaller" to { onUninstall(app) },
+                    ),
                 )
             }
             if (results.isEmpty() && query.isNotBlank()) {
@@ -150,13 +152,60 @@ fun AppDrawer(
             }
         }
 
-        SearchBar(
+        FernSearchField(
             query = query,
             onQueryChange = { query = it },
-            onGo = { results.firstOrNull()?.let(onLaunch) },
+            placeholder = "Chercher une appli",
             focusRequester = focusRequester,
+            onGo = { results.firstOrNull()?.let(onLaunch) },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
         )
     }
+
+    addingApp?.let { app ->
+        DestinationDialog(
+            app = app,
+            destinations = remember(app) { destinations() },
+            onPick = { ref -> onAddTo(ref, app); addingApp = null },
+            onDismiss = { addingApp = null },
+        )
+    }
+    renamingApp?.let { app ->
+        TextInputDialog(
+            title = "Renommer « ${app.originalLabel} »",
+            initial = app.label,
+            onConfirm = { onRename(app, it); renamingApp = null },
+            onDismiss = { renamingApp = null },
+        )
+    }
+}
+
+/** « Ajouter à… » : la liste des endroits où il reste une place. */
+@Composable
+private fun DestinationDialog(
+    app: AppEntry,
+    destinations: List<Destination>,
+    onPick: (SlotRef) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Ajouter ${app.label} à…") },
+        text = {
+            if (destinations.isEmpty()) {
+                Text("Plus aucune place libre. Crée un pack en mode édition (appui long sur l'accueil).")
+            } else {
+                LazyColumn {
+                    items(destinations) { dest ->
+                        TextButton(onClick = { onPick(dest.ref) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(dest.label, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+    )
 }
 
 /**
@@ -192,104 +241,32 @@ private fun rememberPullToClose(onClose: () -> Unit): NestedScrollConnection {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppCell(
     app: AppEntry,
     onClick: () -> Unit,
-    onAppInfo: () -> Unit,
-    onUninstall: () -> Unit,
+    menu: List<Pair<String, () -> Unit>>,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-
     Box {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menuOpen = true
+        AppIcon(
+            app = app,
+            iconSize = 50.dp,
+            showLabel = true,
+            onClick = onClick,
+            onLongClick = { menuOpen = true },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            for ((label, action) in menu) {
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        menuOpen = false
+                        action()
                     },
                 )
-                .padding(vertical = 4.dp),
-        ) {
-            Image(
-                bitmap = app.icon,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp),
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = app.label,
-                style = Fern.type.nomApp,
-                color = Fern.colors.creme,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text("Infos de l'appli") },
-                onClick = {
-                    menuOpen = false
-                    onAppInfo()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Désinstaller") },
-                onClick = {
-                    menuOpen = false
-                    onUninstall()
-                },
-            )
+            }
         }
     }
-}
-
-@Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onGo: () -> Unit,
-    focusRequester: FocusRequester,
-) {
-    val colors = Fern.colors
-    BasicTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        singleLine = true,
-        textStyle = Fern.type.corps.copy(color = colors.creme),
-        cursorBrush = SolidColor(colors.roseCarmin),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-        keyboardActions = KeyboardActions(onGo = { onGo() }),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .focusRequester(focusRequester),
-        decorationBox = { innerTextField ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(colors.lierre, RoundedCornerShape(percent = 50))
-                    .padding(horizontal = 22.dp, vertical = 14.dp),
-            ) {
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = "Chercher une appli",
-                            style = Fern.type.corps,
-                            color = colors.lichen,
-                        )
-                    }
-                    innerTextField()
-                }
-            }
-        },
-    )
 }

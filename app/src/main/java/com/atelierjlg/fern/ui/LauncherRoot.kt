@@ -17,31 +17,33 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.atelierjlg.fern.BuildConfig
 import com.atelierjlg.fern.LauncherViewModel
 import com.atelierjlg.fern.OverlayMode
+import com.atelierjlg.fern.data.slotValue
+import com.atelierjlg.fern.ui.common.AppPicker
 import com.atelierjlg.fern.ui.drawer.AppDrawer
 import com.atelierjlg.fern.ui.home.HomeScreen
 import com.atelierjlg.fern.ui.theme.Fern
 
 /**
- * Assemble l'accueil et le tiroir (posé par-dessus quand il est ouvert).
+ * Assemble les couches de Fern, de bas en haut :
+ * l'accueil, le tiroir (quand il est ouvert), le sélecteur d'applis (mode édition).
  */
 @Composable
-fun LauncherRoot(viewModel: LauncherViewModel) {
-    val apps by viewModel.apps.collectAsStateWithLifecycle()
-    val overlay by viewModel.overlay.collectAsStateWithLifecycle()
+fun LauncherRoot(vm: LauncherViewModel) {
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val config by vm.config.collectAsStateWithLifecycle()
+    val overlay by vm.overlay.collectAsStateWithLifecycle()
+    val picking by vm.picking.collectAsStateWithLifecycle()
 
-    // Le bouton Retour ferme le tiroir. Sur l'accueil, il ne fait rien
+    // Le bouton Retour ferme la couche la plus haute. Sur l'accueil, il ne fait rien
     // (sinon Android fermerait le lanceur).
-    BackHandler { viewModel.closeOverlay() }
+    BackHandler { vm.onBack() }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(Fern.colors.nuit),
     ) {
-        HomeScreen(
-            onSwipeUp = { viewModel.open(OverlayMode.Drawer) },
-            onSwipeDown = { viewModel.open(OverlayMode.Search) },
-        )
+        HomeScreen(vm)
 
         AnimatedVisibility(
             visible = overlay.visible,
@@ -49,13 +51,26 @@ fun LauncherRoot(viewModel: LauncherViewModel) {
             exit = slideOutVertically(tween(220)) { it / 3 } + fadeOut(tween(180)),
         ) {
             AppDrawer(
-                apps = apps,
+                apps = apps.visible,
                 focusSearch = overlay.mode == OverlayMode.Search,
                 versionName = BuildConfig.VERSION_NAME,
-                onLaunch = viewModel::launch,
-                onAppInfo = viewModel::openAppInfo,
-                onUninstall = viewModel::uninstall,
-                onClose = viewModel::closeOverlay,
+                onLaunch = vm::launch,
+                onAppInfo = vm::openAppInfo,
+                onUninstall = vm::uninstall,
+                onClose = vm::closeOverlay,
+                destinations = vm::freeDestinations,
+                onAddTo = vm::addTo,
+                onHide = { vm.setHidden(it, true) },
+                onRename = vm::renameApp,
+            )
+        }
+
+        picking?.let { ref ->
+            AppPicker(
+                apps = apps.visible,
+                current = apps.find(config.slotValue(ref)),
+                onPick = { app -> vm.setSlot(ref, app) },
+                onDismiss = { vm.pickFor(null) },
             )
         }
     }

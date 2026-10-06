@@ -1,0 +1,148 @@
+package com.atelierjlg.fern.data
+
+import java.util.UUID
+
+/*
+ * Toutes les modifications de la configuration.
+ *
+ * Ce sont des fonctions « pures » : elles prennent une config et en rendent une nouvelle,
+ * sans rien modifier en place (comme les tuples en Python). C'est plus sûr, et facile à tester
+ * (voir app/src/test/…/ConfigEditsTest.kt).
+ */
+
+fun newId(): String = UUID.randomUUID().toString().take(8)
+
+/** Désigne un emplacement d'appli : dans le dock, ou dans un bloc d'une page. */
+sealed class SlotRef {
+    data class Dock(val index: Int) : SlotRef()
+    data class Block(val pageId: String, val blockId: String, val index: Int) : SlotRef()
+}
+
+// ─── Outils internes ────────────────────────────────────────────────────────
+
+private fun LauncherConfig.updateActiveSpace(transform: (Space) -> Space): LauncherConfig {
+    val active = activeSpace
+    return copy(spaces = spaces.map { if (it.id == active.id) transform(it) else it })
+}
+
+private fun LauncherConfig.updatePage(pageId: String, transform: (HomePage) -> HomePage) =
+    updateActiveSpace { space ->
+        space.copy(pages = space.pages.map { if (it.id == pageId) transform(it) else it })
+    }
+
+private fun LauncherConfig.updateBlock(pageId: String, blockId: String, transform: (HomeBlock) -> HomeBlock) =
+    updatePage(pageId) { page ->
+        page.copy(blocks = page.blocks.map { if (it.id == blockId) transform(it) else it })
+    }
+
+private fun <T> List<T>.move(index: Int, delta: Int): List<T> {
+    val target = index + delta
+    if (index !in indices || target !in indices) return this
+    return toMutableList().apply { add(target, removeAt(index)) }
+}
+
+private fun List<String?>.withSlot(index: Int, key: String?): List<String?> {
+    val padded = this + List((index + 1 - size).coerceAtLeast(0)) { null }
+    return padded.mapIndexed { i, old -> if (i == index) key else old }
+}
+
+/** Les emplacements d'applis d'un bloc (null si le bloc n'en a pas). */
+val HomeBlock.slots: List<String?>?
+    get() = when (this) {
+        is AppRowBlock -> apps
+        is PackBlock -> apps
+        is ClockBlock -> null
+    }
+
+private fun HomeBlock.withSlots(apps: List<String?>): HomeBlock = when (this) {
+    is AppRowBlock -> copy(apps = apps)
+    is PackBlock -> copy(apps = apps)
+    is ClockBlock -> this
+}
+
+// ─── Emplacements d'applis ──────────────────────────────────────────────────
+
+/** Range une appli (ou vide l'emplacement avec `key = null`). */
+fun LauncherConfig.setSlot(ref: SlotRef, key: String?): LauncherConfig = when (ref) {
+    is SlotRef.Dock -> updateActiveSpace { it.copy(dock = it.dock.withSlot(ref.index, key)) }
+    is SlotRef.Block -> updateBlock(ref.pageId, ref.blockId) { block ->
+        block.slots?.let { block.withSlots(it.withSlot(ref.index, key)) } ?: block
+    }
+}
+
+fun LauncherConfig.slotValue(ref: SlotRef): String? = when (ref) {
+    is SlotRef.Dock -> activeSpace.dock.getOrNull(ref.index)
+    is SlotRef.Block -> activeSpace.pages.firstOrNull { it.id == ref.pageId }
+        ?.blocks?.firstOrNull { it.id == ref.blockId }
+        ?.slots?.getOrNull(ref.index)
+}
+
+/** Une destination pour « Ajouter à… » depuis le tiroir. */
+data class Destination(val label: String, val ref: SlotRef)
+
+/** Liste les endroits où il reste une place libre (premier emplacement vide de chaque zone). */
+fun LauncherConfig.freeDestinations(): List<Destination> {
+    val space = activeSpace
+    val result = mutableListOf<Destination>()
+    val dockFree = (0 until DOCK_SIZE).firstOrNull { space.dock.getOrNull(it) == null }
+    if (dockFree != null) result += Destination("Dock", SlotRef.Dock(dockFree))
+    for (page in space.pages) {
+        for (block in page.blocks) {
+            val slots = block.slots ?: continue
+            val free = (0 until PACK_SIZE).firstOrNull { slots.getOrNull(it) == null } ?: continue
+            val name = when (block) {
+                is PackBlock -> "${page.title} · ${block.title}"
+                else -> "${page.title} · rangée d'applis"
+            }
+            result += Destination(name, SlotRef.Block(page.id, block.id, free))
+        }
+    }
+    return result
+}
+
+// ─── Blocs ──────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.addBlock(pageId: String, block: HomeBlock) =
+    updatePage(pageId) { it.copy(blocks = it.blocks + block) }
+
+fun LauncherConfig.removeBlock(pageId: String, blockId: String) =
+    updatePage(pageId) { page -> page.copy(blocks = page.blocks.filterNot { it.id == blockId }) }
+
+fun LauncherConfig.moveBlock(pageId: String, blockId: String, delta: Int) =
+    updatePage(pageId) { page ->
+        page.copy(blocks = page.blocks.move(page.blocks.indexOfFirst { it.id == blockId }, delta))
+    }
+
+fun LauncherConfig.renamePack(pageId: String, blockId: String, title: String) =
+    updateBlock(pageId, blockId) { block -> if (block is PackBlock) block.copy(title = title) else block }
+
+// ─── Pages ──────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.addPage(title: String): LauncherConfig =
+    updateActiveSpace { it.copy(pages = it.pages + HomePage(id = newId(), title = title)) }
+
+/** Supprime une page (on garde toujours au moins une page). */
+fun LauncherConfig.removePage(pageId: String): LauncherConfig =
+    updateActiveSpace { space ->
+        if (space.pages.size <= 1) space else space.copy(pages = space.pages.filterNot { it.id == pageId })
+    }
+
+fun LauncherConfig.renamePage(pageId: String, title: String) =
+    updatePage(pageId) { it.copy(title = title) }
+
+fun LauncherConfig.movePage(pageId: String, delta: Int) =
+    updateActiveSpace { space ->
+        space.copy(pages = space.pages.move(space.pages.indexOfFirst { it.id == pageId }, delta))
+    }
+
+// ─── Applis ─────────────────────────────────────────────────────────────────
+
+fun LauncherConfig.countLaunch(key: String) =
+    copy(launchCounts = launchCounts + (key to (launchCounts[key] ?: 0) + 1))
+
+fun LauncherConfig.setHidden(key: String, hidden: Boolean) =
+    copy(hiddenApps = if (hidden) hiddenApps + key else hiddenApps - key)
+
+/** Renomme une appli ; un nom vide rend le nom d'origine. */
+fun LauncherConfig.renameApp(key: String, name: String) =
+    copy(renamedApps = if (name.isBlank()) renamedApps - key else renamedApps + (key to name.trim()))

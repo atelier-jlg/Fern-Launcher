@@ -3,6 +3,25 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.2.0 (code 3) — 2026-10-06
+
+L'accueil prend forme, et tout se règle dans l'appli.
+
+- **Pages** : glisser à gauche / à droite. Disposition de départ reprise de la charte :
+  Accueil (horloge + favoris), Journée, Pratique, Les miens. Les applis sont retrouvées
+  par leur nom ; celles qui ne sont pas installées laissent un emplacement vide.
+- **Packs** : cartes arrondies de 4 applis en 2×2, deux par ligne.
+- **Dock** : 4 applis + bouton du tiroir. Préréglé avec Téléphone, SMS, Signal, Appareil photo.
+- **Bandeau** : 29 % de hauteur sur l'accueil, 21 % sur les autres pages, en fondu en changeant de page.
+- **Mode édition** (appui long n'importe où sur l'accueil) :
+  - ajouter / renommer / déplacer / supprimer des pages ;
+  - ajouter des packs, rangées d'applis, horloges ; les renommer, monter, descendre, supprimer ;
+  - toucher un emplacement pour choisir l'appli (ou la retirer).
+- **Tiroir**, appui long sur une appli : « Ajouter à… » (premier emplacement libre d'un pack ou du dock),
+  « Renommer », « Masquer ».
+- Tout est enregistré sur le téléphone (`fern-config.json`) et survit aux mises à jour.
+- Bouton Accueil : ferme ce qui est ouvert, puis revient à la première page.
+
 ## v0.1.1 (code 2) — 2026-10-06
 
 - Corrigé : liseré clair en haut de l'écran (2 lignes de pixels gris clair laissées

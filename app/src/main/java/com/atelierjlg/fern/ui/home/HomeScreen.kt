@@ -1,21 +1,32 @@
 package com.atelierjlg.fern.ui.home
 
-import android.content.Intent
-import android.provider.AlarmClock
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,149 +37,475 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.atelierjlg.fern.LauncherViewModel
+import com.atelierjlg.fern.OverlayMode
 import com.atelierjlg.fern.R
+import com.atelierjlg.fern.apps.AppIndex
+import com.atelierjlg.fern.data.AppRowBlock
+import com.atelierjlg.fern.data.ClockBlock
+import com.atelierjlg.fern.data.DOCK_SIZE
+import com.atelierjlg.fern.data.HomeBlock
+import com.atelierjlg.fern.data.HomePage
+import com.atelierjlg.fern.data.PackBlock
+import com.atelierjlg.fern.data.SlotRef
+import com.atelierjlg.fern.data.newId
+import com.atelierjlg.fern.ui.common.ConfirmDialog
+import com.atelierjlg.fern.ui.common.GlyphButton
+import com.atelierjlg.fern.ui.common.PillButton
+import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
-import kotlinx.coroutines.delay
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import kotlin.math.abs
 
-/** Part de la hauteur d'écran occupée par le bandeau pixel art sur l'accueil. */
+/** Part de la hauteur d'écran occupée par le bandeau pixel art : accueil / autres pages. */
 private const val BANDEAU_ACCUEIL = 0.29f
+private const val BANDEAU_PAGES = 0.21f
 
 /**
- * La page d'accueil. Pour l'instant : fonds, horloge et date.
- * Glisser vers le haut ouvre le tiroir, vers le bas ouvre la recherche.
+ * L'écran d'accueil : les pages (glisser à gauche / à droite), le dock en bas,
+ * et le mode édition (appui long n'importe où).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreen(
-    onSwipeUp: () -> Unit,
-    onSwipeDown: () -> Unit,
-) {
-    // rememberUpdatedState : le détecteur de gestes, créé une seule fois,
-    // appelle toujours la version la plus récente de ces fonctions.
-    val swipeUp by rememberUpdatedState(onSwipeUp)
-    val swipeDown by rememberUpdatedState(onSwipeDown)
-    val threshold = with(LocalDensity.current) { 56.dp.toPx() }
+fun HomeScreen(vm: LauncherViewModel) {
+    val config by vm.config.collectAsStateWithLifecycle()
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val editing by vm.editing.collectAsStateWithLifecycle()
+    val homeTick by vm.homeTick.collectAsStateWithLifecycle()
+
+    val space = config.activeSpace
+    val pages = space.pages
+    val pagerState = rememberPagerState { pages.size }
+
+    // Appui sur Accueil : retour à la première page.
+    LaunchedEffect(homeTick) {
+        if (homeTick > 0) pagerState.animateScrollToPage(0)
+    }
+
+    val actions = SlotActions(
+        editing = editing,
+        onLaunch = vm::launch,
+        onPick = vm::pickFor,
+        onEnterEdit = { vm.setEditing(true) },
+    )
 
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .pointerInput(threshold) {
-                var total = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { total = 0f },
-                    onVerticalDrag = { change, dragAmount ->
-                        change.consume()
-                        total += dragAmount
-                    },
-                    onDragEnd = {
-                        when {
-                            total < -threshold -> swipeUp()
-                            total > threshold -> swipeDown()
-                        }
-                    },
-                )
-            },
+            .homeGestures(
+                enabled = !editing,
+                onSwipeUp = { vm.open(OverlayMode.Drawer) },
+                onSwipeDown = { vm.open(OverlayMode.Search) },
+                onLongPress = { vm.setEditing(true) },
+            ),
     ) {
-        val bandeauHeight = maxHeight * BANDEAU_ACCUEIL
+        val screenHeight = maxHeight
+        Background(pagerState)
 
-        // Couche 1 : fond topographique. Couche 2 : bandeau pixel art détouré par la vague.
+        Column(
+            Modifier
+                .fillMaxSize()
+                .navigationBarsPadding(),
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                key = { index -> pages.getOrNull(index)?.id ?: index },
+                modifier = Modifier.weight(1f),
+            ) { index ->
+                val page = pages.getOrNull(index) ?: return@HorizontalPager
+                PageView(
+                    vm = vm,
+                    page = page,
+                    index = index,
+                    pageCount = pages.size,
+                    topSpace = screenHeight * if (index == 0) BANDEAU_ACCUEIL else BANDEAU_PAGES,
+                    apps = apps,
+                    actions = actions,
+                )
+            }
+            PageDots(count = pages.size, current = pagerState.currentPage)
+            Dock(
+                slots = space.dock,
+                apps = apps,
+                actions = actions,
+                onOpenDrawer = { vm.open(OverlayMode.Drawer) },
+            )
+        }
+
+        if (editing) {
+            EditBar(
+                onAddPage = { name -> vm.addPage(name) },
+                onDone = { vm.setEditing(false) },
+            )
+        }
+    }
+}
+
+/**
+ * Les gestes de l'accueil : glisser vers le haut / le bas, appui long.
+ * (Glisser à gauche / à droite est géré par les pages elles-mêmes.)
+ *
+ * rememberUpdatedState : le détecteur, créé une seule fois, appelle toujours
+ * la version la plus récente des fonctions (sinon il redémarrerait en plein geste).
+ */
+@Composable
+private fun Modifier.homeGestures(
+    enabled: Boolean,
+    onSwipeUp: () -> Unit,
+    onSwipeDown: () -> Unit,
+    onLongPress: () -> Unit,
+): Modifier {
+    if (!enabled) return this
+    val up by rememberUpdatedState(onSwipeUp)
+    val down by rememberUpdatedState(onSwipeDown)
+    val long by rememberUpdatedState(onLongPress)
+    val threshold = with(LocalDensity.current) { 56.dp.toPx() }
+    return this
+        .pointerInput(threshold) {
+            var total = 0f
+            detectVerticalDragGestures(
+                onDragStart = { total = 0f },
+                onVerticalDrag = { change, dragAmount ->
+                    change.consume()
+                    total += dragAmount
+                },
+                onDragEnd = {
+                    when {
+                        total < -threshold -> up()
+                        total > threshold -> down()
+                    }
+                },
+            )
+        }
+        .pointerInput(Unit) {
+            detectTapGestures(onLongPress = { long() })
+        }
+}
+
+/** Les deux couches de fond. Le bandeau passe en fondu de « accueil » (29 %) à « pages » (21 %). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Background(pagerState: PagerState) {
+    val position = pagerState.currentPage + pagerState.currentPageOffsetFraction
+    val homeness = (1f - abs(position)).coerceIn(0f, 1f)
+    Image(
+        painter = painterResource(R.drawable.fond_topo),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize(),
+    )
+    if (homeness < 1f) {
         Image(
-            painter = painterResource(R.drawable.fond_topo),
+            painter = painterResource(R.drawable.bandeau_pages),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
+            alpha = 1f - homeness,
             modifier = Modifier.fillMaxSize(),
         )
+    }
+    if (homeness > 0f) {
         Image(
             painter = painterResource(R.drawable.bandeau_accueil),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             alignment = Alignment.TopCenter,
+            alpha = homeness,
             modifier = Modifier.fillMaxSize(),
         )
-
-        Column(
-            Modifier
-                .fillMaxSize()
-                .systemBarsPadding()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            Spacer(Modifier.height(bandeauHeight))
-            Clock()
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = "↑ applis · ↓ chercher".uppercase(),
-                style = Fern.type.libelle,
-                color = Fern.colors.moussePale,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-            )
-        }
     }
 }
 
-/** L'heure qui se met à jour à chaque seconde pile. */
+/** Le contenu d'une page : titre, puis les blocs (deux packs côte à côte). */
 @Composable
-private fun rememberNow(): LocalDateTime {
-    var now by remember { mutableStateOf(LocalDateTime.now()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = LocalDateTime.now()
-            delay(1000 - System.currentTimeMillis() % 1000)
-        }
-    }
-    return now
-}
-
-private val dateFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
-
-@Composable
-private fun Clock() {
-    val now = rememberNow()
-    val context = LocalContext.current
+private fun PageView(
+    vm: LauncherViewModel,
+    page: HomePage,
+    index: Int,
+    pageCount: Int,
+    topSpace: Dp,
+    apps: AppIndex,
+    actions: SlotActions,
+) {
     val colors = Fern.colors
+    var renamingPage by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var renamingPack by remember { mutableStateOf<PackBlock?>(null) }
+    var newPack by remember { mutableStateOf(false) }
 
     Column(
-        // Toucher l'horloge ouvre les alarmes.
-        Modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-        ) {
-            runCatching {
-                context.startActivity(
-                    Intent(AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
-        },
+        Modifier
+            .fillMaxSize()
+            .then(if (actions.editing) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+            .padding(horizontal = 20.dp),
     ) {
-        Text(
-            text = buildAnnotatedString {
-                append("%02d:".format(now.hour))
-                withStyle(SpanStyle(color = colors.roseCarmin)) {
-                    append("%02d".format(now.minute))
+        Spacer(Modifier.height(topSpace))
+
+        if (actions.editing) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = page.title.uppercase(),
+                    style = Fern.type.titreWidget,
+                    color = colors.creme,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { renamingPage = true },
+                )
+                GlyphButton("✎", onClick = { renamingPage = true })
+                GlyphButton("←", onClick = { vm.movePage(page.id, -1) }, enabled = index > 0)
+                GlyphButton("→", onClick = { vm.movePage(page.id, +1) }, enabled = index < pageCount - 1)
+                GlyphButton("✕", onClick = { confirmDelete = true }, enabled = pageCount > 1)
+            }
+            Spacer(Modifier.height(12.dp))
+        } else if (index > 0 && page.title.isNotBlank()) {
+            Text(page.title.uppercase(), style = Fern.type.titrePage, color = colors.creme)
+            Spacer(Modifier.height(12.dp))
+        }
+
+        for (row in groupRows(page.blocks)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                for (block in row) {
+                    Column(Modifier.weight(1f)) {
+                        if (actions.editing) {
+                            BlockToolbar(
+                                label = blockLabel(block),
+                                onUp = { vm.moveBlock(page.id, block.id, -1) },
+                                onDown = { vm.moveBlock(page.id, block.id, +1) },
+                                onDelete = { vm.removeBlock(page.id, block.id) },
+                                onRename = if (block is PackBlock) ({ renamingPack = block }) else null,
+                            )
+                        }
+                        BlockView(page, block, apps, actions)
+                    }
                 }
-            },
-            style = Fern.type.horloge,
-            color = colors.creme,
+                // Un pack seul sur sa ligne garde sa demi-largeur.
+                if (row.size == 1 && row[0] is PackBlock) Spacer(Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
+        if (actions.editing) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("+ Pack", onClick = { newPack = true })
+                PillButton("+ Rangée", onClick = { vm.addBlock(page.id, AppRowBlock(id = newId())) })
+                PillButton("+ Horloge", onClick = { vm.addBlock(page.id, ClockBlock(id = newId())) })
+            }
+            Spacer(Modifier.height(120.dp))
+        }
+    }
+
+    if (renamingPage) {
+        TextInputDialog(
+            title = "Nom de la page",
+            initial = page.title,
+            onConfirm = { vm.renamePage(page.id, it); renamingPage = false },
+            onDismiss = { renamingPage = false },
         )
-        Box(Modifier.padding(start = 4.dp)) {
-            Text(
-                text = now.format(dateFormat).uppercase(Locale.FRENCH),
-                style = Fern.type.libelle,
-                color = colors.lichen,
+    }
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = "Supprimer « ${page.title} » ?",
+            message = "La page et ses packs disparaissent. Les applis restent installées.",
+            confirmLabel = "Supprimer",
+            onConfirm = { vm.removePage(page.id); confirmDelete = false },
+            onDismiss = { confirmDelete = false },
+        )
+    }
+    renamingPack?.let { pack ->
+        TextInputDialog(
+            title = "Nom du pack",
+            initial = pack.title,
+            onConfirm = { vm.renamePack(page.id, pack.id, it); renamingPack = null },
+            onDismiss = { renamingPack = null },
+        )
+    }
+    if (newPack) {
+        TextInputDialog(
+            title = "Nouveau pack",
+            initial = "",
+            confirmLabel = "Créer",
+            onConfirm = { name ->
+                vm.addBlock(page.id, PackBlock(id = newId(), title = name.ifBlank { "Pack" }))
+                newPack = false
+            },
+            onDismiss = { newPack = false },
+        )
+    }
+}
+
+@Composable
+private fun BlockView(page: HomePage, block: HomeBlock, apps: AppIndex, actions: SlotActions) {
+    when (block) {
+        is ClockBlock -> ClockView()
+        is AppRowBlock -> AppRowView(
+            slots = block.apps,
+            refFor = { SlotRef.Block(page.id, block.id, it) },
+            apps = apps,
+            actions = actions,
+        )
+        is PackBlock -> PackCard(
+            title = block.title,
+            slots = block.apps,
+            refFor = { SlotRef.Block(page.id, block.id, it) },
+            apps = apps,
+            actions = actions,
+        )
+    }
+}
+
+private fun blockLabel(block: HomeBlock) = when (block) {
+    is ClockBlock -> "Horloge"
+    is AppRowBlock -> "Rangée"
+    is PackBlock -> block.title
+}
+
+/** Regroupe les blocs en lignes : deux packs consécutifs partagent une ligne. */
+private fun groupRows(blocks: List<HomeBlock>): List<List<HomeBlock>> {
+    val rows = mutableListOf<List<HomeBlock>>()
+    var pending: PackBlock? = null
+    for (block in blocks) {
+        if (block is PackBlock) {
+            if (pending == null) {
+                pending = block
+            } else {
+                rows.add(listOf(pending, block))
+                pending = null
+            }
+        } else {
+            pending?.let { rows.add(listOf(it)) }
+            pending = null
+            rows.add(listOf(block))
+        }
+    }
+    pending?.let { rows.add(listOf(it)) }
+    return rows
+}
+
+@Composable
+private fun PageDots(count: Int, current: Int) {
+    if (count <= 1) return
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+    ) {
+        repeat(count) { i ->
+            Box(
+                Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(if (i == current) 8.dp else 6.dp)
+                    .clip(CircleShape)
+                    .background(if (i == current) Fern.colors.creme else Fern.colors.moussePale),
             )
         }
+    }
+}
+
+/** Le dock : 4 applis + le bouton du tiroir, sur une pilule. */
+@Composable
+private fun Dock(
+    slots: List<String?>,
+    apps: AppIndex,
+    actions: SlotActions,
+    onOpenDrawer: () -> Unit,
+) {
+    val colors = Fern.colors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 12.dp)
+            .fillMaxWidth()
+            .height(76.dp)
+            .background(colors.mousse.copy(alpha = 0.85f), RoundedCornerShape(38.dp))
+            .padding(horizontal = 8.dp),
+    ) {
+        for (index in 0 until DOCK_SIZE) {
+            Slot(
+                app = apps.find(slots.getOrNull(index)),
+                ref = SlotRef.Dock(index),
+                iconSize = 52.dp,
+                showLabel = false,
+                actions = actions,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            DrawerButton(onClick = onOpenDrawer)
+        }
+    }
+}
+
+/** Le bouton du tiroir : une plaque ronde avec une grille de 9 points. */
+@Composable
+private fun DrawerButton(onClick: () -> Unit) {
+    val colors = Fern.colors
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(colors.lierre)
+            .clickable(onClick = onClick),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            repeat(3) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(3) {
+                        Box(
+                            Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(colors.pistache),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** La barre du haut en mode édition. */
+@Composable
+private fun EditBar(onAddPage: (String) -> Unit, onDone: () -> Unit) {
+    val colors = Fern.colors
+    val haptics = LocalHapticFeedback.current
+    var newPage by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .background(colors.nuit.copy(alpha = 0.9f), RoundedCornerShape(percent = 50))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text("Édition".uppercase(), style = Fern.type.libelle, color = colors.roseCarmin, modifier = Modifier.weight(1f))
+        PillButton("+ Page", onClick = { newPage = true })
+        Spacer(Modifier.width(8.dp))
+        PillButton("Terminé", onClick = onDone, accent = true)
+    }
+
+    if (newPage) {
+        TextInputDialog(
+            title = "Nouvelle page",
+            initial = "",
+            confirmLabel = "Créer",
+            onConfirm = { onAddPage(it.ifBlank { "Page" }); newPage = false },
+            onDismiss = { newPage = false },
+        )
     }
 }
