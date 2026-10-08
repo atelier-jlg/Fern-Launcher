@@ -3,6 +3,24 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.1.0 (code 2) — 2026-10-09
+
+Première vraie version de l'appli Téléphone + contacts (remplace Fil · Appels).
+
+- **Appels fiables** : écran d'appel par-dessus l'écran verrouillé (il allume l'écran), notification
+  avec **Répondre / Refuser**, notification « appel en cours » pour revenir à l'appel (chrono, Raccrocher).
+- **En appel** : muet, haut-parleur / Bluetooth / casque, attente, clavier (serveurs vocaux), chrono,
+  **écran éteint contre l'oreille** (capteur de proximité).
+- **Double appel** : le 2ᵉ appel n'écrase plus le 1ᵉʳ (mettre en attente et répondre, raccrocher et répondre,
+  basculer, fusionner). **Double SIM** : choix de la SIM quand aucune n'est choisie par défaut.
+- **Clavier** : suggestions par numéro (« 0612 », « +33 6… ») et par nom tapé à l'ancienne (5-8-5 → Jules),
+  appui long 1 = messagerie, 0 = « + ». Les liens « tel: » ouvrent le clavier pré-rempli.
+- **Récents** : Tous / Manqués, appels regroupés, rappeler, créer un contact, copier, bloquer, effacer.
+- **Contacts** : recherche sans accents (nom, surnom, société, note, n'importe quel numéro), A–Z,
+  favoris (toucher = appeler), fiche (vrais libellés des numéros, e-mails, anniversaire, travail, note),
+  **modification sans perte** : seuls les champs modifiés sont réécrits (fini le poste ou les notes effacés).
+- Couleurs et police de Fern Launcher (thème partagé).
+
 ## v0.25.0 (code 38) — 2026-10-08
 
 - **Thème partagé avec les applis sœurs** : Fern publie son thème actif (celui du Space en cours)

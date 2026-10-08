@@ -40,7 +40,7 @@ Légende : ✅ fait de bout en bout · 🟡 partiel · ❌ absent.
 
 ## Feuille de route
 0. ✅ **Socle** (Fern v0.25.0, Messages/Contact v0.0.1) : module `theme`, thème partagé, CI à 3 APK.
-1. **Fern Contact v0.1** — un téléphone fiable : CallActivity (écran verrouillé, réveil), notif CallStyle
+1. ✅ **Fern Contact v0.1** — un téléphone fiable : CallActivity (écran verrouillé, réveil), notif CallStyle
    Répondre / Refuser, notif « en cours », proximité, double appel, choix de SIM, clavier, journal,
    contacts sans perte de données.
 2. **Fern Messages v0.1** — des SMS fiables : liste et fil en direct, envoi / statut / renvoi propre, suppression
