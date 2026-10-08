@@ -253,7 +253,11 @@ fun AppDrawer(
             focusRequester = focusRequester,
             onGo = {
                 val first = results.firstOrNull()
-                if (first != null) actions.onLaunch(first) else if (searching) searchActions.onWebSearch(query)
+                when {
+                    extras.calculation != null -> searchActions.onCalculator(query)
+                    first != null -> actions.onLaunch(first)
+                    searching -> searchActions.onWebSearch(query)
+                }
             },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
         )

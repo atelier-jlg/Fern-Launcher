@@ -66,6 +66,7 @@ fun LauncherRoot(vm: LauncherViewModel) {
             onOpenEvent = vm::openEvent,
             onShortcut = vm::startShortcut,
             onWebSearch = vm::webSearch,
+            onCalculator = vm::openCalculator,
             onRequestPermissions = {
                 permissionLauncher.launch(
                     arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.READ_CALENDAR),

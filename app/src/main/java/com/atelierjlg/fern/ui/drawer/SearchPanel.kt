@@ -118,6 +118,8 @@ fun SearchPanel(
                 onGo = {
                     val first = results.firstOrNull()
                     when {
+                        // Un calcul : Entrée ouvre la calculatrice avec le calcul.
+                        extras.calculation != null -> searchActions.onCalculator(query)
                         first != null -> onLaunch(first)
                         searching -> searchActions.onWebSearch(query)
                     }

@@ -775,6 +775,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * Ouvre la calculatrice du téléphone avec le calcul. Android n'a pas de moyen standard de
+     * pré-remplir une calculatrice : on met le calcul (au format calculatrice : × ÷ √) dans le
+     * presse-papiers, il suffit de le coller.
+     */
+    fun openCalculator(expression: String) {
+        val context = getApplication<Application>()
+        val text = Calculator.normalize(expression).replace('*', '×').replace('/', '÷').replace('.', ',')
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("Calcul", text))
+        val intent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
+        val fallback = context.packageManager.getInstalledPackages(0)
+            .map { it.packageName }
+            .firstOrNull { it.contains("calculator", ignoreCase = true) || it.contains("calculatrice", ignoreCase = true) }
+            ?.let { context.packageManager.getLaunchIntentForPackage(it) }
+        val target = if (intent.resolveActivity(context.packageManager) != null) intent else fallback
+        if (target == null) {
+            toast("Aucune calculatrice trouvée · calcul copié")
+            return
+        }
+        startSafely(target)
+        toast("Calcul copié : colle-le dans la calculatrice")
+    }
+
     fun copyToClipboard(text: String) {
         val context = getApplication<Application>()
         context.getSystemService(ClipboardManager::class.java)

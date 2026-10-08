@@ -59,6 +59,11 @@
         <package android:name="com.noctuasoftware.stellarium_free" />
         <package android:name="com.noctuasoftware.stellarium_plus" />
         <package android:name="org.stellarium.stellarium" />
+        <!-- Recherche : Entrée sur un calcul ouvre la calculatrice. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CALCULATOR" />
+        </intent>
         <!-- Recherche web, ouverture de contacts / événements. -->
         <intent>
             <action android:name="android.intent.action.WEB_SEARCH" />

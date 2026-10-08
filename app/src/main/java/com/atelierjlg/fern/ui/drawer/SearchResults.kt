@@ -44,6 +44,8 @@ class SearchActions(
     val onShortcut: (ShortcutResult) -> Unit,
     val onWebSearch: (String) -> Unit,
     val onRequestPermissions: () -> Unit,
+    /** Entrée sur un calcul : ouvrir la calculatrice avec le calcul (copié dans le presse-papiers). */
+    val onCalculator: (String) -> Unit = {},
 )
 
 /** Une section de résultats : un titre et des lignes. */
