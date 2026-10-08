@@ -3,6 +3,14 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.23.0 (code 35) — 2026-10-08
+
+- **Emploi du temps de l'école lu directement par Fern** : Paramètres → Cours du jour →
+  « Lien de l'emploi du temps » (lien iCal / .ics / webcal:// de l'école). Plus besoin d'ICSx⁵.
+  Téléchargé toutes les heures, gardé sur le téléphone pour le hors-connexion, bouton « Actualiser »,
+  nombre de cours chargés ou erreur claire (lien qui n'est pas un agenda, serveur injoignable…).
+- Le widget Cours du jour l'utilise à la place de l'agenda Android quand le lien est renseigné.
+
 ## v0.22.2 (code 34) — 2026-10-06
 
 - **Widget Ciel** : la carte n'a plus une hauteur fixe (la 3ᵉ ligne « 20 % éclairée · lever… » était coupée)

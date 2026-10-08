@@ -249,6 +249,11 @@ data class MaisonBlock(override val id: String, val kind: MaisonKind, val half: 
 /** Widget « Cours du jour » : quels agendas lire, et quels mots signalent un examen. */
 @Serializable
 data class CoursSettings(
+    /**
+     * Lien de l'emploi du temps de l'école (.ics / webcal), lu directement par Fern.
+     * S'il est rempli, il remplace l'agenda Android pour ce widget.
+     */
+    val icsUrl: String = "",
     /** Agendas Android à lire (ceux d'ICSx⁵ par exemple) ; vide = tous. */
     val calendarIds: Set<Long> = emptySet(),
     val examKeywords: List<String> = listOf("examen", "partiel", "ds", "controle", "soutenance", "oral", "qcm", "rendu"),

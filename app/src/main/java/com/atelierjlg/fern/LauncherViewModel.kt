@@ -81,6 +81,7 @@ import com.atelierjlg.fern.data.updatePomodoroSettings
 import com.atelierjlg.fern.data.updateScreenTime
 import com.atelierjlg.fern.system.PomodoroAlarm
 import com.atelierjlg.fern.widgets.Agenda
+import com.atelierjlg.fern.widgets.IcsCalendar
 import com.atelierjlg.fern.widgets.CalendarInfo
 import com.atelierjlg.fern.widgets.CoursState
 import com.atelierjlg.fern.widgets.ScreenTime
@@ -264,12 +265,47 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun refreshCours() {
         val c = config.value
-        if (!c.hasMaison(MaisonKind.Cours)) return
+        // Sans widget Cours, inutile de calculer… sauf si on vient de demander une actualisation (Paramètres).
+        if (!c.hasMaison(MaisonKind.Cours) && !forceCours) return
         viewModelScope.launch {
             _cours.value = withContext(Dispatchers.IO) {
-                Agenda.coursState(getApplication(), c.cours.calendarIds, c.cours.examKeywords)
+                if (c.cours.icsUrl.isNotBlank()) {
+                    // Emploi du temps de l'école : on retélécharge s'il a plus d'une heure (ou si on le demande).
+                    val cache = coursCache
+                    val stale = !cache.exists() || System.currentTimeMillis() - cache.lastModified() > 60 * 60_000L
+                    if (stale || forceCours) IcsCalendar.download(c.cours.icsUrl, cache)
+                    forceCours = false
+                    _coursIcsError.value = IcsCalendar.lastError
+                    val events = runCatching { IcsCalendar.parse(cache.readText()) }.getOrDefault(emptyList())
+                    _coursIcsCount.value = events.size
+                    IcsCalendar.coursState(events, c.cours.examKeywords)
+                } else {
+                    Agenda.coursState(getApplication(), c.cours.calendarIds, c.cours.examKeywords)
+                }
             }
         }
+    }
+
+    /** Le fichier .ics de l'école, gardé sur le téléphone (utilisable hors connexion). */
+    private val coursCache: File get() = File(getApplication<Application>().filesDir, "cours.ics")
+    private var forceCours = false
+    private val _coursIcsError = MutableStateFlow<String?>(null)
+    val coursIcsError: StateFlow<String?> = _coursIcsError.asStateFlow()
+    private val _coursIcsCount = MutableStateFlow(0)
+    val coursIcsCount: StateFlow<Int> = _coursIcsCount.asStateFlow()
+
+    /** Change le lien de l'emploi du temps : on oublie l'ancien fichier et on télécharge le nouveau. */
+    fun setCoursIcsUrl(url: String) {
+        runCatching { coursCache.delete() }
+        _coursIcsCount.value = 0
+        store.update { c -> c.updateCours { it.copy(icsUrl = url.trim()) } }
+        reloadCoursIcs()
+    }
+
+    /** Retélécharge tout de suite l'emploi du temps de l'école. */
+    fun reloadCoursIcs() {
+        forceCours = true
+        refreshCours()
     }
 
     /** Les agendas Android (pour choisir ceux du widget Cours). */
@@ -280,7 +316,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refreshCours()
     }
 
-    fun openEventId(eventId: Long) = startSafely(
+    fun openEventId(eventId: Long) {
+        // Les cours lus depuis le lien de l'école n'existent pas dans l'agenda Android : rien à ouvrir.
+        if (eventId < 0) return
+        openAndroidEvent(eventId)
+    }
+
+    private fun openAndroidEvent(eventId: Long) = startSafely(
         Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)),
     )
 

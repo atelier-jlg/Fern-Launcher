@@ -295,10 +295,41 @@ fun CoursSection(vm: LauncherViewModel, settings: CoursSettings) {
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { reload++ }
     var editingKeywords by remember { mutableStateOf(false) }
 
+    var editingUrl by remember { mutableStateOf(false) }
+    val icsError by vm.coursIcsError.collectAsStateWithLifecycle()
+    val icsCount by vm.coursIcsCount.collectAsStateWithLifecycle()
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("EMPLOI DU TEMPS DE L'ÉCOLE", style = Fern.type.libelle, color = Fern.colors.roseCarmin)
         Text(
-            "Le widget lit l'agenda d'Android. Pour Proton Calendar : lien de partage ICS dans ICSx⁵, " +
-                "puis choisis ici l'agenda créé par ICSx⁵.",
+            "Colle le lien « iCal / Exporter / S'abonner » de ton école (.ics ou webcal://). " +
+                "Fern le télécharge toutes les heures et le garde pour le hors-connexion.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        Row2(
+            "Lien de l'emploi du temps",
+            settings.icsUrl.ifBlank { "Aucun · toucher pour coller le lien" }.let { if (it.length > 60) it.take(57) + "…" else it },
+            onClick = { editingUrl = true },
+        )
+        if (settings.icsUrl.isNotBlank()) {
+            if (icsError != null) {
+                Text(icsError!!, style = Fern.type.nomApp, color = Fern.colors.roseCarmin)
+            } else {
+                Text("$icsCount cours chargés", style = Fern.type.nomApp, color = Fern.colors.lichen)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("Actualiser", onClick = { vm.reloadCoursIcs() }, accent = true)
+                PillButton("Retirer le lien", onClick = { vm.setCoursIcsUrl("") })
+            }
+        }
+        Text("OU L'AGENDA DU TÉLÉPHONE", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
+        Text(
+            if (settings.icsUrl.isNotBlank()) {
+                "Ignoré tant qu'un lien d'école est renseigné."
+            } else {
+                "Sans lien d'école, le widget lit l'agenda d'Android (par exemple Proton via ICSx⁵)."
+            },
             style = Fern.type.nomApp,
             color = Fern.colors.lichen,
         )
@@ -327,6 +358,17 @@ fun CoursSection(vm: LauncherViewModel, settings: CoursSettings) {
         }
         Text("EXAMENS", style = Fern.type.libelle, color = Fern.colors.roseCarmin, modifier = Modifier.padding(top = 10.dp))
         Row2("Mots repérés dans les titres", settings.examKeywords.joinToString(", "), onClick = { editingKeywords = true })
+    }
+    if (editingUrl) {
+        TextInputDialog(
+            title = "Lien de l'emploi du temps (.ics)",
+            initial = settings.icsUrl,
+            onConfirm = { text ->
+                vm.setCoursIcsUrl(text)
+                editingUrl = false
+            },
+            onDismiss = { editingUrl = false },
+        )
     }
     if (editingKeywords) {
         TextInputDialog(
