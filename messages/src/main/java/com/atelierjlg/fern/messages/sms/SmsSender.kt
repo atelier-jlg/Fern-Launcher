@@ -1,0 +1,85 @@
+package com.atelierjlg.fern.messages.sms
+
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.ContentUris
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.provider.Telephony
+import android.telephony.SmsManager
+
+/**
+ * Envoi des SMS : le message est d'abord écrit « en cours d'envoi » (OUTBOX), puis passe à
+ * « envoyé » ou « échec » quand le réseau répond ([SendStatusReceiver]).
+ * Un message long est découpé en plusieurs SMS puis recollé par le téléphone d'en face.
+ */
+object SmsSender {
+    const val ACTION_SENT = "com.atelierjlg.fern.messages.SMS_SENT"
+    internal const val EXTRA_ID = "id"
+    internal const val EXTRA_LAST = "last"
+
+    /** Envoie à une ou plusieurs personnes (un SMS chacune). */
+    fun send(context: Context, addresses: List<String>, body: String) {
+        addresses.filter { it.isNotBlank() }.forEach { sendOne(context, it, body) }
+    }
+
+    private fun sendOne(context: Context, address: String, body: String) {
+        val threadId = Telephony.Threads.getOrCreateThreadId(context, address)
+        val uri = context.contentResolver.insert(
+            Telephony.Sms.CONTENT_URI,
+            ContentValues().apply {
+                put(Telephony.Sms.ADDRESS, address)
+                put(Telephony.Sms.BODY, body)
+                put(Telephony.Sms.DATE, System.currentTimeMillis())
+                put(Telephony.Sms.READ, 1)
+                put(Telephony.Sms.SEEN, 1)
+                put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX)
+                put(Telephony.Sms.THREAD_ID, threadId)
+            },
+        )
+        val id = uri?.let { ContentUris.parseId(it) } ?: -1L
+        try {
+            val sms = context.getSystemService(SmsManager::class.java)
+            val parts = sms.divideMessage(body)
+            val sent = ArrayList<PendingIntent>(parts.size)
+            parts.indices.forEach { i ->
+                val intent = Intent(context, SendStatusReceiver::class.java).setAction(ACTION_SENT)
+                    .putExtra(EXTRA_ID, id)
+                    .putExtra(EXTRA_LAST, i == parts.size - 1)
+                // Code unique par message et par morceau : les accusés ne se mélangent pas.
+                val code = ((id % 1_000_000L) * 16 + i).toInt()
+                sent += PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            }
+            sms.sendMultipartTextMessage(address, null, parts, sent, null)
+        } catch (e: Exception) {
+            setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
+        }
+    }
+
+    /** Renvoyer un SMS en échec : l'ancien est remplacé (pas de doublon). */
+    fun resend(context: Context, smsId: Long, address: String, body: String) {
+        context.contentResolver.delete(ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, smsId), null, null)
+        sendOne(context, address, body)
+    }
+
+    internal fun setType(context: Context, id: Long, type: Int) {
+        if (id < 0) return
+        context.contentResolver.update(
+            ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
+            ContentValues().apply { put(Telephony.Sms.TYPE, type) }, null, null,
+        )
+    }
+}
+
+/** Réponse du réseau pour chaque morceau envoyé : « échec » dès qu'un morceau échoue, « envoyé » au dernier. */
+class SendStatusReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getLongExtra(SmsSender.EXTRA_ID, -1L)
+        when {
+            resultCode != Activity.RESULT_OK -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
+            intent.getBooleanExtra(SmsSender.EXTRA_LAST, true) -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_SENT)
+        }
+    }
+}

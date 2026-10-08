@@ -43,7 +43,7 @@ Légende : ✅ fait de bout en bout · 🟡 partiel · ❌ absent.
 1. ✅ **Fern Contact v0.1** — un téléphone fiable : CallActivity (écran verrouillé, réveil), notif CallStyle
    Répondre / Refuser, notif « en cours », proximité, double appel, choix de SIM, clavier, journal,
    contacts sans perte de données.
-2. **Fern Messages v0.1** — des SMS fiables : liste et fil en direct, envoi / statut / renvoi propre, suppression
+2. ✅ **Fern Messages v0.1** — des SMS fiables : liste et fil en direct, envoi / statut / renvoi propre, suppression
    correcte, notifs (ouvrir le fil, réponse directe, marquer lu, « Copier 123456 »), recherche, liste noire,
    archives, envoi différé.
 3. **Fern Messages v0.2** — MMS : téléchargement des entrants (SmsManager.downloadMultimediaMessage), envoi

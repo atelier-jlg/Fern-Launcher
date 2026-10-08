@@ -3,6 +3,24 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.1.0 (code 2) — 2026-10-09
+
+Première vraie version de l'appli SMS (remplace Fil).
+
+- **Conversations** : SMS et MMS ensemble (les fils « 100 % MMS » apparaissent enfin), mises à jour
+  en direct, non lus, brouillons gardés, archives, sélection (appui long : archiver, lu, bloquer, supprimer).
+- **Notifications** : toucher ouvre la bonne conversation ; **Répondre** sans ouvrir l'appli, **Lu**, et
+  **Copier 123456** quand le SMS contient un code de vérification (copie « sensible », texte masqué sur
+  l'écran verrouillé). Son / silencieux / désactivées par conversation.
+- **Envoi** : statut Envoi… / Envoyé / Échec, renvoi sans doublon, compteur de SMS pour les longs messages,
+  envoi à plusieurs (séparément). **Programmer** : appui long sur l'avion (ce soir, demain matin, date au choix).
+- **Codes** : bouton « Copier 123456 » sous le SMS. Texte sélectionnable, copier, supprimer (le bon message :
+  fini le MMS qui effaçait un SMS).
+- **Recherche** dans tous les SMS (sans accents) et dans les noms. Liens « sms: » (avec le texte) et partage
+  de texte depuis une autre appli. « Répondre par SMS » au refus d'un appel (pour Fern Contact).
+- **MMS reçus** : affichés s'ils sont déjà dans le téléphone ; le **téléchargement** des nouveaux arrive en v0.2
+  (en attendant, l'annonce est gardée pour les récupérer).
+
 ## Fern Contact v0.1.0 (code 2) — 2026-10-09
 
 Première vraie version de l'appli Téléphone + contacts (remplace Fil · Appels).

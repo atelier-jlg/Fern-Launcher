@@ -30,6 +30,7 @@ import com.atelierjlg.fern.common.PhoneNumbers
 import com.atelierjlg.fern.common.SearchText
 import com.atelierjlg.fern.contact.ContactViewModel
 import com.atelierjlg.fern.contact.Screen
+import com.atelierjlg.fern.ui.kit.*
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcon
 import com.atelierjlg.fern.ui.theme.FernIcons

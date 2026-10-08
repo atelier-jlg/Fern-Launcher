@@ -44,6 +44,7 @@ import com.atelierjlg.fern.contact.data.emailLabel
 import com.atelierjlg.fern.contact.data.parseBirthdayInput
 import com.atelierjlg.fern.contact.data.phoneLabel
 import com.atelierjlg.fern.contact.data.toForm
+import com.atelierjlg.fern.ui.kit.*
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcons
 import kotlinx.coroutines.launch

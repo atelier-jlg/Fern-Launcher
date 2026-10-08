@@ -41,6 +41,7 @@ import com.atelierjlg.fern.contact.data.ContactDetail
 import com.atelierjlg.fern.contact.data.emailLabel
 import com.atelierjlg.fern.contact.data.formatBirthday
 import com.atelierjlg.fern.contact.data.phoneLabel
+import com.atelierjlg.fern.ui.kit.*
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcon
 import com.atelierjlg.fern.ui.theme.FernIcons
@@ -149,26 +150,6 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuler", color = c.lichen) } },
         )
-    }
-}
-
-/** Barre du haut : retour à gauche, actions à droite. */
-@Composable
-fun TopBar(onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButtonRound(FernIcons.Back, Fern.colors.creme, onClick = onBack)
-        Spacer(Modifier.weight(1f))
-        actions()
-    }
-}
-
-@Composable
-fun IconButtonRound(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        FernIcon(icon, tint)
     }
 }
 

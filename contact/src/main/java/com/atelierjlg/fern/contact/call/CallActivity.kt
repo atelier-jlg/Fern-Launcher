@@ -46,9 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.atelierjlg.fern.common.PhoneNumbers
 import com.atelierjlg.fern.contact.MainActivity
-import com.atelierjlg.fern.contact.ui.Avatar
-import com.atelierjlg.fern.contact.ui.RoundAction
 import com.atelierjlg.fern.theme.FernSharedTheme
+import com.atelierjlg.fern.ui.kit.*
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcons
 import kotlinx.coroutines.delay
@@ -350,7 +349,7 @@ private fun RouteChooser(mask: Int, current: Int, onDone: () -> Unit) {
     ).filter { mask and it.first != 0 }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
         options.forEach { (route, label) ->
-            com.atelierjlg.fern.contact.ui.Pill(label, selected = route == current) {
+            Pill(label, selected = route == current) {
                 CallManager.setRoute(route)
                 onDone()
             }

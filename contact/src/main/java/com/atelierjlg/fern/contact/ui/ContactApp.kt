@@ -33,6 +33,7 @@ import com.atelierjlg.fern.contact.ContactViewModel
 import com.atelierjlg.fern.contact.Screen
 import com.atelierjlg.fern.contact.SetupState
 import com.atelierjlg.fern.contact.Tab
+import com.atelierjlg.fern.ui.kit.*
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcon
 import com.atelierjlg.fern.ui.theme.FernIcons

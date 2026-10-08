@@ -1,4 +1,9 @@
-package com.atelierjlg.fern.contact.ui
+package com.atelierjlg.fern.ui.kit
+
+/*
+ * Petits composants communs aux applis Fern (Contact, Messages) : avatar, boutons ronds,
+ * pilules, champs de saisie, barre du haut. Tous prennent leurs couleurs dans le thème.
+ */
 
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -9,6 +14,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.atelierjlg.fern.common.SearchText
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcon
+import com.atelierjlg.fern.ui.theme.FernIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -72,7 +80,7 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
             if (initials.isNotEmpty()) {
                 Text(initials, style = Fern.type.corps.copy(fontSize = (size.value * 0.36f).sp), color = c.creme)
             } else {
-                FernIcon(com.atelierjlg.fern.ui.theme.FernIcons.User, c.creme, size = size * 0.5f)
+                FernIcon(FernIcons.User, c.creme, size = size * 0.5f)
             }
         }
     }
@@ -203,4 +211,24 @@ fun FernField(
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(text.uppercase(), style = Fern.type.libelle, color = Fern.colors.lichen, modifier = modifier.padding(top = 16.dp, bottom = 6.dp))
+}
+
+/** Barre du haut : retour à gauche, actions à droite. */
+@Composable
+fun TopBar(onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButtonRound(FernIcons.Back, Fern.colors.creme, onClick = onBack)
+        Spacer(Modifier.weight(1f))
+        actions()
+    }
+}
+
+@Composable
+fun IconButtonRound(icon: ImageVector, tint: Color, onClick: () -> Unit) {
+    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        FernIcon(icon, tint)
+    }
 }
