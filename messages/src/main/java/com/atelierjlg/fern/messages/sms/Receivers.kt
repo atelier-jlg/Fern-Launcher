@@ -17,7 +17,6 @@ import android.util.Log
 import android.widget.Toast
 import com.atelierjlg.fern.messages.data.MessagesRepo
 import com.atelierjlg.fern.messages.data.PrefsStore
-import java.io.File
 import kotlin.concurrent.thread
 
 /**
@@ -49,21 +48,21 @@ class SmsReceiver : BroadcastReceiver() {
     }
 }
 
-/**
- * Un MMS est annoncé. Le téléchargement des MMS arrive dans la prochaine version :
- * en attendant, l'annonce est gardée (elle permettra de le récupérer) et on prévient.
- */
+/** Un MMS est annoncé : on le télécharge (voir MmsTransport). */
 class MmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pdu = intent.getByteArrayExtra("data") ?: return
-        runCatching {
-            val dir = File(context.filesDir, "mms-en-attente").apply { mkdirs() }
-            File(dir, "${System.currentTimeMillis()}.pdu").writeBytes(pdu)
+        val subId = intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", intent.getIntExtra("subscription", -1))
+        val pending = goAsync()
+        thread {
+            try {
+                com.atelierjlg.fern.messages.mms.MmsTransport.onNotification(context, pdu, subId)
+            } catch (e: Exception) {
+                Log.e("FernMms", "Annonce de MMS non traitée", e)
+            } finally {
+                pending.finish()
+            }
         }
-        MessageNotifier.info(
-            context, -1L, "MMS reçu (photo ou groupe)",
-            "Fern Messages ne sait pas encore les télécharger : il sera récupéré dans la prochaine version.",
-        )
     }
 }
 

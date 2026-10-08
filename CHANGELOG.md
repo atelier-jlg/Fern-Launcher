@@ -3,6 +3,21 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.2.0 (code 3) — 2026-10-09
+
+Les MMS (étape 3).
+
+- **MMS reçus téléchargés** : photos, cartes de contact, messages de groupe. Android passe par les données
+  mobiles ; en cas d'échec, un bandeau « MMS à télécharger · Réessayer » reste dans la liste, et l'appli
+  réessaie à chaque ouverture. Les MMS annoncés pendant la v0.1 sont récupérés (s'ils n'ont pas expiré).
+- **Envoyer une photo ou un contact** : bouton « + » à gauche de la zone d'écriture. La photo est réduite
+  pour tenir dans la limite de l'opérateur. Partager une photo depuis la Galerie vers Fern Messages marche aussi.
+- **Conversations de groupe** : écrire à plusieurs = un vrai groupe (MMS), et répondre dans un groupe
+  répond à tout le monde.
+- **Cartes de contact reçues** : toucher pour les enregistrer dans les contacts.
+- **Accusés de remise** des SMS : « Remis » sous le dernier message quand le téléphone d'en face l'a reçu.
+- Renvoi d'un MMS en échec (même contenu).
+
 ## Fern Messages v0.1.0 (code 2) — 2026-10-09
 
 Première vraie version de l'appli SMS (remplace Fil).

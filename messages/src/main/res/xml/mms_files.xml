@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dossiers partagés avec le service MMS d'Android (fichiers temporaires d'envoi / de réception)
+     et avec l'appli Contacts (cartes de visite reçues). -->
+<paths>
+    <cache-path name="mms" path="mms/" />
+    <cache-path name="vcard" path="vcard/" />
+</paths>

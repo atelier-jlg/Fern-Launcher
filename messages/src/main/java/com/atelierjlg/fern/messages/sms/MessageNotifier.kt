@@ -60,7 +60,14 @@ object MessageNotifier {
             .setGroupConversation(addresses.size > 1)
         unread.forEach { m ->
             val sender = Person.Builder().setName(repo.contact(m.address)?.first ?: com.atelierjlg.fern.common.PhoneNumbers.format(m.address)).build()
-            style.addMessage(Notification.MessagingStyle.Message(m.body, m.date, sender))
+            val text = m.body.ifBlank {
+                when {
+                    m.images.isNotEmpty() -> "Photo"
+                    m.vcards.isNotEmpty() -> "Contact : ${m.vcards.first().second}"
+                    else -> "MMS"
+                }
+            }
+            style.addMessage(Notification.MessagingStyle.Message(text, m.date, sender))
         }
 
         val code = Otp.find(unread.last().body)

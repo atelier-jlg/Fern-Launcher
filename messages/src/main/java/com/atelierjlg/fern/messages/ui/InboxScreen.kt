@@ -58,6 +58,7 @@ fun InboxScreen(vm: MessagesViewModel, archived: Boolean) {
     val all by vm.conversations.collectAsState()
     val prefs by vm.prefs.collectAsState()
     val setup by vm.setup.collectAsState()
+    val pendingMms by vm.pendingMms.collectAsState()
     val shown = remember(all, prefs.archived, archived) { all.filter { (it.threadId in prefs.archived) == archived } }
     var selection by remember { mutableStateOf(emptySet<Long>()) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -93,6 +94,19 @@ fun InboxScreen(vm: MessagesViewModel, archived: Boolean) {
                 }
             }
             if (!archived && !setup.complete) SetupCard(vm, setup)
+            if (!archived && pendingMms > 0) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).clip(RoundedCornerShape(24.dp)).background(c.mousse)
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (pendingMms > 1) "$pendingMms MMS à télécharger" else "1 MMS à télécharger",
+                        style = Fern.type.nomApp, color = c.creme, modifier = Modifier.weight(1f),
+                    )
+                    Pill("Réessayer", true) { vm.retryMms(force = true) }
+                }
+            }
             if (shown.isEmpty()) {
                 Text(
                     if (archived) "Aucune conversation archivée." else "Aucune conversation.",

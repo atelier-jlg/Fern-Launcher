@@ -23,6 +23,8 @@ import com.atelierjlg.fern.messages.data.MessagesRepo
 import com.atelierjlg.fern.messages.data.Msg
 import com.atelierjlg.fern.messages.data.NotifyMode
 import com.atelierjlg.fern.messages.data.PrefsStore
+import com.atelierjlg.fern.messages.mms.MmsTransport
+import com.atelierjlg.fern.messages.mms.MmsTransport.Attachment
 import com.atelierjlg.fern.messages.sms.MessageNotifier
 import com.atelierjlg.fern.messages.sms.ScheduledSend
 import com.atelierjlg.fern.messages.sms.SmsSender
@@ -42,7 +44,7 @@ sealed interface Screen {
     data object Scheduled : Screen
     data class Thread(val threadId: Long) : Screen
     /** Nouveau message, éventuellement pré-rempli (lien « smsto: », partage depuis une autre appli). */
-    data class Compose(val number: String = "", val body: String = "") : Screen
+    data class Compose(val number: String = "", val body: String = "", val image: String? = null) : Screen
 }
 
 data class SetupState(
@@ -71,6 +73,11 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
 
     private val _stack = MutableStateFlow<List<Screen>>(listOf(Screen.Inbox))
     val screen: StateFlow<List<Screen>> = _stack.asStateFlow()
+
+    /** MMS annoncés mais pas encore téléchargés. */
+    private val _pendingMms = MutableStateFlow(0)
+    val pendingMms: StateFlow<Int> = _pendingMms.asStateFlow()
+    private var lastMmsRetry = 0L
 
     /** Incrémenté à chaque changement dans la base des SMS : les écrans ouverts se relisent. */
     private val _version = MutableStateFlow(0)
@@ -121,6 +128,7 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
         reloadJob = viewModelScope.launch {
             delay(120)
             _prefs.value = withContext(Dispatchers.IO) { PrefsStore.read(context) }
+            _pendingMms.value = withContext(Dispatchers.IO) { MmsTransport.pendingCount(context) }
             if (has(Manifest.permission.READ_SMS)) {
                 _conversations.value = withContext(Dispatchers.IO) { runCatching { repo.conversations() }.getOrDefault(_conversations.value) }
             }
@@ -154,6 +162,8 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
             add(Manifest.permission.RECEIVE_SMS)
             add(Manifest.permission.RECEIVE_MMS)
             add(Manifest.permission.READ_CONTACTS)
+            // Double SIM, et reconnaître mon numéro dans les MMS de groupe.
+            add(Manifest.permission.READ_PHONE_STATE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
         }
 
@@ -184,16 +194,48 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
 
     // ─── Actions ─────────────────────────────────────────────────────────────
 
-    fun send(addresses: List<String>, body: String) {
-        if (body.isBlank() || addresses.isEmpty()) return
+    /**
+     * Envoie. Une photo, un contact, ou plusieurs destinataires (conversation de groupe) → MMS ;
+     * sinon → SMS.
+     */
+    fun send(addresses: List<String>, body: String, attachments: List<Attachment> = emptyList()) {
+        if ((body.isBlank() && attachments.isEmpty()) || addresses.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { SmsSender.send(context, addresses, body.trim()) }
-                .onFailure { withContext(Dispatchers.Main) { toast("Envoi impossible : ${it.message}") } }
+            runCatching {
+                if (attachments.isNotEmpty() || addresses.size > 1) MmsTransport.send(context, addresses, body.trim(), attachments)
+                else SmsSender.send(context, addresses, body.trim())
+            }.onFailure { withContext(Dispatchers.Main) { toast("Envoi impossible : ${it.message}") } }
         }
     }
 
     fun resend(msg: Msg) = viewModelScope.launch(Dispatchers.IO) {
-        runCatching { SmsSender.resend(context, msg.id, msg.address, msg.body) }
+        runCatching {
+            if (msg.isMms) MmsTransport.resend(context, msg.id, repo.addressesOf(msg.threadId))
+            else SmsSender.resend(context, msg.id, msg.address, msg.body)
+        }.onFailure { withContext(Dispatchers.Main) { toast("Renvoi impossible : ${it.message}") } }
+    }
+
+    /** Relance le téléchargement des MMS en attente (au plus une fois toutes les 5 min, sauf demande). */
+    fun retryMms(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastMmsRetry < 5 * 60_000L) return
+        lastMmsRetry = now
+        viewModelScope.launch(Dispatchers.IO) {
+            if (MmsTransport.pendingCount(context) > 0) runCatching { MmsTransport.retryPending(context) }
+        }
+        if (force) toast("Téléchargement relancé")
+    }
+
+    /** Ouvre une carte de contact reçue (l'appli Contacts propose de l'enregistrer). */
+    fun openVcard(part: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val dir = java.io.File(context.cacheDir, "vcard").apply { mkdirs() }
+            val file = java.io.File(dir, "contact.vcf")
+            context.contentResolver.openInputStream(part)?.use { input -> file.outputStream().use { input.copyTo(it) } }
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.mmsfiles", file)
+            val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "text/x-vcard").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            withContext(Dispatchers.Main) { start(intent) }
+        }
     }
 
     fun schedule(addresses: List<String>, body: String, at: Long) = viewModelScope.launch(Dispatchers.IO) {

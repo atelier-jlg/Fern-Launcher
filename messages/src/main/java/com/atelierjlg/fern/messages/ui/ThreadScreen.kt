@@ -1,5 +1,8 @@
 package com.atelierjlg.fern.messages.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +50,7 @@ import com.atelierjlg.fern.messages.data.MsgStatus
 import com.atelierjlg.fern.messages.data.NotifyMode
 import com.atelierjlg.fern.messages.data.Otp
 import com.atelierjlg.fern.messages.data.dayOf
+import com.atelierjlg.fern.messages.mms.MmsTransport.Attachment
 import com.atelierjlg.fern.messages.data.formatDayHeader
 import com.atelierjlg.fern.messages.data.formatHour
 import com.atelierjlg.fern.ui.kit.ActionRow
@@ -76,6 +80,7 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
     var actionsFor by remember { mutableStateOf<Msg?>(null) }
     var scheduling by remember { mutableStateOf(false) }
     var confirmDeleteThread by remember { mutableStateOf(false) }
+    var attachments by remember { mutableStateOf(emptyList<Attachment>()) }
     val listState = rememberLazyListState()
 
     // Relu à chaque changement dans la base (message reçu, envoyé, statut…).
@@ -139,6 +144,7 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
                         onLongClick = { actionsFor = m },
                         onRetry = { vm.resend(m) },
                         onCopyCode = { vm.copy(it) },
+                        onOpenVcard = { vm.openVcard(it) },
                     )
                 }
                 // Séparateur de jour au-dessus du premier message de chaque jour.
@@ -158,8 +164,11 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
             text = draft,
             onText = { draft = it },
             enabled = addresses.isNotEmpty(),
+            attachments = attachments,
+            onAttachmentsChange = { attachments = it },
             onSend = {
-                vm.send(addresses, draft)
+                vm.send(addresses, draft, attachments)
+                attachments = emptyList()
                 draft = ""
                 vm.saveDraft(threadId, "")
                 scope.launch { listState.animateScrollToItem(0) }
@@ -268,6 +277,7 @@ private fun Bubble(
     onLongClick: () -> Unit,
     onRetry: () -> Unit,
     onCopyCode: (String) -> Unit,
+    onOpenVcard: (android.net.Uri) -> Unit,
 ) {
     val c = Fern.colors
     val code = remember(m.key) { if (!m.outgoing) Otp.find(m.body) else null }
@@ -290,7 +300,7 @@ private fun Bubble(
                     },
                 )
                 .combinedClickable(onClick = { if (m.status == MsgStatus.Failed) onRetry() }, onLongClick = onLongClick)
-                .padding(if (m.images.isNotEmpty()) 4.dp else 0.dp),
+                .padding(if (m.images.isNotEmpty() || m.vcards.isNotEmpty()) 4.dp else 0.dp),
         ) {
             m.images.forEach { uri ->
                 val bitmap = rememberPhoto(uri.toString(), 900)
@@ -302,6 +312,19 @@ private fun Bubble(
                     )
                 } else {
                     Box(Modifier.size(200.dp, 140.dp).clip(RoundedCornerShape(18.dp)).background(c.sousBois))
+                }
+            }
+            m.vcards.forEach { (uri, name) ->
+                Row(
+                    Modifier.padding(4.dp).clip(RoundedCornerShape(18.dp)).background(c.nuit).clickable { onOpenVcard(uri) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.User, c.pistache, size = 20.dp)
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text(name, style = Fern.type.corps, color = c.creme)
+                        Text("TOUCHER POUR ENREGISTRER", style = Fern.type.libelle, color = c.lichen)
+                    }
                 }
             }
             if (m.otherParts > 0) {
@@ -333,31 +356,87 @@ private fun Bubble(
     }
 }
 
-/** La zone d'écriture : toucher l'avion envoie, appui long = programmer. */
+/**
+ * La zone d'écriture : « + » ajoute une photo ou un contact (envoyés en MMS),
+ * toucher l'avion envoie, appui long dessus = programmer (texte seul).
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Composer(text: String, onText: (String) -> Unit, enabled: Boolean, onSend: () -> Unit, onSchedule: () -> Unit) {
+fun Composer(
+    text: String,
+    onText: (String) -> Unit,
+    enabled: Boolean,
+    onSend: () -> Unit,
+    onSchedule: () -> Unit,
+    attachments: List<Attachment> = emptyList(),
+    onAttachmentsChange: (List<Attachment>) -> Unit = {},
+) {
     val c = Fern.colors
+    var menu by remember { mutableStateOf(false) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) onAttachmentsChange(attachments + Attachment.Photo(uri))
+    }
+    val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+        if (uri != null) onAttachmentsChange(attachments + Attachment.Contact(uri))
+    }
+    if (attachments.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            attachments.forEach { a ->
+                Box(Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(c.mousse).clickable { onAttachmentsChange(attachments - a) }) {
+                    when (a) {
+                        is Attachment.Photo -> rememberPhoto(a.uri.toString(), 200)?.let {
+                            Image(it, null, Modifier.size(64.dp), contentScale = ContentScale.Crop)
+                        }
+                        is Attachment.Contact -> com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.User, c.creme, Modifier.align(Alignment.Center))
+                    }
+                    Box(
+                        Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(CircleShape).background(c.nuit),
+                        contentAlignment = Alignment.Center,
+                    ) { com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.Close, c.creme, size = 12.dp) }
+                }
+            }
+        }
+    }
+    if (menu) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill("Photo", false) {
+                menu = false
+                pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }
+            Pill("Contact", false) {
+                menu = false
+                pickContact.launch(null)
+            }
+        }
+    }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
+        Box(
+            Modifier.padding(end = 6.dp).size(48.dp).clip(CircleShape).background(if (menu) c.lierre else c.nuit).clickable { menu = !menu },
+            contentAlignment = Alignment.Center,
+        ) { com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.Plus, c.lichen) }
         com.atelierjlg.fern.ui.kit.FernField(
-            text, onText, "Message", Modifier.weight(1f), singleLine = false,
+            text, onText, if (attachments.isEmpty()) "Message" else "Message (MMS)", Modifier.weight(1f), singleLine = false,
         )
-        val canSend = enabled && text.isNotBlank()
+        val canSend = enabled && (text.isNotBlank() || attachments.isNotEmpty())
         Box(
             Modifier
                 .padding(start = 8.dp)
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(if (canSend) c.pistache else c.mousse)
-                .combinedClickable(enabled = canSend, onClick = onSend, onLongClick = onSchedule),
+                .combinedClickable(
+                    enabled = canSend,
+                    onClick = onSend,
+                    onLongClick = if (attachments.isEmpty()) onSchedule else null,
+                ),
             contentAlignment = Alignment.Center,
         ) { com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.Send, if (canSend) c.nuit else c.moussePale, size = 20.dp) }
     }
-    if (text.length > 140) {
-        // Au-delà de 160 caractères (70 avec des accents rares ou des emojis), le SMS part en plusieurs morceaux.
+    if (text.length > 140 && attachments.isEmpty()) {
+        // Au-delà de 160 caractères (70 avec certains caractères ou des emojis), le SMS part en plusieurs morceaux.
         val parts = remember(text) {
             runCatching { android.telephony.SmsMessage.calculateLength(text, false) }.getOrNull()
         }

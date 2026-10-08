@@ -46,7 +46,7 @@ Légende : ✅ fait de bout en bout · 🟡 partiel · ❌ absent.
 2. ✅ **Fern Messages v0.1** — des SMS fiables : liste et fil en direct, envoi / statut / renvoi propre, suppression
    correcte, notifs (ouvrir le fil, réponse directe, marquer lu, « Copier 123456 »), recherche, liste noire,
    archives, envoi différé.
-3. **Fern Messages v0.2** — MMS : téléchargement des entrants (SmsManager.downloadMultimediaMessage), envoi
+3. ✅ **Fern Messages v0.2** — MMS : téléchargement des entrants (SmsManager.downloadMultimediaMessage), envoi
    photo / vCard, brouillons, accusés de remise, SIM, partage entrant.
 4. **Fern Contact v0.2** — confort : recherche sans accents, T9, filtres du journal, sonnerie par contact,
    vCard, anniversaires, VVM, liste noire + anti-démarchage (préfixes ARCEP), refus par SMS.

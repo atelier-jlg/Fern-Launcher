@@ -10,6 +10,9 @@
     <!-- Noms et photos des contacts. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Double SIM, et reconnaître mon numéro dans les MMS de groupe. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
     <!-- Messages programmés : alarme à la minute près, réarmée après un redémarrage. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -45,6 +48,7 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
 
@@ -85,6 +89,20 @@
         </service>
 
         <receiver android:name=".sms.SendStatusReceiver" android:exported="false" />
+        <receiver android:name=".sms.DeliveryReceiver" android:exported="false" />
+        <receiver android:name=".mms.MmsDownloadedReceiver" android:exported="false" />
+        <receiver android:name=".mms.MmsSentReceiver" android:exported="false" />
+
+        <!-- Fichiers temporaires des MMS, prêtés au service MMS d'Android le temps d'un envoi / téléchargement. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.mmsfiles"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/mms_files" />
+        </provider>
         <receiver android:name=".sms.NotificationActions" android:exported="false" />
         <receiver android:name=".sms.ScheduledReceiver" android:exported="false" />
         <receiver

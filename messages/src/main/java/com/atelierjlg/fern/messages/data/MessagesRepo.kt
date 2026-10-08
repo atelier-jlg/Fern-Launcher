@@ -34,7 +34,9 @@ data class Msg(
     val status: MsgStatus,
     /** Images d'un MMS (content://mms/part/…). */
     val images: List<Uri> = emptyList(),
-    /** Autres pièces jointes d'un MMS (vidéo, son, contact…), pas encore affichées. */
+    /** Cartes de contact (vCard) d'un MMS : (adresse de la pièce, nom du contact). */
+    val vcards: List<Pair<Uri, String>> = emptyList(),
+    /** Autres pièces jointes d'un MMS (vidéo, son…), pas encore affichées. */
     val otherParts: Int = 0,
 ) {
     val key: String get() = (if (isMms) "m" else "s") + id
@@ -174,12 +176,15 @@ class MessagesRepo(private val context: Context) {
                 val text = StringBuilder()
                 val images = mutableListOf<Uri>()
                 var others = 0
+                val vcards = mutableListOf<Pair<Uri, String>>()
                 resolver.query(Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text"), "mid = ?", arrayOf(id.toString()), null)?.use { p ->
                     while (p.moveToNext()) {
-                        val ct = p.getString(1).orEmpty()
+                        val ct = p.getString(1).orEmpty().lowercase()
+                        val partUri = Uri.parse("content://mms/part/${p.getLong(0)}")
                         when {
                             ct == "text/plain" -> p.getString(2)?.let { if (text.isNotEmpty()) text.append('\n'); text.append(it) }
-                            ct.startsWith("image/") -> images += Uri.parse("content://mms/part/${p.getLong(0)}")
+                            ct.startsWith("image/") -> images += partUri
+                            ct == "text/x-vcard" || ct == "text/vcard" -> vcards += partUri to vcardName(partUri)
                             ct == "application/smil" -> Unit
                             else -> others++
                         }
@@ -200,12 +205,19 @@ class MessagesRepo(private val context: Context) {
                         else -> MsgStatus.Sent
                     },
                     images = images,
+                    vcards = vcards,
                     otherParts = others,
                 )
             }
         }
         return out
     }
+
+    /** Le nom d'une carte de contact (ligne « FN: » de la vCard). */
+    private fun vcardName(part: Uri): String = runCatching {
+        resolver.openInputStream(part)?.use { it.readBytes() }?.toString(Charsets.UTF_8)
+            ?.lineSequence()?.firstOrNull { it.startsWith("FN", ignoreCase = true) }?.substringAfter(':')?.trim()
+    }.getOrNull() ?: "Contact"
 
     /** L'expéditeur d'un MMS reçu (adresse de type « From » = 137). */
     private fun mmsSender(mmsId: Long): String =
@@ -256,16 +268,21 @@ class MessagesRepo(private val context: Context) {
         return threadId
     }
 
-    /** Les SMS non lus d'une conversation (pour la notification), du plus ancien au plus récent. */
-    fun unreadIn(threadId: Long, max: Int = 6): List<Msg> =
-        messages(threadId).filter { !it.outgoing }.let { all ->
-            val unreadIds = HashSet<Long>()
+    /** Les messages non lus d'une conversation (pour la notification), du plus ancien au plus récent. */
+    fun unreadIn(threadId: Long, max: Int = 6): List<Msg> {
+        val unread = HashSet<String>()
+        resolver.query(
+            Telephony.Sms.Inbox.CONTENT_URI, arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0", arrayOf(threadId.toString()), null,
+        )?.use { c -> while (c.moveToNext()) unread += "s" + c.getLong(0) }
+        runCatching {
             resolver.query(
-                Telephony.Sms.Inbox.CONTENT_URI, arrayOf(Telephony.Sms._ID),
-                "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0", arrayOf(threadId.toString()), null,
-            )?.use { c -> while (c.moveToNext()) unreadIds += c.getLong(0) }
-            all.filter { !it.isMms && it.id in unreadIds }.takeLast(max)
+                Telephony.Mms.Inbox.CONTENT_URI, arrayOf(Telephony.Mms._ID),
+                "${Telephony.Mms.THREAD_ID} = ? AND ${Telephony.Mms.READ} = 0", arrayOf(threadId.toString()), null,
+            )?.use { c -> while (c.moveToNext()) unread += "m" + c.getLong(0) }
         }
+        return messages(threadId).filter { !it.outgoing && it.key in unread }.takeLast(max)
+    }
 
     // ─── Recherche ───────────────────────────────────────────────────────────
 

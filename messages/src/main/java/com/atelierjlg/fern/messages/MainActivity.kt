@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         viewModel.forgetContacts()
         viewModel.reload()
+        viewModel.retryMms()
     }
 
     private fun handle(intent: Intent?) {
@@ -57,10 +58,14 @@ class MainActivity : ComponentActivity() {
                     ?: ssp.substringAfter("body=", "").takeIf { ssp.contains("body=") }.orEmpty()
                 viewModel.open(Screen.Compose(number, body))
             }
-            // Texte partagé depuis une autre appli.
+            // Texte ou photo partagés depuis une autre appli.
             Intent.ACTION_SEND -> {
-                val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
-                viewModel.open(Screen.Compose("", text))
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+                @Suppress("DEPRECATION")
+                val image = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                    ?.takeIf { intent.type?.startsWith("image/") == true }
+                if (text.isBlank() && image == null) return
+                viewModel.open(Screen.Compose("", text, image?.toString()))
             }
         }
     }

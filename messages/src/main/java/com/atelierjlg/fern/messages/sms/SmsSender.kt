@@ -17,6 +17,7 @@ import android.telephony.SmsManager
  */
 object SmsSender {
     const val ACTION_SENT = "com.atelierjlg.fern.messages.SMS_SENT"
+    const val ACTION_DELIVERED = "com.atelierjlg.fern.messages.SMS_DELIVERED"
     internal const val EXTRA_ID = "id"
     internal const val EXTRA_LAST = "last"
 
@@ -44,6 +45,7 @@ object SmsSender {
             val sms = context.getSystemService(SmsManager::class.java)
             val parts = sms.divideMessage(body)
             val sent = ArrayList<PendingIntent>(parts.size)
+            val delivered = ArrayList<PendingIntent>(parts.size)
             parts.indices.forEach { i ->
                 val intent = Intent(context, SendStatusReceiver::class.java).setAction(ACTION_SENT)
                     .putExtra(EXTRA_ID, id)
@@ -51,8 +53,14 @@ object SmsSender {
                 // Code unique par message et par morceau : les accusés ne se mélangent pas.
                 val code = ((id % 1_000_000L) * 16 + i).toInt()
                 sent += PendingIntent.getBroadcast(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                // Accusé de remise (« Remis »). Modifiable : Android y joint l'accusé du réseau.
+                val report = Intent(context, DeliveryReceiver::class.java).setAction(ACTION_DELIVERED).putExtra(EXTRA_ID, id)
+                delivered += PendingIntent.getBroadcast(
+                    context, code + 8, report,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                )
             }
-            sms.sendMultipartTextMessage(address, null, parts, sent, null)
+            sms.sendMultipartTextMessage(address, null, parts, sent, delivered)
         } catch (e: Exception) {
             setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
         }
@@ -81,5 +89,26 @@ class SendStatusReceiver : BroadcastReceiver() {
             resultCode != Activity.RESULT_OK -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
             intent.getBooleanExtra(SmsSender.EXTRA_LAST, true) -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_SENT)
         }
+    }
+}
+
+/** Accusé de remise : le téléphone d'en face a bien reçu le SMS. */
+class DeliveryReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getLongExtra(SmsSender.EXTRA_ID, -1L)
+        if (id < 0) return
+        val pdu = intent.getByteArrayExtra("pdu") ?: return
+        val format = intent.getStringExtra("format")
+        val status = runCatching { android.telephony.SmsMessage.createFromPdu(pdu, format).status }.getOrNull() ?: return
+        // Norme GSM : 0x00–0x1F = remis, 0x20–0x3F = en attente, au-delà = échec.
+        val value = when {
+            status < 0x20 -> Telephony.Sms.STATUS_COMPLETE
+            status < 0x40 -> Telephony.Sms.STATUS_PENDING
+            else -> Telephony.Sms.STATUS_FAILED
+        }
+        context.contentResolver.update(
+            ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
+            ContentValues().apply { put(Telephony.Sms.STATUS, value) }, null, null,
+        )
     }
 }

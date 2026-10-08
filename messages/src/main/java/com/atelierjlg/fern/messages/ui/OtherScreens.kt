@@ -39,6 +39,7 @@ import com.atelierjlg.fern.messages.Screen
 import com.atelierjlg.fern.messages.data.Msg
 import com.atelierjlg.fern.messages.data.formatListTime
 import com.atelierjlg.fern.messages.data.formatScheduled
+import com.atelierjlg.fern.messages.mms.MmsTransport.Attachment
 import com.atelierjlg.fern.ui.kit.Avatar
 import com.atelierjlg.fern.ui.kit.FernField
 import com.atelierjlg.fern.ui.kit.IconButtonRound
@@ -52,7 +53,7 @@ import kotlinx.coroutines.launch
 /** Nouveau message : un ou plusieurs destinataires (contacts ou numéros), puis le texte. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: String) {
+fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: String, prefillImage: String? = null) {
     val c = Fern.colors
     val scope = rememberCoroutineScope()
     var all by remember { mutableStateOf(emptyList<Recipient>()) }
@@ -60,6 +61,9 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
     var query by rememberSaveable { mutableStateOf("") }
     var body by rememberSaveable { mutableStateOf(prefillBody) }
     var scheduling by remember { mutableStateOf(false) }
+    var attachments by remember {
+        mutableStateOf<List<Attachment>>(listOfNotNull(prefillImage?.let { Attachment.Photo(android.net.Uri.parse(it)) }))
+    }
     LaunchedEffect(Unit) {
         all = vm.recipients()
         // Le numéro pré-rempli prend le nom du contact s'il est connu.
@@ -77,13 +81,13 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
 
     fun sendNow(at: Long? = null) {
         val to = recipients()
-        if (to.isEmpty() || body.isBlank()) return
+        if (to.isEmpty() || (body.isBlank() && attachments.isEmpty())) return
         scope.launch {
             if (at != null) {
                 vm.schedule(to, body, at)
                 vm.back()
             } else {
-                vm.send(to, body)
+                vm.send(to, body, attachments)
                 // Le temps que le message soit écrit dans la base, puis on ouvre la conversation.
                 delay(250)
                 val threadId = vm.threadIdFor(to)
@@ -147,11 +151,14 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
         }
         if (recipients().size > 1) {
             Text(
-                "Envoyé à chacun séparément (pas de groupe pour l'instant).",
+                "Conversation de groupe : envoyé en MMS à tout le monde.",
                 style = Fern.type.nomApp, color = c.moussePale, modifier = Modifier.padding(horizontal = 24.dp),
             )
         }
-        Composer(body, { body = it }, enabled = recipients().isNotEmpty(), onSend = { sendNow() }, onSchedule = { scheduling = true })
+        Composer(
+            body, { body = it }, enabled = recipients().isNotEmpty(), onSend = { sendNow() }, onSchedule = { scheduling = true },
+            attachments = attachments, onAttachmentsChange = { attachments = it },
+        )
     }
 
     if (scheduling) {
