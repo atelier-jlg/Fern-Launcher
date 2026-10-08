@@ -75,7 +75,7 @@ object IcsCalendar {
     }
 
     private fun unescape(value: String) =
-        value.replace("\\n", " ").replace("\\N", " ").replace("\\,", ",").replace("\;", ";").replace("\\\\", "\\").trim()
+        value.replace("\\n", " ").replace("\\N", " ").replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\").trim()
 
     private val dateTime = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
     private val dateOnly = DateTimeFormatter.ofPattern("yyyyMMdd")
