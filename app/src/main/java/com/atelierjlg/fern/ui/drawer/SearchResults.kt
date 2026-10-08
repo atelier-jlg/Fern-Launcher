@@ -68,6 +68,17 @@ fun SearchResults(
     modifier: Modifier = Modifier,
 ) {
     val sections = buildList {
+        // Un calcul passe en premier : c'est clairement ce qu'on cherchait.
+        extras.calculation?.let { result ->
+            add(
+                Section("calc", "Calcul", listOf("calc" to @Composable {
+                    ResultCard(onClick = { actions.onCopy(result) }) {
+                        Text("= $result", style = Fern.type.titreWidget, color = Fern.colors.pistache, modifier = Modifier.weight(1f))
+                        Text("COPIER", style = Fern.type.libelle, color = Fern.colors.lichen)
+                    }
+                })),
+            )
+        }
         val appRows = apps.take(8).chunked(4)
         if (appRows.isNotEmpty()) {
             add(
@@ -83,16 +94,6 @@ fun SearchResults(
                         }
                     },
                 ),
-            )
-        }
-        extras.calculation?.let { result ->
-            add(
-                Section("calc", "Calcul", listOf("calc" to @Composable {
-                    ResultCard(onClick = { actions.onCopy(result) }) {
-                        Text("= $result", style = Fern.type.titreWidget, color = Fern.colors.pistache, modifier = Modifier.weight(1f))
-                        Text("COPIER", style = Fern.type.libelle, color = Fern.colors.lichen)
-                    }
-                })),
             )
         }
         if (extras.contacts.isNotEmpty()) {

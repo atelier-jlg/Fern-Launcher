@@ -27,4 +27,17 @@ class CalculatorTest {
         assertNull(calc("(1+2"))
         assertNull(calc("+"))
     }
+
+    @Test
+    fun racinesPiEtMultiplicationImplicite() {
+        assertEquals("799,63961031", calc("32*23+45√2"))
+        assertEquals("5", calc("√(9+16)"))
+        assertEquals("13", calc("√16+9"))
+        assertEquals("6,28318531", calc("2π"))
+        assertEquals("21", calc("3(1+2)+(1+2)(3+1)"))
+        assertEquals("9", calc("3²"))
+        assertEquals("1,41421356", calc("sqrt 2"))
+        assertEquals("1,41421356", calc("√2"))
+        assertNull(calc("√-4"))
+    }
 }

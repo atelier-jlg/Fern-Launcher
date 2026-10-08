@@ -749,10 +749,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
      * Par défaut, la recherche se limite aux applis puis au web.
      */
     suspend fun searchExtras(query: String): SearchExtras = withContext(Dispatchers.IO) {
-        if (!config.value.search.extended) return@withContext SearchExtras.Empty
+        // La calculatrice marche toujours ; contacts, agenda et raccourcis seulement en recherche étendue.
+        val calculation = Calculator.evaluate(query)?.let { Calculator.format(it) }
+        if (!config.value.search.extended) return@withContext SearchExtras(calculation = calculation)
         val appLabels = apps.value.all.associate { it.packageName to it.label }
         SearchExtras(
-            calculation = Calculator.evaluate(query)?.let { Calculator.format(it) },
+            calculation = calculation,
             contacts = searchRepository.contacts(query),
             events = searchRepository.events(query),
             shortcuts = searchRepository.shortcuts(query, appLabels),
