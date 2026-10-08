@@ -17,6 +17,11 @@ on:
 permissions:
   contents: write
 
+# Deux pushs rapprochés : le second attend la fin du premier (pas de double publication).
+concurrency:
+  group: build-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest

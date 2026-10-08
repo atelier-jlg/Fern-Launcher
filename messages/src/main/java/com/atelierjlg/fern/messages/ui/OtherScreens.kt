@@ -56,7 +56,7 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
     val c = Fern.colors
     val scope = rememberCoroutineScope()
     var all by remember { mutableStateOf(emptyList<Recipient>()) }
-    var chosen by remember { mutableStateOf(if (prefillNumber.isBlank()) emptyList() else prefillNumber.split(',', ';').map { Recipient("", it.trim(), null) }) }
+    var chosen by remember { mutableStateOf<List<Recipient>>(if (prefillNumber.isBlank()) emptyList() else prefillNumber.split(',', ';').map { Recipient("", it.trim(), null) }) }
     var query by rememberSaveable { mutableStateOf("") }
     var body by rememberSaveable { mutableStateOf(prefillBody) }
     var scheduling by remember { mutableStateOf(false) }
