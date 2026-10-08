@@ -3,13 +3,16 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.24.1 (code 37) — 2026-10-08
+
+- **Entrée sur un calcul** : ouvre la calculatrice du téléphone, avec le calcul copié (× ÷ √) pour le coller
+  (Android ne permet pas de pré-remplir une calculatrice directement).
+
 ## v0.24.0 (code 36) — 2026-10-08
 
 - **Calculatrice dans la recherche, toujours active** (plus besoin de la recherche étendue) :
   « 32*23+45√2 », « √(9+16) », « 2π », « 3² », « 3(1+2) », « 15% », « sqrt 2 », « pi ».
   Multiplication implicite (45√2 = 45 × √2). Le résultat s'affiche en premier ; toucher pour le copier.
-- **Entrée sur un calcul** : ouvre la calculatrice du téléphone, avec le calcul copié (× ÷ √) pour le coller
-  (Android ne permet pas de pré-remplir une calculatrice directement).
 
 ## v0.23.0 (code 35) — 2026-10-08
 
