@@ -1,9 +1,10 @@
-# Compile l'APK de Fern Launcher sur les serveurs de GitHub.
+# Compile les APK de Fern Launcher, Fern Messages et Fern Contact sur les serveurs de GitHub.
 #
 # - À chaque push : l'APK est disponible dans l'onglet « Actions » (section Artifacts).
 # - Sur un tag « v0.2.0 » : une « Release » est créée avec l'APK à télécharger.
 # - Sur un push (hors pull request) avec un numéro de version pas encore publié : la Release
 #   (et son tag) sont créés automatiquement, avec l'APK signé.
+#   Chaque appli a son numéro (gradle.properties) et ses tags : v0.25.0, messages-v0.1.0, contact-v0.1.0.
 name: Build APK
 
 on:
@@ -32,14 +33,14 @@ jobs:
           # Garde les dépendances en cache aussi sur cette branche : moins d'appels à Maven Central.
           cache-read-only: false
 
-      - name: Lire la version
+      - name: Lire les versions
         id: version
         run: |
-          name=$(grep '^fernVersionName=' gradle.properties | cut -d= -f2)
-          code=$(grep '^fernVersionCode=' gradle.properties | cut -d= -f2)
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "Fern Launcher v$name (code $code)"
+          prop() { grep "^$1=" gradle.properties | cut -d= -f2; }
+          echo "name=$(prop fernVersionName)" >> "$GITHUB_OUTPUT"
+          echo "messages=$(prop messagesVersionName)" >> "$GITHUB_OUTPUT"
+          echo "contact=$(prop contactVersionName)" >> "$GITHUB_OUTPUT"
+          echo "Fern Launcher v$(prop fernVersionName) · Messages v$(prop messagesVersionName) · Contact v$(prop contactVersionName)"
 
       - name: Vérifier que le tag correspond à la version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -49,14 +50,13 @@ jobs:
             exit 1
           fi
 
-      - name: Cette version est-elle déjà publiée ?
+      - name: Ces versions sont-elles déjà publiées ?
         id: published
         run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/v${{ steps.version.outputs.name }}" > /dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          exists() { git ls-remote --exit-code --tags origin "refs/tags/$1" > /dev/null && echo true || echo false; }
+          echo "exists=$(exists v${{ steps.version.outputs.name }})" >> "$GITHUB_OUTPUT"
+          echo "messages=$(exists messages-v${{ steps.version.outputs.messages }})" >> "$GITHUB_OUTPUT"
+          echo "contact=$(exists contact-v${{ steps.version.outputs.contact }})" >> "$GITHUB_OUTPUT"
 
       - name: Préparer la clé de signature
         env:
@@ -85,7 +85,19 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-      - name: Publier la Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fern-messages-v${{ steps.version.outputs.messages }}${{ env.SIGNATURE }}
+          path: messages/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fern-contact-v${{ steps.version.outputs.contact }}${{ env.SIGNATURE }}
+          path: contact/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Publier la Release de Fern Launcher
         if: >-
           startsWith(github.ref, 'refs/tags/v') ||
           (github.event_name == 'push' && env.SIGNATURE == '' && steps.published.outputs.exists == 'false')
@@ -96,3 +108,24 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: app/build/outputs/apk/release/*.apk
           generate_release_notes: true
+
+      # Les applis sœurs ne deviennent jamais la Release « la plus récente » : elle reste au lanceur.
+      - name: Publier la Release de Fern Messages
+        if: github.event_name == 'push' && env.SIGNATURE == '' && steps.published.outputs.messages == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Fern Messages v${{ steps.version.outputs.messages }}
+          tag_name: messages-v${{ steps.version.outputs.messages }}
+          target_commitish: ${{ github.sha }}
+          files: messages/build/outputs/apk/release/*.apk
+          make_latest: false
+
+      - name: Publier la Release de Fern Contact
+        if: github.event_name == 'push' && env.SIGNATURE == '' && steps.published.outputs.contact == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Fern Contact v${{ steps.version.outputs.contact }}
+          tag_name: contact-v${{ steps.version.outputs.contact }}
+          target_commitish: ${{ github.sha }}
+          files: contact/build/outputs/apk/release/*.apk
+          make_latest: false

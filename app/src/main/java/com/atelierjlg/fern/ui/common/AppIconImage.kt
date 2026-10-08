@@ -18,6 +18,8 @@ import com.atelierjlg.fern.apps.AppEntry
 import com.atelierjlg.fern.data.IconMode
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.LocalIconMode
+import com.atelierjlg.fern.ui.theme.glyph
+import com.atelierjlg.fern.ui.theme.plate
 
 /**
  * L'icône d'une appli, selon le style choisi dans les Paramètres :

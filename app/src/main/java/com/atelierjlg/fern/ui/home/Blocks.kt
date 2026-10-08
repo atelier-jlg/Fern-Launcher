@@ -51,6 +51,7 @@ import com.atelierjlg.fern.ui.common.EmptySlot
 import com.atelierjlg.fern.ui.common.GlyphButton
 import com.atelierjlg.fern.ui.common.GearButton
 import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.ui.theme.plate
 import com.atelierjlg.fern.ui.theme.displayName
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime

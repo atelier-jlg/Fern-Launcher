@@ -152,6 +152,20 @@ app/src/main/java/com/atelierjlg/fern/
 14. À venir : glisser-déposer des blocs au doigt ; idées de widgets non retenues pour l'instant :
     Naolib, Budget, Courses, Les miens.
 
+## Applis sœurs : Fern Messages et Fern Contact (depuis le 2026-10-08)
+- Remplacent **Fil** (SMS, `com.jules.fil`) et **Fil · Appels** (`com.jules.fil_appels`), deux applis Flutter de Jules.
+  Décision : **réécriture en Kotlin + Compose dans ce dépôt** (on garde l'esprit du natif Kotlin d'origine).
+  Audit détaillé et feuille de route : `docs/applis-soeurs.md`. Les zips d'origine ne sont pas dans le dépôt.
+- Modules : `:app` (lanceur), `:theme` (commun : FernColors, FernType, police, thème partagé),
+  `:messages` (`com.atelierjlg.fern.messages`), `:contact` (`com.atelierjlg.fern.contact`). Identifiants définitifs.
+- **Thème partagé** : Fern publie le thème actif (`ThemeShare`, format = export de thème) via
+  `FernThemeProvider` (`content://com.atelierjlg.fern.theme/active`), permission `READ_THEME` de niveau signature
+  (déclarée par le module `theme` dans les trois applis) ⇒ **les trois APK doivent être signés avec la même clé**.
+  Côté applis sœurs : `FernSharedTheme { }` (relu au retour dans l'appli + observateur ; dernier thème gardé en cache).
+- Versions séparées dans `gradle.properties` (`messagesVersionName/Code`, `contactVersionName/Code`),
+  tags `messages-vX.Y.Z` / `contact-vX.Y.Z`, APK `fern-messages-vX.Y.Z-release.apk`, une entrée dans CHANGELOG.md.
+- Suivent le thème de Fern (sombre). Pas de mode clair séparé pour l'instant.
+
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un
   **lien** dans Firefox (pour que la navigation privée des liens externes s'applique). Moteur par défaut DuckDuckGo.

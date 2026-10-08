@@ -3,6 +3,18 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.25.0 (code 38) — 2026-10-08
+
+- **Thème partagé avec les applis sœurs** : Fern publie son thème actif (celui du Space en cours)
+  pour **Fern Messages** et **Fern Contact**, qui se recolorent toutes seules. Réservé aux applis
+  signées avec la même clé que Fern. Rien ne change à l'écran dans Fern.
+- Coulisses : couleurs, police et thème déplacés dans un module commun `theme/`.
+
+### Fern Messages v0.0.1 · Fern Contact v0.0.1
+
+- Premières versions, **en construction** : une page qui affiche le thème reçu de Fern (nom, état,
+  nuancier). Sert à vérifier sur le téléphone que le partage du thème marche. Pas encore de SMS ni d'appels.
+
 ## v0.24.1 (code 37) — 2026-10-08
 
 - **Entrée sur un calcul** : ouvre la calculatrice du téléphone, avec le calcul copié (× ÷ √) pour le coller

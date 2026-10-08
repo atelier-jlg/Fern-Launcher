@@ -126,6 +126,7 @@ import com.atelierjlg.fern.data.GestureAction
 import com.atelierjlg.fern.data.NamedTheme
 import com.atelierjlg.fern.data.SearchSettings
 import com.atelierjlg.fern.data.ThemeFile
+import com.atelierjlg.fern.data.ThemeShare
 import com.atelierjlg.fern.data.applyTheme
 import com.atelierjlg.fern.data.deleteSavedTheme
 import com.atelierjlg.fern.data.saveTheme
@@ -672,6 +673,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         // Stickers orphelins (supprimés, ou d'une ancienne sauvegarde) : on fait le ménage.
         viewModelScope.launch(Dispatchers.IO) { cleanupStickers() }
+        // Thème partagé avec Fern Messages et Fern Contact : publié à chaque changement.
+        viewModelScope.launch {
+            store.config.map { it.effectiveTheme }.distinctUntilChanged().collect { theme ->
+                withContext(Dispatchers.IO) { ThemeShare.publish(getApplication(), theme) }
+            }
+        }
         // Style d'icônes : on recharge les icônes quand il change.
         viewModelScope.launch {
             store.config.map { it.icons }.distinctUntilChanged().collect { repository.setIconSettings(it) }

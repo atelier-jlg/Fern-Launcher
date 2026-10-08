@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Seulement pour la fenêtre avant que Compose ne dessine, et pour les icônes.
+         Les vraies couleurs viennent du thème de Fern (FernColors). -->
+    <color name="fern_nuit">#FF14241B</color>
+    <color name="fern_pistache">#FFBFE3A3</color>
+</resources>

@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.atelierjlg.fern.R
+import com.atelierjlg.fern.theme.R
 
 /**
  * Bricolage Grotesque est une police « variable » : un seul fichier, dont on règle

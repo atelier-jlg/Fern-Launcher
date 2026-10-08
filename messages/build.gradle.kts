@@ -1,3 +1,4 @@
+// Fern Messages : appli sœur de Fern Launcher (même dépôt, même clé, même thème).
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,25 +6,25 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Le numéro de version vient de gradle.properties (un seul endroit à modifier).
-val fernVersionName = providers.gradleProperty("fernVersionName").get()
-val fernVersionCode = providers.gradleProperty("fernVersionCode").get().toInt()
+// Numéro de version propre à cette appli (gradle.properties : messagesVersionName / messagesVersionCode).
+val appVersionName = providers.gradleProperty("messagesVersionName").get()
+val appVersionCode = providers.gradleProperty("messagesVersionCode").get().toInt()
 
-// Clé de signature : fournie par la CI GitHub (secrets). Sans elle, on signe avec
-// la clé de debug, ce qui donne un APK installable mais non « officiel ».
+// Même clé que Fern Launcher (secrets de la CI) : indispensable pour lire son thème.
 val keystorePath: String? = System.getenv("FERN_KEYSTORE_PATH")
 val keystorePassword: String? = System.getenv("FERN_KEYSTORE_PASSWORD")
 
 android {
-    namespace = "com.atelierjlg.fern"
+    namespace = "com.atelierjlg.fern.messages"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.atelierjlg.fern"
+        // Identifiant Android : ne doit plus jamais changer.
+        applicationId = "com.atelierjlg.fern.messages"
         minSdk = 29
         targetSdk = 35
-        versionCode = fernVersionCode
-        versionName = fernVersionName
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     signingConfigs {
@@ -47,7 +48,6 @@ android {
             }
         }
         debug {
-            // Permet d'installer une version de test à côté de la vraie.
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
@@ -66,27 +66,15 @@ android {
     }
 }
 
-// Nom du fichier produit : fern-launcher-v0.1.0-release.apk
-// Sans la vraie clé, le nom le dit clairement pour ne pas l'installer par erreur.
+// Nom du fichier produit : fern-messages-v0.1.0-release.apk
 base {
     val suffix = if (keystorePath != null) "" else "-NON-SIGNE"
-    archivesName.set("fern-launcher-v$fernVersionName$suffix")
+    archivesName.set("fern-messages-v$appVersionName$suffix")
 }
 
 dependencies {
-    // Module commun avec Fern Messages et Fern Contact (couleurs, police, thème partagé).
     implementation(project(":theme"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.kotlinx.serialization.json)
-
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

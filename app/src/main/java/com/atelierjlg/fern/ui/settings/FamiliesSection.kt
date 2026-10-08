@@ -36,6 +36,7 @@ import com.atelierjlg.fern.ui.common.AppRow
 import com.atelierjlg.fern.ui.common.PillButton
 import com.atelierjlg.fern.ui.common.TextInputDialog
 import com.atelierjlg.fern.ui.theme.Fern
+import com.atelierjlg.fern.ui.theme.plate
 import com.atelierjlg.fern.ui.theme.displayName
 
 /**
