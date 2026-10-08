@@ -165,6 +165,13 @@ app/src/main/java/com/atelierjlg/fern/
 - Versions séparées dans `gradle.properties` (`messagesVersionName/Code`, `contactVersionName/Code`),
   tags `messages-vX.Y.Z` / `contact-vX.Y.Z`, APK `fern-messages-vX.Y.Z-release.apk`, une entrée dans CHANGELOG.md.
 - Suivent le thème de Fern (sombre). Pas de mode clair séparé pour l'instant.
+- Code commun dans `:theme` : `ui/kit` (Avatar, RoundAction, Pill, FernField, TopBar…), `FernIcons` (pictos au trait
+  style Lucide, inclus), `common/PhoneNumbers` + `SearchText` (numéros, recherche sans accents, T9). Testés.
+- État : Fern Contact v0.1.0 et Fern Messages v0.1.0 livrés (étapes 1 et 2). Prochaine : MMS (téléchargement via
+  `SmsManager.downloadMultimediaMessage` + lecture des PDU ; les annonces reçues sont gardées dans
+  `files/mms-en-attente/*.pdu` par la v0.1 pour être récupérées).
+- Attention : deux fichiers de même nom dans le même package mais deux modules (ex. `FernTheme.kt`) ⇒ classes
+  `…Kt` en double au moment du dex. Toujours des noms de fichiers uniques.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un
