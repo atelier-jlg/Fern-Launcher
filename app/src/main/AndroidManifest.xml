@@ -46,6 +46,9 @@
         <intent>
             <action android:name="com.teslacoilsw.launcher.THEME" />
         </intent>
+        <!-- Applis sœurs (À propos, fiche contact). -->
+        <package android:name="com.atelierjlg.fern.messages" />
+        <package android:name="com.atelierjlg.fern.contact" />
         <!-- Navigateurs Firefox possibles pour la recherche web. -->
         <package android:name="org.mozilla.firefox" />
         <package android:name="org.mozilla.fennec_fdroid" />

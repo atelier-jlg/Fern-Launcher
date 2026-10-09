@@ -7,6 +7,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
+import com.atelierjlg.fern.contact.data.ContactsRepo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.atelierjlg.fern.contact.ui.ContactApp
 import com.atelierjlg.fern.theme.FernSharedTheme
 
@@ -48,6 +53,33 @@ class MainActivity : ComponentActivity() {
         if (contact >= 0) {
             viewModel.selectTab(Tab.Contacts)
             viewModel.open(Screen.Detail(contact))
+            return
+        }
+        // La fiche d'un contact (lien content://com.android.contacts/…).
+        val data = intent.data
+        if (intent.action == Intent.ACTION_VIEW && data?.authority == android.provider.ContactsContract.AUTHORITY) {
+            lifecycleScope.launch {
+                val id = withContext(Dispatchers.IO) {
+                    runCatching {
+                        contentResolver.query(data, arrayOf(android.provider.ContactsContract.Contacts._ID), null, null, null)
+                            ?.use { if (it.moveToFirst()) it.getLong(0) else null }
+                    }.getOrNull()
+                }
+                if (id != null) {
+                    viewModel.selectTab(Tab.Contacts)
+                    viewModel.open(Screen.Detail(id))
+                }
+            }
+            return
+        }
+        // « Voir ou créer » : la fiche si le numéro est connu, sinon un nouveau contact pré-rempli.
+        if (intent.action == android.provider.ContactsContract.Intents.SHOW_OR_CREATE_CONTACT && data?.scheme == "tel") {
+            val num = data.schemeSpecificPart
+            lifecycleScope.launch {
+                val found = withContext(Dispatchers.IO) { ContactsRepo(this@MainActivity).lookup(num) }
+                viewModel.selectTab(Tab.Contacts)
+                viewModel.open(if (found != null) Screen.Detail(found.first) else Screen.Edit(null, num))
+            }
             return
         }
         val number = intent.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart

@@ -673,6 +673,21 @@ private fun AboutSection() {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SettingRow(title = "Fern Launcher", subtitle = "Version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})", onClick = {})
+        // Les applis sœurs : même thème, même clé. Toucher = l'ouvrir.
+        listOf("com.atelierjlg.fern.messages" to "Fern Messages", "com.atelierjlg.fern.contact" to "Fern Contact").forEach { (pkg, name) ->
+            val version = remember(pkg) {
+                runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()
+            }
+            SettingRow(
+                title = name,
+                subtitle = if (version != null) "Version $version · suit le thème de Fern" else "Pas installée",
+                onClick = {
+                    context.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                        runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    }
+                },
+            )
+        }
         SettingRow(
             title = "Écran d'accueil par défaut",
             subtitle = "Choisir Fern (ou revenir à un autre lanceur)",

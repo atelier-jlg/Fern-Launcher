@@ -334,7 +334,8 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
     /** La fiche du contact (ou « créer un contact » s'il est inconnu). */
     fun openContact(number: String) {
         val intent = Intent(ContactsContract.Intents.SHOW_OR_CREATE_CONTACT, Uri.fromParts("tel", number, null))
-        start(intent)
+        val fern = Intent(intent).setPackage("com.atelierjlg.fern.contact")
+        start(if (context.packageManager.resolveActivity(fern, 0) != null) fern else intent)
     }
 
     fun start(intent: Intent) {

@@ -26,7 +26,7 @@ object FamilyClassifier {
         Family.Urgence to listOf("app-elles", "appelles", "stayingalive", "urgence", "emergency", "sauv", "secours"),
         Family.Communication to listOf(
             "whatsapp", "signal", "thoughtcrime", "telegram", "messag", "sms", "dialer", "telephon", "phone",
-            "contacts", "mail", "k9", "thunderbird", "element", "matrix", "threema", "olvid",
+            "contacts", "fern.contact", "mail", "k9", "thunderbird", "element", "matrix", "threema", "olvid",
         ),
         Family.Social to listOf(
             "instagram", "facebook", "twitter", "mastodon", "tusky", "reddit", "snapchat", "tiktok", "bereal",

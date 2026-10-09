@@ -50,7 +50,7 @@ Légende : ✅ fait de bout en bout · 🟡 partiel · ❌ absent.
    photo / vCard, brouillons, accusés de remise, SIM, partage entrant.
 4. ✅ **Fern Contact v0.2** — confort : recherche sans accents, T9, filtres du journal, sonnerie par contact,
    vCard, anniversaires, VVM, liste noire + anti-démarchage (préfixes ARCEP), refus par SMS.
-5. **Intégration** : recherche de Fern → fiches de Fern Contact, dock, « À propos » commun.
+5. ✅ **Intégration** : recherche de Fern → fiches de Fern Contact, dock, « À propos » commun.
 
 ## Bascule depuis Fil
 Historique SMS conservé (stocké par Android). Perdus : archives, réglages de notif par conversation,

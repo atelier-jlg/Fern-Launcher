@@ -167,9 +167,14 @@ app/src/main/java/com/atelierjlg/fern/
 - Suivent le thème de Fern (sombre). Pas de mode clair séparé pour l'instant.
 - Code commun dans `:theme` : `ui/kit` (Avatar, RoundAction, Pill, FernField, TopBar…), `FernIcons` (pictos au trait
   style Lucide, inclus), `common/PhoneNumbers` + `SearchText` (numéros, recherche sans accents, T9). Testés.
-- État : Fern Contact v0.1.0 et Fern Messages v0.1.0 livrés (étapes 1 et 2). Prochaine : MMS (téléchargement via
-  `SmsManager.downloadMultimediaMessage` + lecture des PDU ; les annonces reçues sont gardées dans
-  `files/mms-en-attente/*.pdu` par la v0.1 pour être récupérées).
+- État (2026-10-09) : feuille de route des applis sœurs **terminée** (étapes 0 à 5) — Fern Contact v0.2.x,
+  Fern Messages v0.2.x (MMS compris). Reste à valider **sur le téléphone** : rôles par défaut, appels écran
+  verrouillé, MMS chez l'opérateur de Jules, messagerie visuelle (souvent absente en France).
+- MMS : `messages/mms/Pdu.kt` (format binaire, testé), `MmsStore` (rangement content://mms), `MmsTransport`
+  (téléchargement/envoi via SmsManager + FileProvider `${applicationId}.mmsfiles`). Annonces en attente :
+  `files/mms-en-attente/*.pdu`, réessayées à l'ouverture.
+- Tests purs sans SDK Android : un petit projet Gradle Kotlin/JVM peut compiler `Pdu.kt`, `Otp.kt`,
+  `PhoneNumbers.kt` et leurs tests en local (le SDK Android, lui, n'est dispo que dans la CI).
 - Attention : deux fichiers de même nom dans le même package mais deux modules (ex. `FernTheme.kt`) ⇒ classes
   `…Kt` en double au moment du dex. Toujours des noms de fichiers uniques.
 

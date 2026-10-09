@@ -3,6 +3,16 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## v0.26.0 (code 39) · Fern Messages v0.2.1 (code 4) · Fern Contact v0.2.1 (code 4) — 2026-10-09
+
+Les trois applis ensemble (étape 5).
+
+- **Fern Launcher** : la fiche d'un contact trouvé dans la recherche s'ouvre dans **Fern Contact** (s'il est
+  installé). Paramètres → À propos montre les versions de Fern Messages et Fern Contact (toucher = ouvrir).
+  Fern Contact est rangé dans la famille Communication.
+- **Fern Messages** : « Fiche du contact » ouvre Fern Contact (la fiche, ou « nouveau contact » pré-rempli).
+- **Fern Contact** : sait ouvrir une fiche demandée par une autre appli (lien de contact, « voir ou créer »).
+
 ## Fern Contact v0.2.0 (code 3) — 2026-10-09
 
 Le confort (étape 4).

@@ -813,7 +813,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         Toast.makeText(context, "Copié : $text", Toast.LENGTH_SHORT).show()
     }
 
-    fun openContact(contact: ContactResult) = startSafely(Intent(Intent.ACTION_VIEW, contact.uri))
+    /** La fiche du contact : dans Fern Contact s'il est installé, sinon l'appli Contacts du téléphone. */
+    fun openContact(contact: ContactResult) {
+        val intent = Intent(Intent.ACTION_VIEW, contact.uri)
+        val fern = Intent(intent).setPackage("com.atelierjlg.fern.contact")
+        val pm = getApplication<Application>().packageManager
+        startSafely(if (pm.resolveActivity(fern, 0) != null) fern else intent)
+    }
 
     fun callContact(contact: ContactResult) {
         contact.phone?.let { startSafely(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", it, null))) }
