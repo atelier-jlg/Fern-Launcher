@@ -7,7 +7,17 @@ package com.atelierjlg.fern.ui.kit
 
 import android.graphics.ImageDecoder
 import android.net.Uri
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +96,20 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
     }
 }
 
+/**
+ * Effet « bouton qui s'enfonce » : l'élément se tasse un peu sous le doigt et revient avec un léger rebond.
+ * À combiner avec un clickable qui partage le même [interaction].
+ */
+fun Modifier.pressScale(interaction: MutableInteractionSource, pressed: Float = 0.92f): Modifier = composed {
+    val isPressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (isPressed) pressed else 1f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "appui",
+    )
+    graphicsLayer(scaleX = scale, scaleY = scale)
+}
+
 /** Gros bouton rond avec un picto et un libellé dessous (écran d'appel, fiche contact). */
 @Composable
 fun RoundAction(
@@ -99,13 +123,16 @@ fun RoundAction(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val bg by animateColorAsState(if (enabled) background else background.copy(alpha = 0.35f), label = "fond")
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
+                .pressScale(interaction, 0.88f)
                 .size(size)
                 .clip(CircleShape)
-                .background(if (enabled) background else background.copy(alpha = 0.35f))
-                .clickable(enabled = enabled, onClick = onClick),
+                .background(bg)
+                .clickable(interactionSource = interaction, indication = LocalIndication.current, enabled = enabled, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
             FernIcon(icon, if (enabled) tint else tint.copy(alpha = 0.5f), size = size * 0.4f)
@@ -126,16 +153,20 @@ fun RoundAction(
 @Composable
 fun Pill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val c = Fern.colors
+    val interaction = remember { MutableInteractionSource() }
+    val bg by animateColorAsState(if (selected) c.pistache else c.mousse, label = "pilule")
+    val fg by animateColorAsState(if (selected) c.nuit else c.creme, label = "texte")
     Box(
         modifier
+            .pressScale(interaction, 0.94f)
             .clip(RoundedCornerShape(50))
-            .background(if (selected) c.pistache else c.mousse)
-            .clickable(onClick = onClick)
+            .background(bg)
+            .clickable(interactionSource = interaction, indication = LocalIndication.current, onClick = onClick)
             .defaultMinSize(minHeight = 40.dp)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text.uppercase(), style = Fern.type.libelle, color = if (selected) c.nuit else c.creme)
+        Text(text.uppercase(), style = Fern.type.libelle, color = fg)
     }
 }
 

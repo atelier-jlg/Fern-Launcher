@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,9 +76,18 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
             if (d != null) {
                 val isMe = android.provider.ContactsContract.isProfileId(d.id)
                 if (!isMe) {
-                    IconButtonRound(FernIcons.Star, if (d.starred) c.pistache else c.lichen) {
-                        vm.setStarred(d.id, !d.starred)
-                        detail = d.copy(starred = !d.starred)
+                    // L'étoile s'allume avec un petit rebond.
+                    val starColor by androidx.compose.animation.animateColorAsState(if (d.starred) c.pistache else c.lichen, label = "etoile")
+                    val starScale by androidx.compose.animation.core.animateFloatAsState(
+                        if (d.starred) 1.15f else 1f,
+                        androidx.compose.animation.core.spring(dampingRatio = 0.35f, stiffness = 400f),
+                        label = "rebond",
+                    )
+                    Box(Modifier.graphicsLayer(scaleX = starScale, scaleY = starScale)) {
+                        IconButtonRound(FernIcons.Star, starColor) {
+                            vm.setStarred(d.id, !d.starred)
+                            detail = d.copy(starred = !d.starred)
+                        }
                     }
                 }
                 IconButtonRound(FernIcons.Edit, c.lichen) { vm.open(Screen.Edit(d.id, me = isMe)) }

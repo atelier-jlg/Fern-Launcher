@@ -140,13 +140,18 @@ fun DialpadScreen(vm: ContactViewModel) {
 @Composable
 private fun Key(digit: String, letters: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
     val c = Fern.colors
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
         Modifier
             .padding(vertical = 5.dp)
+            .pressScale(interaction, 0.88f)
             .size(72.dp)
             .clip(CircleShape)
             .background(c.mousse)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(
+                interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current,
+                onClick = onClick, onLongClick = onLongClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

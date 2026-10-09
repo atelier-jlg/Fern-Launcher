@@ -111,17 +111,17 @@ fun ContactsScreen(vm: ContactViewModel) {
                     lastLetter = letter
                     item(key = "lettre-$letter") { SectionLabel(letter) }
                 }
-                item(key = contact.id) { ContactRow(contact) { vm.open(Screen.Detail(contact.id)) } }
+                item(key = contact.id) { ContactRow(contact, Modifier.animateItem()) { vm.open(Screen.Detail(contact.id)) } }
             }
         }
     }
 }
 
 @Composable
-fun ContactRow(contact: ContactSummary, onClick: () -> Unit) {
+fun ContactRow(contact: ContactSummary, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val c = Fern.colors
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
@@ -169,6 +169,7 @@ fun FavoritesScreen(vm: ContactViewModel) {
             items(favorites, key = { it.id }) { contact ->
                 FavoriteCard(
                     contact,
+                    Modifier.animateItem(),
                     onOpen = { vm.open(Screen.Detail(contact.id)) },
                     onCall = contact.phones.firstOrNull()?.let { number -> { vm.call(number) } },
                 )
@@ -178,15 +179,17 @@ fun FavoritesScreen(vm: ContactViewModel) {
 }
 
 @Composable
-private fun FavoriteCard(contact: ContactSummary, onOpen: () -> Unit, onCall: (() -> Unit)?) {
+private fun FavoriteCard(contact: ContactSummary, modifier: Modifier, onOpen: () -> Unit, onCall: (() -> Unit)?) {
     val c = Fern.colors
     val shape = RoundedCornerShape(24.dp)
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(
-        Modifier
+        modifier
+            .pressScale(interaction, 0.95f)
             .clip(shape)
             .background(c.mousse)
             .border(1.dp, c.sousBois, shape)
-            .clickable(onClick = onOpen)
+            .clickable(interactionSource = interaction, indication = androidx.compose.foundation.LocalIndication.current, onClick = onOpen)
             .padding(vertical = 14.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

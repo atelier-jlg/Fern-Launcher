@@ -4,7 +4,23 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,19 +74,34 @@ fun ContactApp(vm: ContactViewModel, onFinish: () -> Unit) {
             .systemBarsPadding()
             .imePadding(),
     ) {
-        when (val top = stack.last()) {
-            Screen.Tabs -> TabsScreen(vm, tab)
-            is Screen.Detail -> DetailScreen(vm, top.id)
-            is Screen.Edit -> EditScreen(vm, top.id, top.number, top.me)
-            Screen.Settings -> SettingsScreen(vm)
+        // Changement d'écran : la fiche arrive par la droite, et repart par la droite au retour.
+        AnimatedContent(
+            targetState = stack,
+            transitionSpec = {
+                val forward = targetState.size >= initialState.size
+                val slide = tween<IntOffset>(320, easing = FastOutSlowInEasing)
+                val fade = tween<Float>(220)
+                if (forward) {
+                    (slideInHorizontally(slide) { it / 3 } + fadeIn(fade)) togetherWith (fadeOut(fade) + scaleOut(tween(320), 0.96f))
+                } else {
+                    (fadeIn(fade) + scaleIn(tween(320), 0.96f)) togetherWith (slideOutHorizontally(slide) { it / 3 } + fadeOut(fade))
+                }
+            },
+            contentKey = { it.last() },
+            label = "ecrans",
+        ) { screens ->
+            Box(Modifier.fillMaxSize().background(Fern.colors.nuit)) {
+                when (val top = screens.last()) {
+                    Screen.Tabs -> TabsScreen(vm, tab)
+                    is Screen.Detail -> DetailScreen(vm, top.id)
+                    is Screen.Edit -> EditScreen(vm, top.id, top.number, top.me)
+                    Screen.Settings -> SettingsScreen(vm)
+                }
+            }
         }
     }
 }
 
-/**
- * Les quatre onglets, côte à côte : glisser à gauche / à droite passe de l'un à l'autre
- * (comme des pages), la barre du bas suit.
- */
 @Composable
 private fun TabsScreen(vm: ContactViewModel, tab: Tab) {
     val setup by vm.setup.collectAsState()
@@ -120,6 +151,13 @@ private fun BottomTabs(current: Tab, onSelect: (Tab) -> Unit) {
     ) {
         Tab.entries.forEach { t ->
             val selected = t == current
+            val bg by animateColorAsState(if (selected) c.lierre else c.mousse, tween(250), label = "onglet")
+            val tint by animateColorAsState(if (selected) c.pistache else c.lichen, tween(250), label = "picto")
+            val bump by animateFloatAsState(
+                if (selected) 1.12f else 1f,
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "rebond",
+            )
             val icon = when (t) {
                 Tab.Favoris -> FernIcons.Star
                 Tab.Recents -> FernIcons.Clock
@@ -130,12 +168,12 @@ private fun BottomTabs(current: Tab, onSelect: (Tab) -> Unit) {
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(22.dp))
-                    .background(if (selected) c.lierre else c.mousse)
+                    .background(bg)
                     .clickable { onSelect(t) }
                     .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                FernIcon(icon, if (selected) c.pistache else c.lichen, size = 20.dp)
+                FernIcon(icon, tint, Modifier.graphicsLayer(scaleX = bump, scaleY = bump), size = 20.dp)
                 Text(
                     t.label.uppercase(),
                     style = Fern.type.libelle.copy(fontSize = 9.sp),

@@ -9,7 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -127,7 +135,7 @@ private fun CallScreen(calls: List<CallInfo>, audio: CallAudioState?, onAddCall:
 
         Text(statusText(main), style = Fern.type.libelle, color = c.lichen)
         Spacer(Modifier.height(20.dp))
-        Avatar(main.name.ifBlank { "" }, main.photoUri, 112.dp)
+        PulsingAvatar(main.name, main.photoUri, ringing = main.isRinging)
         Spacer(Modifier.height(20.dp))
         Text(
             if (main.name.isBlank()) PhoneNumbers.format(main.title) else main.title,
@@ -149,6 +157,28 @@ private fun CallScreen(calls: List<CallInfo>, audio: CallAudioState?, onAddCall:
             else -> InCallControls(main, others, audio, onKeypad = { keypad = true }, onAddCall = onAddCall)
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** La photo de l'appelant ; quand ça sonne, des ondes s'en échappent (comme un caillou dans l'eau). */
+@Composable
+private fun PulsingAvatar(name: String, photo: String?, ringing: Boolean) {
+    val c = Fern.colors
+    val waves = rememberInfiniteTransition(label = "ondes")
+    val t by waves.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing)), label = "onde")
+    Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
+        if (ringing) {
+            listOf(0f, 0.5f).forEach { delay ->
+                val p = (t + delay) % 1f
+                Box(
+                    Modifier
+                        .size(112.dp)
+                        .graphicsLayer(scaleX = 1f + p * 0.6f, scaleY = 1f + p * 0.6f, alpha = (1f - p) * 0.5f)
+                        .background(c.pistache, CircleShape),
+                )
+            }
+        }
+        Avatar(name, photo, 112.dp)
     }
 }
 
@@ -246,7 +276,12 @@ private fun IncomingControls(call: CallInfo, hasOtherCall: Boolean) {
                     showReplies = !showReplies
                 }
             }
-            RoundAction(FernIcons.Phone, "Répondre", c.pistache, c.nuit, size = 76.dp) { CallManager.answer(call) }
+            // « Répondre » respire doucement pour attirer l'œil.
+            val breath = rememberInfiniteTransition(label = "respire")
+            val s by breath.animateFloat(1f, 1.08f, infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "taille")
+            RoundAction(FernIcons.Phone, "Répondre", c.pistache, c.nuit, Modifier.graphicsLayer(scaleX = s, scaleY = s), size = 76.dp) {
+                CallManager.answer(call)
+            }
         }
     }
 }

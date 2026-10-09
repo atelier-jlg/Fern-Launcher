@@ -3,6 +3,19 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.4.0 (code 10) · Fern Messages v0.4.2 (code 9) — 2026-10-09
+
+Animations.
+
+- **Transitions** : la fiche (et la modification, les réglages) arrive en glissant depuis la droite, et repart
+  par la droite au retour.
+- **Boutons vivants** : les boutons ronds, pilules, touches du clavier et cartes favoris se tassent sous le doigt
+  et reviennent avec un petit rebond (aussi dans Fern Messages).
+- **Onglets** : couleur qui glisse en fondu, picto qui rebondit à la sélection.
+- **Listes** : contacts et appels glissent en place quand la liste change (recherche, filtre, suppression).
+- **Appel entrant** : ondes autour de la photo, bouton « Répondre » qui respire.
+- **Favori** : l'étoile s'allume avec un rebond.
+
 ## Fern Contact v0.3.3 (code 9) — 2026-10-09
 
 - **Glisser à gauche / à droite** pour passer d'un onglet à l'autre (Favoris ↔ Récents ↔ Contacts ↔ Clavier).

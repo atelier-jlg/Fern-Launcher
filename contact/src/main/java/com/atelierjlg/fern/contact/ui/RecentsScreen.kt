@@ -83,7 +83,7 @@ fun RecentsScreen(vm: ContactViewModel) {
             items(groups, key = { it.latest.id }) { group ->
                 val contact = contactFor(byKey, group.number)
                 RecentRow(
-                    group, contact,
+                    group, contact, Modifier.animateItem(),
                     onClick = { if (contact != null) vm.open(Screen.Detail(contact.id)) else selected = group },
                     onLongClick = { selected = group },
                     onCall = { vm.call(group.number) },
@@ -103,7 +103,7 @@ private fun contactFor(byKey: Map<String, ContactSummary>, number: String): Cont
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun RecentRow(group: RecentGroup, contact: ContactSummary?, onClick: () -> Unit, onLongClick: () -> Unit, onCall: () -> Unit) {
+private fun RecentRow(group: RecentGroup, contact: ContactSummary?, modifier: Modifier, onClick: () -> Unit, onLongClick: () -> Unit, onCall: () -> Unit) {
     val c = Fern.colors
     val e = group.latest
     val (icon, tint) = when (e.type) {
@@ -114,7 +114,7 @@ private fun RecentRow(group: RecentGroup, contact: ContactSummary?, onClick: () 
     }
     val name = contact?.name ?: e.cachedName?.takeIf { it.isNotBlank() } ?: PhoneNumbers.format(e.number).ifBlank { "Numéro masqué" }
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -206,7 +206,7 @@ private fun VoicemailList(vm: ContactViewModel, byKey: Map<String, ContactSummar
         items(list, key = { it.id }) { v ->
             val contact = contactFor(byKey, v.number)
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.mousse).padding(16.dp),
+                Modifier.animateItem().fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.mousse).padding(16.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
