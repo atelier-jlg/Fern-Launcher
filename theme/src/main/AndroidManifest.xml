@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Le thème de Fern Launcher n'est lisible que par les applis signées avec la même clé
+         (Fern Launcher, Fern Messages, Fern Contact). Déclarée dans les trois applis : celle
+         qui est installée en premier la crée, les autres la partagent. -->
+    <permission
+        android:name="com.atelierjlg.fern.permission.READ_THEME"
+        android:label="Lire le thème de Fern"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.atelierjlg.fern.permission.READ_THEME" />
+
+    <!-- Depuis Android 11, il faut déclarer les applis qu'on veut « voir ». -->
+    <queries>
+        <package android:name="com.atelierjlg.fern" />
+    </queries>
+</manifest>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fenêtre des applis sœurs (Messages, Contact) : fond nuit avant que Compose ne dessine. -->
+    <style name="Theme.FernApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fern_nuit</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

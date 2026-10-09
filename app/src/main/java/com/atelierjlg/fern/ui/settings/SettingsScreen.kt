@@ -1,0 +1,719 @@
+package com.atelierjlg.fern.ui.settings
+
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.atelierjlg.fern.BuildConfig
+import com.atelierjlg.fern.LauncherViewModel
+import com.atelierjlg.fern.data.DrawerSort
+import com.atelierjlg.fern.data.DrawerStyle
+import com.atelierjlg.fern.data.GestureAction
+import com.atelierjlg.fern.data.GestureBinding
+import com.atelierjlg.fern.data.GestureSettings
+import com.atelierjlg.fern.data.NamedTheme
+import com.atelierjlg.fern.data.RADIAL_SIZE
+import com.atelierjlg.fern.data.SlotRef
+import com.atelierjlg.fern.data.ThemePresets
+import com.atelierjlg.fern.system.FernAccessibilityService
+import com.atelierjlg.fern.ui.common.AppIcon
+import com.atelierjlg.fern.ui.common.AppPicker
+import com.atelierjlg.fern.ui.common.EmptySlot
+import com.atelierjlg.fern.ui.common.GlyphButton
+import com.atelierjlg.fern.ui.common.PillButton
+import com.atelierjlg.fern.ui.common.TextInputDialog
+import com.atelierjlg.fern.ui.theme.Fern
+
+/** Les rubriques des Paramètres. */
+private enum class Section(val title: String) {
+    Theme("Thème"),
+    Icones("Icônes"),
+    Familles("Familles"),
+    Spaces("Spaces"),
+    Focus("Focus"),
+    Gestes("Gestes"),
+    Recherche("Recherche"),
+    Tiroir("Tiroir"),
+    Alternance("Alternance"),
+    Carnet("Carnet du jour"),
+    Cours("Cours du jour"),
+    Chat("Le chat"),
+    Pomodoro("Pomodoro"),
+    TempsEcran("Temps d'écran"),
+    Lieu("Lieu (ciel, météo)"),
+    Sauvegarde("Sauvegarde"),
+    APropos("À propos"),
+}
+
+/** Moteurs de recherche proposés (%s = texte cherché). */
+private val SEARCH_ENGINES = listOf(
+    "DuckDuckGo" to "https://duckduckgo.com/?q=%s",
+    "Startpage" to "https://www.startpage.com/do/search?q=%s",
+    "Qwant" to "https://www.qwant.com/?q=%s",
+    "Ecosia" to "https://www.ecosia.org/search?q=%s",
+    "Brave Search" to "https://search.brave.com/search?q=%s",
+    "Google" to "https://www.google.com/search?q=%s",
+)
+
+/**
+ * L'onglet Paramètres : plein écran, une liste de rubriques.
+ * On l'ouvre depuis le mode édition ou depuis le tiroir.
+ */
+@Composable
+fun SettingsScreen(vm: LauncherViewModel) {
+    val config by vm.config.collectAsStateWithLifecycle()
+    var section by remember { mutableStateOf<Section?>(null) }
+
+    // Retour : revient au menu, puis ferme.
+    BackHandler { if (section != null) section = null else vm.closeSettings() }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Fern.colors.nuit)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+        ) {
+            GlyphButton("←", onClick = { if (section != null) section = null else vm.closeSettings() })
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = (section?.title ?: "Paramètres").uppercase(),
+                style = Fern.type.titreWidget,
+                color = Fern.colors.creme,
+            )
+        }
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+        ) {
+            when (section) {
+                null -> {
+                    // Fern n'est pas encore le lanceur par défaut : un bouton pour le devenir.
+                    item { DefaultHomeRow(vm) }
+                    items(Section.entries.toList()) { s ->
+                        SettingRow(title = s.title, onClick = { section = s })
+                    }
+                }
+                Section.Theme -> item { ThemeSection(vm, config.theme, config.savedThemes) }
+                Section.Icones -> item { IconsSection(vm, config.icons) }
+                Section.Familles -> item { FamiliesSection(vm, config) }
+                Section.Spaces -> item { SpacesSection(vm, config) }
+                Section.Focus -> item { FocusSection(vm, config) }
+                Section.Gestes -> item { GesturesSection(vm, config.gestures) }
+                Section.Recherche -> searchSection(vm, config.search.extended, config.search.webSearchUrl)
+                Section.Tiroir -> drawerSection(vm, config.drawer)
+                Section.Alternance -> item { AlternanceSection(vm, config.alternance) }
+                Section.Carnet -> item { CarnetSection(vm, config.carnet) }
+                Section.Cours -> item { CoursSection(vm, config.cours) }
+                Section.Chat -> item { ChatSection(vm, config.chat) }
+                Section.Pomodoro -> item { PomodoroSection(vm, config.pomodoro) }
+                Section.TempsEcran -> item { ScreenTimeSection(vm, config.screenTime, config.focus.blockedApps.isNotEmpty()) }
+                Section.Lieu -> item { PlaceSection(vm, config.place) }
+                Section.Sauvegarde -> item { BackupSection(vm) }
+                Section.APropos -> item { AboutSection() }
+            }
+        }
+    }
+}
+
+/**
+ * « Définir Fern comme écran d'accueil » : demande le rôle « Accueil » à Android (fenêtre système).
+ * Sur certains Xiaomi, la fenêtre ne s'ouvre pas : on bascule alors vers les réglages « Applications par défaut ».
+ */
+@Composable
+private fun DefaultHomeRow(vm: LauncherViewModel) {
+    var isDefault by remember { mutableStateOf(vm.isDefaultHome()) }
+    val request = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        isDefault = vm.isDefaultHome()
+        if (!isDefault) vm.openDefaultAppsSettings()
+    }
+    if (isDefault) return
+    SettingRow(
+        title = "Faire de Fern l'écran d'accueil",
+        subtitle = "Fern n'est pas encore ton lanceur par défaut · toucher pour le choisir",
+        onClick = {
+            val intent = vm.homeRoleRequest()
+            if (intent != null) request.launch(intent) else vm.openDefaultAppsSettings()
+        },
+    )
+}
+
+// ─── Briques communes ───────────────────────────────────────────────────────
+
+@Composable
+private fun SettingRow(title: String, subtitle: String? = null, onClick: () -> Unit, trailing: @Composable () -> Unit = {}) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Fern.colors.mousse, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = Fern.type.corps, color = Fern.colors.creme)
+            if (subtitle != null) Text(subtitle, style = Fern.type.nomApp, color = Fern.colors.lichen)
+        }
+        trailing()
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    SettingRow(title = title, subtitle = subtitle, onClick = { onChange(!checked) }) {
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Fern.colors.nuit,
+                checkedTrackColor = Fern.colors.pistache,
+                uncheckedThumbColor = Fern.colors.lichen,
+                uncheckedTrackColor = Fern.colors.lierre,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text.uppercase(),
+        style = Fern.type.libelle,
+        color = Fern.colors.roseCarmin,
+        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp, start = 4.dp),
+    )
+}
+
+/** Une boîte de choix dans une liste. */
+@Composable
+private fun <T> ChoiceDialog(
+    title: String,
+    options: List<T>,
+    label: (T) -> String,
+    onPick: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LazyColumn {
+                items(options) { option ->
+                    TextButton(onClick = { onPick(option) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(label(option), modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
+}
+
+internal fun parseColor(hex: String): Color =
+    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(Color.Gray)
+
+@Composable
+internal fun Swatch(hex: String, size: Int = 26) {
+    Box(
+        Modifier
+            .size(size.dp)
+            .background(parseColor(hex), CircleShape)
+            .border(1.dp, Fern.colors.sousBois, CircleShape),
+    )
+}
+
+// ─── Thème ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ThemeSection(vm: LauncherViewModel, theme: NamedTheme, saved: List<NamedTheme>) {
+    var editing by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var naming by remember { mutableStateOf(false) }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { vm.exportTheme(it) }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { vm.importTheme(it) }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Fond d'écran")
+        SettingRow(
+            title = "Fond d'écran",
+            subtitle = "Géré par le téléphone · toucher pour le changer",
+            onClick = vm::openWallpaperPicker,
+        )
+        SectionLabel("Thème actif · ${theme.name}")
+        for ((label, key, hex) in theme.colors.entries()) {
+            SettingRow(title = label, subtitle = hex, onClick = { editing = key to hex }) { Swatch(hex) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+            PillButton("Enregistrer", onClick = { naming = true }, accent = true)
+            PillButton("Exporter", onClick = { exportLauncher.launch("theme-fern-${theme.name}.json") })
+            PillButton("Importer", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) })
+        }
+        Text(
+            "Exporter crée un petit fichier à envoyer à un proche : il l'importe dans son Fern.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+
+        SectionLabel("Thèmes prêts")
+        for (preset in ThemePresets.all) {
+            ThemeRow(preset, onApply = { vm.applyTheme(preset) })
+        }
+        if (saved.isNotEmpty()) {
+            SectionLabel("Mes thèmes")
+            for (t in saved) {
+                ThemeRow(t, onApply = { vm.applyTheme(t) }, onDelete = { vm.deleteSavedTheme(t.name) })
+            }
+        }
+    }
+
+    editing?.let { (key, hex) ->
+        ColorDialog(
+            initial = hex,
+            onConfirm = { vm.setThemeColor(key, it); editing = null },
+            onDismiss = { editing = null },
+        )
+    }
+    if (naming) {
+        TextInputDialog(
+            title = "Nom du thème",
+            initial = theme.name,
+            onConfirm = { vm.saveTheme(it); naming = false },
+            onDismiss = { naming = false },
+        )
+    }
+}
+
+@Composable
+private fun ThemeRow(theme: NamedTheme, onApply: () -> Unit, onDelete: (() -> Unit)? = null) {
+    SettingRow(title = theme.name, onClick = onApply) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            listOf(theme.colors.nuit, theme.colors.mousse, theme.colors.creme, theme.colors.roseCarmin, theme.colors.pistache)
+                .forEach { Swatch(it, size = 22) }
+        }
+        if (onDelete != null) {
+            Spacer(Modifier.width(8.dp))
+            GlyphButton("✕", onClick = onDelete)
+        }
+    }
+}
+
+// ─── Gestes ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun GesturesSection(vm: LauncherViewModel, gestures: GestureSettings) {
+    val context = LocalContext.current
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    var choosing by remember { mutableStateOf<String?>(null) }
+    var pickingAppFor by remember { mutableStateOf<String?>(null) }
+
+    fun bindingOf(name: String) = when (name) {
+        "up" -> gestures.swipeUp
+        "down" -> gestures.swipeDown
+        "double" -> gestures.doubleTap
+        else -> gestures.longPress
+    }
+
+    fun set(name: String, binding: GestureBinding) = vm.updateGestures {
+        when (name) {
+            "up" -> it.copy(swipeUp = binding)
+            "down" -> it.copy(swipeDown = binding)
+            "double" -> it.copy(doubleTap = binding)
+            else -> it.copy(longPress = binding)
+        }
+    }
+
+    fun describe(binding: GestureBinding): String =
+        if (binding.action == GestureAction.Appli) {
+            "Ouvrir " + (apps.find(binding.appKey)?.label ?: "une appli")
+        } else {
+            binding.action.label
+        }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((name, title) in listOf("up" to "Glisser vers le haut", "down" to "Glisser vers le bas", "double" to "Double appui", "long" to "Appui long")) {
+            SettingRow(title = title, subtitle = describe(bindingOf(name)), onClick = { choosing = name })
+        }
+
+        SectionLabel("Roue d'applis")
+        Text(
+            "Choisis « Roue d'applis » pour un geste (par exemple l'appui long), puis remplis-la ici.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            for (i in 0 until RADIAL_SIZE) {
+                val app = apps.find(gestures.radialApps.getOrNull(i))
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    if (app != null) {
+                        AppIcon(app = app, iconSize = 36.dp, showLabel = false, onClick = { vm.pickFor(SlotRef.Radial(i)) })
+                    } else {
+                        EmptySlot(iconSize = 36.dp, onClick = { vm.pickFor(SlotRef.Radial(i)) })
+                    }
+                }
+            }
+        }
+
+        SectionLabel("Verrouillage")
+        val enabled = FernAccessibilityService.instance != null
+        SettingRow(
+            title = if (enabled) "Verrouillage activé ✓" else "Activer le verrouillage",
+            subtitle = "Accessibilité → Fern Launcher. Fern ne lit rien à l'écran.",
+            onClick = {
+                runCatching {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            },
+        )
+    }
+
+    choosing?.let { name ->
+        ChoiceDialog(
+            title = "Action",
+            options = GestureAction.entries.toList(),
+            label = { it.label },
+            onPick = { action ->
+                choosing = null
+                if (action == GestureAction.Appli) pickingAppFor = name else set(name, GestureBinding(action))
+            },
+            onDismiss = { choosing = null },
+        )
+    }
+    pickingAppFor?.let { name ->
+        AppPicker(
+            apps = apps.visible,
+            current = null,
+            onPick = { app ->
+                if (app != null) set(name, GestureBinding(GestureAction.Appli, app.key))
+                pickingAppFor = null
+            },
+            onDismiss = { pickingAppFor = null },
+        )
+    }
+}
+
+// ─── Recherche ──────────────────────────────────────────────────────────────
+
+private fun LazyListScope.searchSection(vm: LauncherViewModel, extended: Boolean, url: String) {
+    item {
+        ToggleRow(
+            title = "Recherche étendue",
+            subtitle = "Contacts, agenda, raccourcis d'applis et calculatrice, en plus des applis.",
+            checked = extended,
+            onChange = { on -> vm.updateSearch { it.copy(extended = on) } },
+        )
+    }
+    item { SectionLabel("Moteur de recherche web") }
+    items(SEARCH_ENGINES) { (name, engineUrl) ->
+        SettingRow(title = name, onClick = { vm.updateSearch { it.copy(webSearchUrl = engineUrl) } }) {
+            if (engineUrl == url) Text("✓", style = Fern.type.corps, color = Fern.colors.pistache)
+        }
+    }
+    item {
+        Text(
+            "La recherche s'ouvre dans Firefox s'il est installé, comme un lien ordinaire " +
+                "(ton réglage de navigation privée s'applique).",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+// ─── Tiroir ─────────────────────────────────────────────────────────────────
+
+private fun LazyListScope.drawerSection(vm: LauncherViewModel, drawer: com.atelierjlg.fern.data.DrawerSettings) {
+    item {
+        SettingRow(
+            title = "Affichage",
+            subtitle = if (drawer.style == DrawerStyle.Grille) "Grille" else "Liste",
+            onClick = {
+                vm.updateDrawer { it.copy(style = if (it.style == DrawerStyle.Grille) DrawerStyle.Liste else DrawerStyle.Grille) }
+            },
+        )
+    }
+    item {
+        SettingRow(
+            title = "Colonnes de la grille",
+            subtitle = "${drawer.gridColumns} colonnes",
+            onClick = { vm.updateDrawer { it.copy(gridColumns = if (it.gridColumns >= 5) 4 else 5) } },
+        )
+    }
+    item {
+        SettingRow(
+            title = "Tri",
+            subtitle = when (drawer.sort) {
+                DrawerSort.Alphabetique -> "Alphabétique (A–Z)"
+                DrawerSort.Familles -> "Par familles (Communication, Social…)"
+                DrawerSort.Frequence -> "Les plus utilisées d'abord"
+            },
+            onClick = {
+                vm.updateDrawer {
+                    it.copy(
+                        sort = when (it.sort) {
+                            DrawerSort.Alphabetique -> DrawerSort.Familles
+                            DrawerSort.Familles -> DrawerSort.Frequence
+                            DrawerSort.Frequence -> DrawerSort.Alphabetique
+                        },
+                    )
+                }
+            },
+        )
+    }
+    item {
+        ToggleRow(
+            title = "Ouverture directe",
+            subtitle = "Quand la recherche ne trouve qu'une appli, elle s'ouvre toute seule.",
+            checked = drawer.autoLaunchSingleResult,
+            onChange = { on -> vm.updateDrawer { it.copy(autoLaunchSingleResult = on) } },
+        )
+    }
+}
+
+// ─── Icônes ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun IconsSection(vm: LauncherViewModel, icons: com.atelierjlg.fern.data.IconSettings) {
+    val packs = remember { vm.installedIconPacks() }
+    var choosingPack by remember { mutableStateOf<String?>(null) } // "pack" ou "glyph"
+
+    fun labelOf(pkg: String?, fallback: String) = packs.firstOrNull { it.packageName == pkg }?.label ?: fallback
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (mode in com.atelierjlg.fern.data.IconMode.entries) {
+            SettingRow(title = mode.label, onClick = { vm.updateIcons { it.copy(mode = mode) } }) {
+                if (icons.mode == mode) Text("✓", style = Fern.type.corps, color = Fern.colors.pistache)
+            }
+        }
+        when (icons.mode) {
+            com.atelierjlg.fern.data.IconMode.Pack -> SettingRow(
+                title = "Pack utilisé",
+                subtitle = labelOf(icons.packPackage, if (packs.isEmpty()) "Aucun pack installé" else "À choisir"),
+                onClick = { choosingPack = "pack" },
+            )
+            com.atelierjlg.fern.data.IconMode.Plaques -> {
+                SettingRow(
+                    title = "Pictos des plaques",
+                    subtitle = labelOf(icons.glyphPackage, "Automatique (Arcticons s'il est installé)"),
+                    onClick = { choosingPack = "glyph" },
+                )
+                Text(
+                    "La couleur des plaques dépend de la famille de l'appli (appui long dans le tiroir → Famille). " +
+                        "Les couleurs des familles se règlent dans Thème. Sans picto disponible, la plaque montre l'initiale.",
+                    style = Fern.type.nomApp,
+                    color = Fern.colors.lichen,
+                )
+            }
+            else -> Unit
+        }
+    }
+
+    choosingPack?.let { target ->
+        ChoiceDialog(
+            title = if (target == "pack") "Pack d'icônes" else "Source des pictos",
+            options = listOf<com.atelierjlg.fern.apps.IconPackInfo?>(null) + packs,
+            label = { it?.label ?: if (target == "pack") "Aucun (icônes d'origine)" else "Automatique" },
+            onPick = { info ->
+                vm.updateIcons {
+                    if (target == "pack") it.copy(packPackage = info?.packageName) else it.copy(glyphPackage = info?.packageName)
+                }
+                choosingPack = null
+            },
+            onDismiss = { choosingPack = null },
+        )
+    }
+}
+
+// ─── Lieu ───────────────────────────────────────────────────────────────────
+
+@Composable
+private fun PlaceSection(vm: LauncherViewModel, place: com.atelierjlg.fern.data.PlaceSettings) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Sert aux widgets Ciel (lever et coucher du soleil) et Météo. Pas de GPS : tu indiques ta ville une fois.",
+            style = Fern.type.nomApp,
+            color = Fern.colors.lichen,
+        )
+        ToggleRow(
+            title = "Météo sous l'horloge",
+            subtitle = "Ex. « MARDI 6 OCTOBRE · 14° PLUIE ». Via Open-Meteo (sans compte ni pistage).",
+            checked = place.weatherOnClock,
+            onChange = { on -> vm.updatePlace { it.copy(weatherOnClock = on) }; if (on) vm.refreshWeather(force = true) },
+        )
+        // Pour comprendre un souci de réseau : la dernière erreur de la météo, et un bouton pour réessayer.
+        val weather by vm.weather.collectAsStateWithLifecycle()
+        SettingRow(
+            title = "Météo",
+            subtitle = com.atelierjlg.fern.widgets.WeatherCodes.lastError?.let { "Erreur · $it" }
+                ?: weather?.let { "${it.temperature}° ${it.kind.label} · toucher pour actualiser" }
+                ?: "Pas encore chargée · toucher pour actualiser",
+            onClick = { vm.refreshWeather(force = true) },
+        )
+        SettingRow(title = "Ville", subtitle = place.name, onClick = { editing = "name" })
+        SettingRow(title = "Latitude", subtitle = place.latitude.toString(), onClick = { editing = "lat" })
+        SettingRow(title = "Longitude", subtitle = place.longitude.toString(), onClick = { editing = "lon" })
+    }
+    editing?.let { field ->
+        TextInputDialog(
+            title = when (field) {
+                "name" -> "Ville"
+                "lat" -> "Latitude (ex. 47.2184)"
+                else -> "Longitude (ex. -1.5536)"
+            },
+            initial = when (field) {
+                "name" -> place.name
+                "lat" -> place.latitude.toString()
+                else -> place.longitude.toString()
+            },
+            onConfirm = { text ->
+                val number = text.replace(',', '.').trim().toDoubleOrNull()
+                vm.updatePlace {
+                    when (field) {
+                        "name" -> it.copy(name = text.trim().ifEmpty { it.name })
+                        "lat" -> if (number != null && number in -90.0..90.0) it.copy(latitude = number) else it
+                        else -> if (number != null && number in -180.0..180.0) it.copy(longitude = number) else it
+                    }
+                }
+                editing = null
+                vm.refreshWeather(force = true)
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+// ─── Sauvegarde ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun BackupSection(vm: LauncherViewModel) {
+    var confirmImport by remember { mutableStateOf<Uri?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { vm.exportBackup(it) }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        confirmImport = uri
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Toute ta configuration (pages, packs, dock, thème, gestes…) dans un seul fichier. " +
+                "À garder sur ton Drive avant une grosse mise à jour.",
+            style = Fern.type.corps,
+            color = Fern.colors.lichen,
+        )
+        SettingRow(title = "Exporter une sauvegarde", onClick = { exportLauncher.launch("fern-sauvegarde.json") })
+        SettingRow(
+            title = "Restaurer une sauvegarde",
+            onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+        )
+    }
+    confirmImport?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { confirmImport = null },
+            title = { Text("Restaurer ?") },
+            text = { Text("Ta configuration actuelle sera remplacée par celle du fichier.") },
+            confirmButton = { TextButton(onClick = { vm.importBackup(uri); confirmImport = null }) { Text("Restaurer") } },
+            dismissButton = { TextButton(onClick = { confirmImport = null }) { Text("Annuler") } },
+        )
+    }
+}
+
+// ─── À propos ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun AboutSection() {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingRow(title = "Fern Launcher", subtitle = "Version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})", onClick = {})
+        // Les applis sœurs : même thème, même clé. Toucher = l'ouvrir.
+        listOf("com.atelierjlg.fern.messages" to "Fern Messages", "com.atelierjlg.fern.contact" to "Fern Contact").forEach { (pkg, name) ->
+            val version = remember(pkg) {
+                runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()
+            }
+            SettingRow(
+                title = name,
+                subtitle = if (version != null) "Version $version · suit le thème de Fern" else "Pas installée",
+                onClick = {
+                    context.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                        runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    }
+                },
+            )
+        }
+        SettingRow(
+            title = "Écran d'accueil par défaut",
+            subtitle = "Choisir Fern (ou revenir à un autre lanceur)",
+            onClick = {
+                runCatching {
+                    context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            },
+        )
+        SettingRow(
+            title = "Code source",
+            subtitle = "github.com/atelier-jlg/Fern-Launcher",
+            onClick = {
+                runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/atelier-jlg/Fern-Launcher"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Police Bricolage Grotesque (SIL OFL 1.1).",
+            style = Fern.type.nomApp,
+            color = Fern.colors.moussePale,
+        )
+    }
+}

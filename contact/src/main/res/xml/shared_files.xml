@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fichiers prêtés à une autre appli le temps d'un envoi (ma carte de visite). -->
+<paths>
+    <cache-path name="cartes" path="cartes/" />
+</paths>
