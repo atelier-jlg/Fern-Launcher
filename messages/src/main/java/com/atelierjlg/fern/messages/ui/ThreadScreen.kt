@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -150,6 +152,7 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
                         onRetry = { vm.resend(m) },
                         onCopyCode = { vm.copy(it) },
                         onOpenVcard = { vm.openVcard(it) },
+                        onOpenFile = { vm.openPart(it) },
                     )
                 }
                 // Séparateur de jour au-dessus du premier message de chaque jour.
@@ -263,7 +266,8 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
             onDismiss = { scheduling = false },
             onPick = { at ->
                 scheduling = false
-                vm.schedule(addresses, draft, at)
+                vm.schedule(addresses, draft, at, attachments)
+                attachments = emptyList()
                 draft = ""
                 vm.saveDraft(threadId, "")
             },
@@ -283,6 +287,7 @@ private fun Bubble(
     onRetry: () -> Unit,
     onCopyCode: (String) -> Unit,
     onOpenVcard: (android.net.Uri) -> Unit,
+    onOpenFile: (com.atelierjlg.fern.messages.data.MmsFile) -> Unit,
 ) {
     val c = Fern.colors
     val code = remember(m.key) { if (!m.outgoing) Otp.find(m.body) else null }
@@ -305,14 +310,16 @@ private fun Bubble(
                     },
                 )
                 .combinedClickable(onClick = { if (m.status == MsgStatus.Failed) onRetry() }, onLongClick = onLongClick)
-                .padding(if (m.images.isNotEmpty() || m.vcards.isNotEmpty()) 4.dp else 0.dp),
+                .padding(if (m.images.isNotEmpty() || m.vcards.isNotEmpty() || m.files.isNotEmpty()) 4.dp else 0.dp),
         ) {
             m.images.forEach { uri ->
                 val bitmap = rememberPhoto(uri.toString(), 900)
                 if (bitmap != null) {
+                    // Photo entière, dans ses vraies proportions (un peu rognée seulement si très allongée).
+                    val ratio = (bitmap.width.toFloat() / bitmap.height).coerceIn(0.5f, 2f)
                     Image(
                         bitmap, "Photo",
-                        Modifier.fillMaxWidth().heightIn(max = 320.dp).clip(RoundedCornerShape(18.dp)),
+                        Modifier.width(260.dp).aspectRatio(ratio).clip(RoundedCornerShape(18.dp)),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
@@ -332,8 +339,32 @@ private fun Bubble(
                     }
                 }
             }
-            if (m.otherParts > 0) {
-                Text("Pièce jointe (pas encore affichée)", style = Fern.type.nomApp, color = c.lichen, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+            m.files.forEach { f ->
+                Row(
+                    Modifier.padding(4.dp).clip(RoundedCornerShape(18.dp)).background(c.nuit).clickable { onOpenFile(f) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    com.atelierjlg.fern.ui.theme.FernIcon(
+                        when {
+                            f.isVideo -> FernIcons.Play
+                            f.isAudio -> FernIcons.Mic
+                            else -> FernIcons.Paperclip
+                        },
+                        c.pistache, size = 20.dp,
+                    )
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text(
+                            when {
+                                f.isVideo -> "Vidéo"
+                                f.isAudio -> "Message vocal"
+                                else -> f.name
+                            },
+                            style = Fern.type.corps, color = c.creme, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text("TOUCHER POUR OUVRIR", style = Fern.type.libelle, color = c.lichen)
+                    }
+                }
             }
             if (m.body.isNotBlank()) {
                 SelectionContainer {
@@ -363,9 +394,9 @@ private fun Bubble(
 
 /**
  * La zone d'écriture : « + » ajoute une photo ou un contact (envoyés en MMS),
- * toucher l'avion envoie, appui long dessus = programmer (texte seul).
+ * toucher l'avion envoie, « + » → Programmer (ou appui long sur l'avion) pour l'envoyer plus tard.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun Composer(
     text: String,
@@ -377,22 +408,58 @@ fun Composer(
     onAttachmentsChange: (List<Attachment>) -> Unit = {},
 ) {
     val c = Fern.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
     var menu by remember { mutableStateOf(false) }
+    var recorder by remember { mutableStateOf<VoiceRecorder?>(null) }
+    fun add(a: Attachment) = onAttachmentsChange(attachments + a)
+
+    /** Nom et type d'un fichier choisi. */
+    fun describe(uri: android.net.Uri, fallbackMime: String): Attachment.File {
+        val mime = context.contentResolver.getType(uri) ?: fallbackMime
+        val name = runCatching {
+            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+        }.getOrNull() ?: "fichier"
+        return Attachment.File(uri, mime, name)
+    }
+
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) onAttachmentsChange(attachments + Attachment.Photo(uri))
+        if (uri != null) add(Attachment.Photo(uri))
+    }
+    val pickVideo = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) add(describe(uri, "video/mp4"))
+    }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) add(describe(uri, "application/octet-stream"))
     }
     val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
-        if (uri != null) onAttachmentsChange(attachments + Attachment.Contact(uri))
+        if (uri != null) add(Attachment.Contact(uri))
     }
+    fun startRecording() {
+        val r = VoiceRecorder(context)
+        if (r.start()) recorder = r
+    }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRecording()
+    }
+
+    // Pièces jointes prêtes à partir (toucher pour retirer).
     if (attachments.isNotEmpty()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             attachments.forEach { a ->
                 Box(Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)).background(c.mousse).clickable { onAttachmentsChange(attachments - a) }) {
-                    when (a) {
-                        is Attachment.Photo -> rememberPhoto(a.uri.toString(), 200)?.let {
-                            Image(it, null, Modifier.size(64.dp), contentScale = ContentScale.Crop)
+                    val photo = (a as? Attachment.Photo)?.let { rememberPhoto(it.uri.toString(), 200) }
+                    if (photo != null) {
+                        Image(photo, null, Modifier.size(64.dp), contentScale = ContentScale.Crop)
+                    } else {
+                        val icon = when {
+                            a is Attachment.File && a.mime.startsWith("video/") -> FernIcons.Video
+                            a is Attachment.File && a.mime.startsWith("audio/") -> FernIcons.Mic
+                            a is Attachment.File -> FernIcons.Paperclip
+                            a is Attachment.Photo -> FernIcons.Image
+                            else -> FernIcons.User
                         }
-                        else -> com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.User, c.creme, Modifier.align(Alignment.Center))
+                        com.atelierjlg.fern.ui.theme.FernIcon(icon, c.creme, Modifier.align(Alignment.Center))
                     }
                     Box(
                         Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(CircleShape).background(c.nuit),
@@ -402,11 +469,66 @@ fun Composer(
             }
         }
     }
+
+    // Enregistrement d'un message vocal en cours.
+    recorder?.let { r ->
+        var seconds by remember(r) { mutableStateOf(0L) }
+        LaunchedEffect(r) {
+            while (true) {
+                seconds = (System.currentTimeMillis() - r.startedAt) / 1000
+                if (seconds * 1000 >= VoiceRecorder.MAX_MS) {
+                    r.stop()?.let { f -> add(Attachment.File(android.net.Uri.fromFile(f), "audio/amr", "vocal.amr")) }
+                    recorder = null
+                    break
+                }
+                kotlinx.coroutines.delay(250)
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clip(RoundedCornerShape(24.dp)).background(c.mousse)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(Modifier.size(12.dp).clip(CircleShape).background(c.roseCarmin))
+            Text("%d:%02d".format(seconds / 60, seconds % 60), style = Fern.type.corps, color = c.creme, modifier = Modifier.weight(1f))
+            Pill("Annuler", false) {
+                r.cancel()
+                recorder = null
+            }
+            Pill("Terminé", true) {
+                r.stop()?.let { f -> add(Attachment.File(android.net.Uri.fromFile(f), "audio/amr", "vocal.amr")) }
+                recorder = null
+            }
+        }
+    }
+
+    // Le menu « + » : tout ce qu'on peut joindre, et programmer l'envoi.
     if (menu) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Pill("Photo", false) {
                 menu = false
                 pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }
+            Pill("Vidéo", false) {
+                menu = false
+                pickVideo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+            }
+            Pill("Vocal", false) {
+                menu = false
+                if (context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    startRecording()
+                } else {
+                    micPermission.launch(android.Manifest.permission.RECORD_AUDIO)
+                }
+            }
+            Pill("Fichier", false) {
+                menu = false
+                pickFile.launch(arrayOf("*/*"))
             }
             Pill("Contact", false) {
                 menu = false
@@ -414,7 +536,12 @@ fun Composer(
             }
             Pill("Ma carte", false) {
                 menu = false
-                onAttachmentsChange(attachments + Attachment.MyCard)
+                add(Attachment.MyCard)
+            }
+            Pill("Programmer", true) {
+                menu = false
+                if (enabled && (text.isNotBlank() || attachments.isNotEmpty())) onSchedule()
+                else android.widget.Toast.makeText(context, "Écris d'abord le message (ou joins quelque chose)", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -439,7 +566,7 @@ fun Composer(
                 .combinedClickable(
                     enabled = canSend,
                     onClick = onSend,
-                    onLongClick = if (attachments.isEmpty()) onSchedule else null,
+                    onLongClick = onSchedule,
                 ),
             contentAlignment = Alignment.Center,
         ) { com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.Send, if (canSend) c.nuit else c.moussePale, size = 20.dp) }

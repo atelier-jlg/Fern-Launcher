@@ -20,6 +20,12 @@ data class Conversation(
     val photoUri: String?,
 )
 
+/** Une pièce jointe d'un MMS (vidéo, son, document), ouverte par l'appli qui convient. */
+data class MmsFile(val uri: Uri, val mime: String, val name: String) {
+    val isVideo get() = mime.startsWith("video/")
+    val isAudio get() = mime.startsWith("audio/")
+}
+
 enum class MsgStatus { Received, Sending, Sent, Delivered, Failed }
 
 /** Un message, SMS ou MMS. La clé distingue les deux : « s12 » ≠ « m12 » (l'ancienne appli les confondait). */
@@ -36,8 +42,8 @@ data class Msg(
     val images: List<Uri> = emptyList(),
     /** Cartes de contact (vCard) d'un MMS : (adresse de la pièce, nom du contact). */
     val vcards: List<Pair<Uri, String>> = emptyList(),
-    /** Autres pièces jointes d'un MMS (vidéo, son…), pas encore affichées. */
-    val otherParts: Int = 0,
+    /** Autres pièces jointes d'un MMS (vidéo, son, document…). */
+    val files: List<MmsFile> = emptyList(),
 ) {
     val key: String get() = (if (isMms) "m" else "s") + id
 }
@@ -175,9 +181,9 @@ class MessagesRepo(private val context: Context) {
                 val box = c.getInt(2)
                 val text = StringBuilder()
                 val images = mutableListOf<Uri>()
-                var others = 0
+                val files = mutableListOf<MmsFile>()
                 val vcards = mutableListOf<Pair<Uri, String>>()
-                resolver.query(Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text"), "mid = ?", arrayOf(id.toString()), null)?.use { p ->
+                resolver.query(Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text", "name", "cl"), "mid = ?", arrayOf(id.toString()), null)?.use { p ->
                     while (p.moveToNext()) {
                         val ct = p.getString(1).orEmpty().lowercase()
                         val partUri = Uri.parse("content://mms/part/${p.getLong(0)}")
@@ -186,7 +192,7 @@ class MessagesRepo(private val context: Context) {
                             ct.startsWith("image/") -> images += partUri
                             ct == "text/x-vcard" || ct == "text/vcard" -> vcards += partUri to vcardName(partUri)
                             ct == "application/smil" -> Unit
-                            else -> others++
+                            else -> files += MmsFile(partUri, ct, p.getString(3) ?: p.getString(4) ?: "Pièce jointe")
                         }
                     }
                 }
@@ -206,7 +212,7 @@ class MessagesRepo(private val context: Context) {
                     },
                     images = images,
                     vcards = vcards,
-                    otherParts = others,
+                    files = files,
                 )
             }
         }

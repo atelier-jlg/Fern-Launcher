@@ -14,6 +14,8 @@ data class Scheduled(
     val addresses: List<String>,
     val body: String,
     val at: Long,
+    /** Pièces jointes, copiées dans l'appli : « photo|chemin », « vcard|chemin », « fichier|type|nom|chemin », « moi ». */
+    val attachments: List<String> = emptyList(),
 )
 
 /** Ce que Fern Messages retient en plus des SMS eux-mêmes (fichier JSON dans l'appli). */

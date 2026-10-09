@@ -220,52 +220,68 @@ object MmsTransport {
         data class VcardFile(val uri: Uri) : Attachment
         /** Ma propre carte (fiche « Moi » d'Android). */
         data object MyCard : Attachment
+        /** Tout autre fichier : vidéo, message vocal, son, PDF… envoyé tel quel. */
+        data class File(val uri: Uri, val mime: String, val name: String) : Attachment
     }
+
+    /** Pièce jointe trop lourde pour un MMS chez cet opérateur. */
+    class TooBigException(val limitKb: Int) : Exception("Trop lourd pour un MMS ($limitKb Ko maximum)")
 
     /**
      * Envoie un MMS (photo, contact, ou message de groupe) à [to].
      * Le message apparaît tout de suite dans la conversation (« Envoi… »).
      */
     fun send(context: Context, to: List<String>, text: String, attachments: List<Attachment>, subId: Int = -1) {
+        val limit = maxSize(context, subId)
         val parts = mutableListOf<MmsPart>()
-        var imageName: String? = null
-        var vcardName: String? = null
-        val budget = maxSize(context, subId) - 8 * 1024 - text.length * 4
-        val photos = attachments.filterIsInstance<Attachment.Photo>()
-        photos.forEachIndexed { i, a ->
-            val jpeg = compressPhoto(context, a.uri, budget / photos.size)
-            val name = "image$i.jpg"
-            if (i == 0) imageName = name
-            parts += MmsPart("image/jpeg", jpeg, name = name, contentId = "image$i", contentLocation = name)
-        }
-        attachments.filter { it !is Attachment.Photo }.forEachIndexed { i, a ->
-            val vcard = when (a) {
-                is Attachment.Contact -> readVcard(context, a.uri)
-                is Attachment.VcardFile -> runCatching { context.contentResolver.openInputStream(a.uri)?.use { it.readBytes() } }.getOrNull()
-                Attachment.MyCard -> myVcard(context)
-                is Attachment.Photo -> null
-            } ?: return@forEachIndexed
-            val name = "contact$i.vcf"
-            if (i == 0) vcardName = name
-            parts += MmsPart("text/x-vCard", vcard, name = name, contentId = "contact$i", contentLocation = name)
+        // D'abord les pièces qu'on ne peut pas réduire (cartes, fichiers) : elles doivent tenir telles quelles.
+        attachments.forEachIndexed { i, a ->
+            when (a) {
+                is Attachment.Photo -> Unit
+                is Attachment.Contact, is Attachment.VcardFile, Attachment.MyCard -> {
+                    val vcard = when (a) {
+                        is Attachment.Contact -> readVcard(context, a.uri)
+                        is Attachment.VcardFile -> readBytes(context, a.uri)
+                        else -> myVcard(context)
+                    } ?: return@forEachIndexed
+                    val name = "contact$i.vcf"
+                    parts += MmsPart("text/x-vCard", vcard, name = name, contentId = "contact$i", contentLocation = name)
+                }
+                is Attachment.File -> {
+                    val bytes = readBytes(context, a.uri) ?: return@forEachIndexed
+                    val name = safeName(a.name, i)
+                    parts += MmsPart(a.mime, bytes, name = name, contentId = "file$i", contentLocation = name)
+                }
+            }
         }
         if (text.isNotBlank()) {
             parts += MmsPart("text/plain", text.toByteArray(), name = "text0.txt", contentId = "text0", contentLocation = "text0.txt", charset = 106)
         }
-        val smil = Pdu.smil(imageName, if (text.isNotBlank()) "text0.txt" else null, vcardName)
-        parts.add(0, MmsPart("application/smil", smil.toByteArray(), name = "smil.xml", contentId = "smil", contentLocation = "smil.xml"))
+        // Puis les photos, réduites pour remplir ce qui reste.
+        val left = limit - 8 * 1024 - parts.sumOf { it.data.size }
+        val photos = attachments.filterIsInstance<Attachment.Photo>()
+        if (left < 0 || (photos.isNotEmpty() && left / photos.size < 20 * 1024)) throw TooBigException(limit / 1024)
+        photos.forEachIndexed { i, a ->
+            val jpeg = compressPhoto(context, a.uri, left / photos.size)
+            val name = "image$i.jpg"
+            parts.add(i, MmsPart("image/jpeg", jpeg, name = name, contentId = "image$i", contentLocation = name))
+        }
+        parts.add(0, MmsPart("application/smil", Pdu.smilFor(parts).toByteArray(), name = "smil.xml", contentId = "smil", contentLocation = "smil.xml"))
         sendParts(context, to, parts, subId)
     }
+
+    private fun readBytes(context: Context, uri: Uri): ByteArray? =
+        runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+
+    /** Nom de fichier sans caractères gênants (« Cours n°3.pdf » → « Cours_n_3.pdf »). */
+    private fun safeName(name: String, i: Int): String =
+        name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(40).ifBlank { "fichier$i" }
 
     /** Renvoie un MMS en échec : mêmes pièces, nouvel envoi, l'ancien est retiré. */
     fun resend(context: Context, mmsId: Long, to: List<String>) {
         val parts = MmsStore.readParts(context, mmsId).filterNot { it.isSmil }
         if (parts.isEmpty() || to.isEmpty()) return
-        val smil = Pdu.smil(
-            parts.firstOrNull { it.isImage }?.contentLocation,
-            parts.firstOrNull { it.isText }?.contentLocation,
-            parts.firstOrNull { it.isVcard }?.contentLocation,
-        )
+        val smil = Pdu.smilFor(parts)
         context.contentResolver.delete(Uri.parse("content://mms/$mmsId"), null, null)
         sendParts(context, to, listOf(MmsPart("application/smil", smil.toByteArray(), name = "smil.xml", contentId = "smil", contentLocation = "smil.xml")) + parts, -1)
     }

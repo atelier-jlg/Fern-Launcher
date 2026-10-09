@@ -26,6 +26,8 @@ class MmsPart(
     val isSmil get() = contentType.equals("application/smil", true)
     val isImage get() = contentType.startsWith("image/", true)
     val isVcard get() = contentType.equals("text/x-vcard", true) || contentType.equals("text/vcard", true)
+    val isVideo get() = contentType.startsWith("video/", true)
+    val isAudio get() = contentType.startsWith("audio/", true)
 
     fun text(): String = String(data, Pdu.charsetOf(charset ?: 106))
 }
@@ -549,6 +551,30 @@ object Pdu {
         valueLength(exp.size); bytes(exp)
         byte(CONTENT_LOCATION); text(location)
         out.toByteArray()
+    }
+
+    /**
+     * La mise en page SMIL pour n'importe quelles pièces : image ou vidéo en haut, texte en dessous,
+     * son et autres fichiers joints sans place à l'écran.
+     */
+    fun smilFor(parts: List<MmsPart>): String = buildString {
+        val media = parts.any { it.isImage || it.isVideo }
+        val text = parts.any { it.isText }
+        append("<smil><head><layout><root-layout/>")
+        if (media) append("<region id=\"Image\" fit=\"meet\" top=\"0\" left=\"0\" height=\"80%\" width=\"100%\"/>")
+        if (text) append("<region id=\"Text\" top=\"80%\" left=\"0\" height=\"20%\" width=\"100%\"/>")
+        append("</layout></head><body><par dur=\"5000ms\">")
+        parts.filterNot { it.isSmil }.forEach { p ->
+            val src = p.contentLocation ?: p.name ?: return@forEach
+            when {
+                p.isImage -> append("<img src=\"$src\" region=\"Image\"/>")
+                p.isVideo -> append("<video src=\"$src\" region=\"Image\"/>")
+                p.isText -> append("<text src=\"$src\" region=\"Text\"/>")
+                p.isAudio -> append("<audio src=\"$src\"/>")
+                else -> append("<ref src=\"$src\"/>")
+            }
+        }
+        append("</par></body></smil>")
     }
 
     /** La mise en page SMIL d'un MMS : la photo en haut, le texte en dessous. */

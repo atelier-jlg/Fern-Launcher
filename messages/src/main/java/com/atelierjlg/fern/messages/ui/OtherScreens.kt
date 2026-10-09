@@ -89,7 +89,7 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
         if (to.isEmpty() || (body.isBlank() && attachments.isEmpty())) return
         scope.launch {
             if (at != null) {
-                vm.schedule(to, body, at)
+                vm.schedule(to, body, at, attachments)
                 vm.back()
             } else {
                 vm.send(to, body, attachments)
@@ -252,7 +252,7 @@ fun ScheduledScreen(vm: MessagesViewModel) {
         }
         if (prefs.scheduled.isEmpty()) {
             Text(
-                "Aucun message programmé. Pour en programmer un : appui long sur le bouton d'envoi.",
+                "Aucun message programmé. Pour en programmer un : « + » → Programmer, dans une conversation.",
                 style = Fern.type.corps, color = c.lichen, modifier = Modifier.padding(20.dp),
             )
         }
@@ -276,6 +276,12 @@ fun ScheduledScreen(vm: MessagesViewModel) {
                     }
                     Box(Modifier.padding(top = 8.dp)) {
                         Text(s.body, style = Fern.type.nomApp, color = c.lichen, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (s.attachments.isNotEmpty()) {
+                        Text(
+                            if (s.attachments.size > 1) "+ ${s.attachments.size} PIÈCES JOINTES" else "+ 1 PIÈCE JOINTE",
+                            style = Fern.type.libelle, color = c.pistache, modifier = Modifier.padding(top = 6.dp),
+                        )
                     }
                 }
             }

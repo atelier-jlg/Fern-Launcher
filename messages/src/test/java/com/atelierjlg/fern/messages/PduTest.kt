@@ -6,6 +6,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PduTest {
@@ -70,5 +71,21 @@ class PduTest {
     fun nimporteQuoi() {
         assertNull(Pdu.parseNotification(byteArrayOf(1, 2, 3)))
         assertNull(Pdu.parseNotification(ByteArray(0)))
+    }
+
+    @Test
+    fun miseEnPage() {
+        val smil = Pdu.smilFor(
+            listOf(
+                MmsPart("video/mp4", ByteArray(1), contentLocation = "video0.mp4"),
+                MmsPart("audio/amr", ByteArray(1), contentLocation = "vocal.amr"),
+                MmsPart("text/plain", ByteArray(1), contentLocation = "text0.txt"),
+                MmsPart("application/pdf", ByteArray(1), contentLocation = "cours.pdf"),
+            ),
+        )
+        assertTrue(smil.contains("<video src=\"video0.mp4\" region=\"Image\"/>"))
+        assertTrue(smil.contains("<audio src=\"vocal.amr\"/>"))
+        assertTrue(smil.contains("<text src=\"text0.txt\" region=\"Text\"/>"))
+        assertTrue(smil.contains("<ref src=\"cours.pdf\"/>"))
     }
 }

@@ -3,6 +3,16 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.4.0 (code 7) — 2026-10-09
+
+- **Menu « + » complet** : Photo, **Vidéo**, **Vocal** (enregistré sur place, jusqu'à ~3 min),
+  **Fichier** (PDF, son, document…), Contact, Ma carte, et **Programmer**.
+- **Programmer** est maintenant visible dans le « + » (l'appui long sur l'avion marche toujours), et un message
+  programmé peut avoir des **pièces jointes** (copiées dans l'appli pour être encore là à l'heure de l'envoi).
+- **Pièces jointes reçues** : vidéo, message vocal, document → « Toucher pour ouvrir » dans l'appli qui convient.
+- **Photos** : affichées entières, dans leurs vraies proportions.
+- Trop lourd pour un MMS (vidéo longue…) : message clair avec la limite de l'opérateur, au lieu d'un échec muet.
+
 ## Fern Contact v0.3.1 (code 7) — 2026-10-09
 
 - **Favoris comme dans Fil** : une carte par personne (photo, surnom, bouton d'appel), grand titre « Favoris ».

@@ -119,6 +119,12 @@ object FernIcons {
         "M18 8a6 6 0 0 0-9.33-5", "M1 1l22 22",
     )
     val More = icon("more", "M12 5h.01M12 12h.01M12 19h.01", width = 3.2f)
+    val Play = icon("play", "M5 3l14 9-14 9V3z")
+    val Video = icon("video", "M23 7l-7 5 7 5V7z", "M3 5h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z")
+    val Paperclip = icon(
+        "paperclip",
+        "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48",
+    )
     val Copy = icon(
         "copy", "M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z",
         "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1",

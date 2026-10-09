@@ -204,7 +204,11 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
             runCatching {
                 if (attachments.isNotEmpty()) MmsTransport.send(context, addresses, body.trim(), attachments)
                 else com.atelierjlg.fern.messages.sms.Outgoing.send(context, addresses, body)
-            }.onFailure { withContext(Dispatchers.Main) { toast("Envoi impossible : ${it.message}") } }
+            }.onFailure {
+                val text = if (it is MmsTransport.TooBigException) "Trop lourd pour un MMS : ${it.limitKb} Ko maximum chez ton opérateur"
+                else "Envoi impossible : ${it.message}"
+                withContext(Dispatchers.Main) { toast(text) }
+            }
         }
     }
 
@@ -238,10 +242,23 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun schedule(addresses: List<String>, body: String, at: Long) = viewModelScope.launch(Dispatchers.IO) {
-        ScheduledSend.schedule(context, addresses, body.trim(), at)
-        withContext(Dispatchers.Main) { toast("Message programmé") }
-        reload()
+    fun schedule(addresses: List<String>, body: String, at: Long, attachments: List<Attachment> = emptyList()) =
+        viewModelScope.launch(Dispatchers.IO) {
+            ScheduledSend.schedule(context, addresses, body.trim(), at, attachments)
+            withContext(Dispatchers.Main) { toast("Message programmé") }
+            reload()
+        }
+
+    /** Ouvre une pièce jointe reçue (vidéo, son, document) dans l'appli qui convient. */
+    fun openPart(file: com.atelierjlg.fern.messages.data.MmsFile) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val dir = java.io.File(context.cacheDir, "pieces").apply { mkdirs() }
+            val target = java.io.File(dir, file.name.replace(Regex("[^\\p{L}0-9._ -]"), "_").ifBlank { "piece" })
+            context.contentResolver.openInputStream(file.uri)?.use { input -> target.outputStream().use { input.copyTo(it) } }
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.mmsfiles", target)
+            val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, file.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            withContext(Dispatchers.Main) { start(intent) }
+        }.onFailure { withContext(Dispatchers.Main) { toast("Impossible d'ouvrir la pièce jointe") } }
     }
 
     fun cancelScheduled(id: Long) = viewModelScope.launch(Dispatchers.IO) {

@@ -66,6 +66,9 @@ object MessageNotifier {
                 when {
                     m.images.isNotEmpty() -> "Photo"
                     m.vcards.isNotEmpty() -> "Contact : ${m.vcards.first().second}"
+                    m.files.any { it.isVideo } -> "Vidéo"
+                    m.files.any { it.isAudio } -> "Message vocal"
+                    m.files.isNotEmpty() -> "Fichier : ${m.files.first().name}"
                     else -> "MMS"
                 }
             }
