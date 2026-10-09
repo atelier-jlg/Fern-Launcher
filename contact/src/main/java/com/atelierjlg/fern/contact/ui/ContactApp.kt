@@ -18,7 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,20 +67,42 @@ fun ContactApp(vm: ContactViewModel, onFinish: () -> Unit) {
     }
 }
 
+/**
+ * Les quatre onglets, côte à côte : glisser à gauche / à droite passe de l'un à l'autre
+ * (comme des pages), la barre du bas suit.
+ */
 @Composable
 private fun TabsScreen(vm: ContactViewModel, tab: Tab) {
     val setup by vm.setup.collectAsState()
+    val pager = rememberPagerState(initialPage = tab.ordinal) { Tab.entries.size }
+    val scope = rememberCoroutineScope()
+    // Onglet choisi ailleurs (barre du bas, lien « tel: »…) → la page suit.
+    LaunchedEffect(tab) {
+        if (pager.currentPage != tab.ordinal) pager.animateScrollToPage(tab.ordinal)
+    }
+    // Page atteinte en glissant → l'onglet suit.
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.collect { page ->
+            val t = Tab.entries[page]
+            if (t != vm.tab.value) vm.selectTab(t)
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         if (!setup.complete) SetupCard(vm, setup)
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (tab) {
-                Tab.Favoris -> FavoritesScreen(vm)
-                Tab.Recents -> RecentsScreen(vm)
-                Tab.Contacts -> ContactsScreen(vm)
-                Tab.Clavier -> DialpadScreen(vm)
+        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
+            Box(Modifier.fillMaxSize()) {
+                when (Tab.entries[page]) {
+                    Tab.Favoris -> FavoritesScreen(vm)
+                    Tab.Recents -> RecentsScreen(vm)
+                    Tab.Contacts -> ContactsScreen(vm)
+                    Tab.Clavier -> DialpadScreen(vm)
+                }
             }
         }
-        BottomTabs(tab) { vm.selectTab(it) }
+        BottomTabs(Tab.entries[pager.targetPage]) { t ->
+            vm.selectTab(t)
+            scope.launch { pager.animateScrollToPage(t.ordinal) }
+        }
     }
 }
 

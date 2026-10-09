@@ -3,6 +3,10 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.3.3 (code 9) — 2026-10-09
+
+- **Glisser à gauche / à droite** pour passer d'un onglet à l'autre (Favoris ↔ Récents ↔ Contacts ↔ Clavier).
+
 ## Fern Messages v0.4.1 (code 8) — 2026-10-09
 
 - **Photos** : toucher = la photo en grand dans une fenêtre par-dessus (pincer pour zoomer, Enregistrer, Partager) ;
