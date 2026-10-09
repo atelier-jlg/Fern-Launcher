@@ -3,6 +3,22 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.2.0 (code 3) — 2026-10-09
+
+Le confort (étape 4).
+
+- **Refuser avec un message** : sur l'écran d'appel entrant, bouton « Message » → 3 réponses rapides
+  (modifiables dans Réglages), envoyées par Fern Messages.
+- **Bloquer le démarchage** (activé par défaut) : les numéros réservés par l'ARCEP aux appels commerciaux
+  (01 62, 01 63, 02 70, 02 71, 03 77, 03 78, 04 24, 04 25, 05 68, 05 69, 09 48, 09 49) ne sonnent plus ;
+  ils restent visibles dans le journal.
+- **Numéros bloqués** : la liste, avec « Débloquer » (Réglages, roue dentée dans Contacts).
+- **Anniversaires** : notification le matin du jour J (« Léa · 25 ans aujourd'hui »), avec Appeler et Écrire.
+- **Sonnerie par contact** : dans la fiche.
+- **Messagerie vocale** : filtre « Messagerie » dans Récents (écoute, suppression, transcription) si l'opérateur
+  propose la messagerie visuelle ; sinon un bouton pour l'appeler.
+- **Sauvegarde** : exporter tous les contacts en .vcf, importer un .vcf.
+
 ## Fern Messages v0.2.0 (code 3) — 2026-10-09
 
 Les MMS (étape 3).

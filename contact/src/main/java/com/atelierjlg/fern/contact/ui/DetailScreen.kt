@@ -1,5 +1,9 @@
 package com.atelierjlg.fern.contact.ui
 
+import android.content.Intent
+import android.media.RingtoneManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -125,6 +129,30 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
             )
             if (extras.isNotEmpty()) Card { extras.forEach { (icon, value, label) -> ValueRow(icon, value, label) } }
 
+            // Sonnerie propre à ce contact.
+            val ringtonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == android.app.Activity.RESULT_OK) {
+                    @Suppress("DEPRECATION")
+                    val picked = result.data?.getParcelableExtra<android.net.Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+                    vm.setRingtone(d.id, picked)
+                    refresh++
+                }
+            }
+            Card {
+                ValueRow(FernIcons.Bell, vm.ringtoneTitle(d.customRingtone), "Sonnerie", onClick = {
+                    ringtonePicker.launch(
+                        Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                            .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                            .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Sonnerie de ${d.displayName}")
+                            .putExtra(
+                                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                d.customRingtone?.let(android.net.Uri::parse) ?: android.provider.Settings.System.DEFAULT_RINGTONE_URI,
+                            ),
+                    )
+                })
+            }
             Spacer(Modifier.height(8.dp))
             if (vm.canBlock() && d.phones.isNotEmpty()) {
                 ActionRow(FernIcons.Block, if (blocked) "Débloquer" else "Bloquer", Modifier.fillMaxWidth(), tint = c.roseCarmin) {

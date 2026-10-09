@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         if (savedInstanceState == null) handle(intent)
+        viewModel.scheduleBirthdays()
         setContent {
             FernSharedTheme { ContactApp(viewModel, onFinish = { finish() }) }
         }
@@ -42,6 +43,13 @@ class MainActivity : ComponentActivity() {
     /** « tel:0612345678 » (depuis Fern, un site, un SMS…) : clavier pré-rempli. */
     private fun handle(intent: Intent?) {
         intent ?: return
+        // Depuis une notification d'anniversaire : la fiche du contact.
+        val contact = intent.getLongExtra(EXTRA_CONTACT, -1L)
+        if (contact >= 0) {
+            viewModel.selectTab(Tab.Contacts)
+            viewModel.open(Screen.Detail(contact))
+            return
+        }
         val number = intent.data?.takeIf { it.scheme == "tel" }?.schemeSpecificPart
         when {
             number != null -> {
@@ -57,5 +65,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_OPEN_DIALPAD = "open_dialpad"
+        const val EXTRA_CONTACT = "contact_id"
     }
 }

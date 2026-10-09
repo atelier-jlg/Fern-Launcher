@@ -56,6 +56,7 @@ fun ContactApp(vm: ContactViewModel, onFinish: () -> Unit) {
             Screen.Tabs -> TabsScreen(vm, tab)
             is Screen.Detail -> DetailScreen(vm, top.id)
             is Screen.Edit -> EditScreen(vm, top.id, top.number)
+            Screen.Settings -> SettingsScreen(vm)
         }
     }
 }

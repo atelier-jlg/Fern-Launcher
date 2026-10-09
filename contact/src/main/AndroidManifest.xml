@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- Capteur de proximité : écran éteint contre l'oreille. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Rappels d'anniversaire : réarmés après un redémarrage. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <queries>
         <!-- « Message » ouvre Fern Messages s'il est là, sinon l'appli SMS par défaut. -->
@@ -86,6 +88,26 @@
                 <action android:name="android.telecom.InCallService" />
             </intent-filter>
         </service>
+
+        <!-- Filtre des appels entrants (démarchage), consulté par Android avant de faire sonner. -->
+        <service
+            android:name=".call.FernScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- Rappels d'anniversaire (chaque matin) et réarmement après redémarrage. -->
+        <receiver
+            android:name=".data.BirthdayReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Boutons des notifications d'appel (Répondre, Refuser, Raccrocher). -->
         <receiver

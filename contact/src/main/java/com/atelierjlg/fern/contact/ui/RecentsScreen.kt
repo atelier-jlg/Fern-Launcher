@@ -56,6 +56,7 @@ fun RecentsScreen(vm: ContactViewModel) {
     val recents by vm.recents.collectAsState()
     val contacts by vm.contacts.collectAsState()
     var missedOnly by rememberSaveable { mutableStateOf(false) }
+    var voicemail by rememberSaveable { mutableStateOf(false) }
     var selected by remember { mutableStateOf<RecentGroup?>(null) }
     val groups = remember(recents, missedOnly) {
         groupRecents(if (missedOnly) recents.filter { it.type == Calls.MISSED_TYPE } else recents)
@@ -67,8 +68,13 @@ fun RecentsScreen(vm: ContactViewModel) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Row(Modifier.padding(top = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill("Tous", !missedOnly) { missedOnly = false }
-            Pill("Manqués", missedOnly) { missedOnly = true }
+            Pill("Tous", !missedOnly && !voicemail) { missedOnly = false; voicemail = false }
+            Pill("Manqués", missedOnly && !voicemail) { missedOnly = true; voicemail = false }
+            Pill("Messagerie", voicemail) { voicemail = true }
+        }
+        if (voicemail) {
+            VoicemailList(vm, byKey)
+            return@Column
         }
         if (groups.isEmpty()) {
             Text(if (missedOnly) "Aucun appel manqué." else "Aucun appel.", style = Fern.type.corps, color = c.lichen, modifier = Modifier.padding(top = 16.dp))
@@ -178,4 +184,50 @@ private fun RecentActions(vm: ContactViewModel, group: RecentGroup, contact: Con
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer", color = c.lichen) } },
     )
+}
+
+/** La messagerie vocale visuelle (si l'opérateur la fournit), sinon un bouton pour l'appeler. */
+@Composable
+private fun VoicemailList(vm: ContactViewModel, byKey: Map<String, ContactSummary>) {
+    val c = Fern.colors
+    val list by vm.voicemails.collectAsState()
+    val playing by vm.playing.collectAsState()
+    if (list.isEmpty()) {
+        Text(
+            "Aucun message vocal ici : beaucoup d'opérateurs ne proposent pas la messagerie « visuelle ». " +
+                "Tu peux l'appeler (appui long sur 1 dans le clavier).",
+            style = Fern.type.corps, color = c.lichen, modifier = Modifier.padding(vertical = 12.dp),
+        )
+        Pill("Appeler la messagerie", true) { vm.callVoicemail() }
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(list, key = { it.id }) { v ->
+            val contact = contactFor(byKey, v.number)
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.mousse).padding(16.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(if (playing == v.id) c.pistache else c.lierre)
+                            .clickable(enabled = v.hasAudio) { vm.playVoicemail(v) },
+                        contentAlignment = Alignment.Center,
+                    ) { FernIcon(if (playing == v.id) FernIcons.Pause else FernIcons.Voicemail, if (playing == v.id) c.nuit else c.creme, size = 20.dp) }
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                        Text(
+                            contact?.name ?: PhoneNumbers.format(v.number).ifBlank { "Numéro masqué" },
+                            style = Fern.type.corps, color = if (v.isRead) c.creme else c.pistache,
+                        )
+                        Text("${formatCallTime(v.date)} · ${formatDuration(v.durationSec)}", style = Fern.type.nomApp, color = c.lichen)
+                    }
+                    Box(Modifier.size(40.dp).clip(CircleShape).clickable { vm.deleteVoicemail(v) }, contentAlignment = Alignment.Center) {
+                        FernIcon(FernIcons.Trash, c.roseCarmin, size = 18.dp)
+                    }
+                }
+                v.transcription?.takeIf { it.isNotBlank() }?.let {
+                    Text("« $it »", style = Fern.type.nomApp, color = c.lichen, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
+        }
+    }
 }

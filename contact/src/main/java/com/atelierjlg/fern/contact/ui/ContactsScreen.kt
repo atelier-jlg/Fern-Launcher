@@ -62,9 +62,9 @@ fun ContactsScreen(vm: ContactViewModel) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             FernField(query, { query = it }, "Rechercher", Modifier.weight(1f), leading = FernIcons.Search)
+            IconButtonRound(FernIcons.Settings, c.lichen) { vm.open(Screen.Settings) }
             Box(
                 Modifier
-                    .padding(start = 10.dp)
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(c.pistache)

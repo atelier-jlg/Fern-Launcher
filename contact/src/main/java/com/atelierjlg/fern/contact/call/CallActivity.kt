@@ -211,8 +211,28 @@ private fun IncomingControls(call: CallInfo, hasOtherCall: Boolean) {
             RoundAction(FernIcons.Phone, "Raccrocher\net répondre", c.pistache, c.nuit) { CallManager.endAndAnswer(call) }
         }
     } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        // Refuser avec un message (envoyé par l'appli SMS : Fern Messages).
+        val context = LocalContext.current
+        val replies = remember { com.atelierjlg.fern.contact.data.ContactPrefs.quickReplies(context) }
+        var showReplies by remember { mutableStateOf(false) }
+        if (showReplies && call.number.isNotBlank()) {
+            Column(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                replies.forEach { r ->
+                    Text(
+                        r, style = Fern.type.corps, color = c.creme,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.mousse)
+                            .clickable { CallManager.reject(call, r) }.padding(horizontal = 18.dp, vertical = 14.dp),
+                    )
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
             RoundAction(FernIcons.PhoneOff, "Refuser", c.carmin, c.creme, size = 76.dp) { CallManager.reject(call) }
+            if (call.number.isNotBlank()) {
+                RoundAction(FernIcons.Message, "Message", if (showReplies) c.pistache else c.mousse, if (showReplies) c.nuit else c.creme) {
+                    showReplies = !showReplies
+                }
+            }
             RoundAction(FernIcons.Phone, "Répondre", c.pistache, c.nuit, size = 76.dp) { CallManager.answer(call) }
         }
     }

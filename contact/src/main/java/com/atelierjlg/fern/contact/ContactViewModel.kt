@@ -26,7 +26,13 @@ import com.atelierjlg.fern.contact.data.ContactDetail
 import com.atelierjlg.fern.contact.data.ContactForm
 import com.atelierjlg.fern.contact.data.ContactSummary
 import com.atelierjlg.fern.contact.data.ContactsRepo
+import com.atelierjlg.fern.contact.data.BlockedRepo
+import com.atelierjlg.fern.contact.data.Birthdays
+import com.atelierjlg.fern.contact.data.ContactPrefs
 import com.atelierjlg.fern.contact.data.RecentsRepo
+import com.atelierjlg.fern.contact.data.VoicemailEntry
+import com.atelierjlg.fern.contact.data.VoicemailPlayer
+import com.atelierjlg.fern.contact.data.VoicemailRepo
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,6 +49,7 @@ sealed interface Screen {
     data class Detail(val id: Long) : Screen
     /** id = null : nouveau contact, éventuellement avec un numéro déjà rempli. */
     data class Edit(val id: Long?, val number: String = "") : Screen
+    data object Settings : Screen
 }
 
 enum class Tab(val label: String) { Favoris("Favoris"), Recents("Récents"), Contacts("Contacts"), Clavier("Clavier") }
@@ -71,6 +78,19 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
 
     private val _recents = MutableStateFlow<List<CallEntry>>(emptyList())
     val recents: StateFlow<List<CallEntry>> = _recents.asStateFlow()
+
+    private val voicemailRepo = VoicemailRepo(application)
+    private val blockedRepo = BlockedRepo(application)
+
+    private val _voicemails = MutableStateFlow<List<VoicemailEntry>>(emptyList())
+    val voicemails: StateFlow<List<VoicemailEntry>> = _voicemails.asStateFlow()
+
+    /** Le message vocal en cours de lecture. */
+    private val _playing = MutableStateFlow<Long?>(null)
+    val playing: StateFlow<Long?> = _playing.asStateFlow()
+
+    private val _blocked = MutableStateFlow<List<BlockedRepo.Blocked>>(emptyList())
+    val blocked: StateFlow<List<BlockedRepo.Blocked>> = _blocked.asStateFlow()
 
     private val _setup = MutableStateFlow(SetupState())
     val setup: StateFlow<SetupState> = _setup.asStateFlow()
@@ -139,6 +159,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             if (has(Manifest.permission.READ_CALL_LOG)) {
                 _recents.value = withContext(Dispatchers.IO) { runCatching { recentsRepo.load() }.getOrDefault(_recents.value) }
             }
+            _voicemails.value = withContext(Dispatchers.IO) { voicemailRepo.all() }
         }
     }
 
@@ -296,4 +317,87 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             }
         }.onFailure { withContext(Dispatchers.Main) { toast("Blocage impossible : Fern Contact doit être l'appli Téléphone") } }
     }
+
+    // ─── Messagerie vocale ───────────────────────────────────────────────────
+
+    fun playVoicemail(v: VoicemailEntry) {
+        if (_playing.value == v.id) {
+            VoicemailPlayer.stop()
+            _playing.value = null
+            return
+        }
+        val ok = VoicemailPlayer.play(context, v.id) { _playing.value = null }
+        _playing.value = if (ok) v.id else null
+        if (!ok) toast("Lecture impossible")
+        if (!v.isRead) viewModelScope.launch(Dispatchers.IO) { voicemailRepo.markRead(v.id); reload() }
+    }
+
+    fun deleteVoicemail(v: VoicemailEntry) = viewModelScope.launch(Dispatchers.IO) {
+        if (_playing.value == v.id) VoicemailPlayer.stop()
+        voicemailRepo.delete(v.id)
+        reload()
+    }
+
+    // ─── Réglages ────────────────────────────────────────────────────────────
+
+    fun loadBlocked() = viewModelScope.launch(Dispatchers.IO) { _blocked.value = blockedRepo.all() }
+
+    fun unblock(number: String) = viewModelScope.launch(Dispatchers.IO) {
+        blockedRepo.unblock(number)
+        _blocked.value = blockedRepo.all()
+    }
+
+    var blockTelemarketing: Boolean
+        get() = ContactPrefs.blockTelemarketing(context)
+        set(value) = ContactPrefs.setBlockTelemarketing(context, value)
+
+    var birthdayReminders: Boolean
+        get() = ContactPrefs.birthdayReminders(context)
+        set(value) {
+            ContactPrefs.setBirthdayReminders(context, value)
+            Birthdays.schedule(context)
+        }
+
+    var quickReplies: List<String>
+        get() = ContactPrefs.quickReplies(context)
+        set(value) = ContactPrefs.setQuickReplies(context, value)
+
+    fun scheduleBirthdays() = viewModelScope.launch(Dispatchers.IO) { runCatching { Birthdays.schedule(context) } }
+
+    /** Sonnerie d'un contact (null = celle du téléphone). */
+    fun setRingtone(id: Long, uri: Uri?) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.update(
+                android.content.ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, id),
+                android.content.ContentValues().apply { put(ContactsContract.Contacts.CUSTOM_RINGTONE, uri?.toString()) }, null, null,
+            )
+        }.onFailure { withContext(Dispatchers.Main) { toast("Sonnerie non enregistrée") } }
+        reload()
+    }
+
+    fun ringtoneTitle(uri: String?): String {
+        if (uri == null) return "Celle du téléphone"
+        return runCatching { android.media.RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context) }.getOrNull() ?: "Personnalisée"
+    }
+
+    /** Tous les contacts dans un seul fichier .vcf (pour les garder ou les passer à un autre téléphone). */
+    fun exportContacts(target: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val keys = mutableListOf<String>()
+            context.contentResolver.query(ContactsContract.Contacts.CONTENT_URI, arrayOf(ContactsContract.Contacts.LOOKUP_KEY), null, null, null)
+                ?.use { c -> while (c.moveToNext()) c.getString(0)?.let(keys::add) }
+            val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_MULTI_VCARD_URI, Uri.encode(keys.joinToString(":")))
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                context.contentResolver.openOutputStream(target)?.use { input.copyTo(it) }
+            }
+            keys.size
+        }.onSuccess { n -> withContext(Dispatchers.Main) { toast("$n contacts exportés") } }
+            .onFailure { withContext(Dispatchers.Main) { toast("Export impossible : ${it.message}") } }
+    }
+
+    /** Importer un .vcf : Android (appli Contacts) s'en charge et demande où les ranger. */
+    fun importContacts(file: Uri) =
+        start(Intent(Intent.ACTION_VIEW).setDataAndType(file, "text/x-vcard").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+
+    fun versionName(): String = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
 }
