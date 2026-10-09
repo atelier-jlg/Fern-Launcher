@@ -249,6 +249,52 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
             reload()
         }
 
+    /** Enregistre une photo d'un MMS dans la galerie (Images → Fern Messages). */
+    fun savePhoto(part: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val mime = context.contentResolver.getType(part)?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+            val ext = when (mime) {
+                "image/png" -> "png"
+                "image/gif" -> "gif"
+                "image/webp" -> "webp"
+                else -> "jpg"
+            }
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "fern-${System.currentTimeMillis()}.$ext")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, mime)
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Fern Messages")
+                put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val resolver = context.contentResolver
+            val target = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: error("galerie")
+            resolver.openInputStream(part)?.use { input -> resolver.openOutputStream(target)?.use { input.copyTo(it) } }
+            resolver.update(target, android.content.ContentValues().apply { put(android.provider.MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+        }.onSuccess { withContext(Dispatchers.Main) { toast("Photo enregistrée dans la galerie") } }
+            .onFailure { withContext(Dispatchers.Main) { toast("Enregistrement impossible") } }
+    }
+
+    /** Partage une photo d'un MMS (vers Signal, la galerie, un mail…). */
+    fun sharePhoto(part: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val dir = java.io.File(context.cacheDir, "pieces").apply { mkdirs() }
+            val file = java.io.File(dir, "photo-${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(part)?.use { input -> file.outputStream().use { input.copyTo(it) } }
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.mmsfiles", file)
+            val send = Intent(Intent.ACTION_SEND).setType("image/*").putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            withContext(Dispatchers.Main) { start(Intent.createChooser(send, "Partager la photo").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+        }
+    }
+
+    /** Supprime une photo : seulement la photo si le message contient autre chose, sinon tout le message. */
+    fun deletePhoto(msg: Msg, part: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching {
+            val alone = msg.body.isBlank() && msg.images.size + msg.vcards.size + msg.files.size <= 1
+            if (alone) repo.delete(msg) else context.contentResolver.delete(part, null, null)
+        }.onFailure { withContext(Dispatchers.Main) { toast("Suppression impossible") } }
+        reload()
+    }
+
     /** Ouvre une pièce jointe reçue (vidéo, son, document) dans l'appli qui convient. */
     fun openPart(file: com.atelierjlg.fern.messages.data.MmsFile) = viewModelScope.launch(Dispatchers.IO) {
         runCatching {

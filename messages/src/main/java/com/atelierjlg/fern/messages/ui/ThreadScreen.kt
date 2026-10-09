@@ -80,6 +80,8 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
     var draft by remember { mutableStateOf(prefs.drafts[threadId].orEmpty()) }
     var menu by remember { mutableStateOf(false) }
     var actionsFor by remember { mutableStateOf<Msg?>(null) }
+    var viewing by remember { mutableStateOf<android.net.Uri?>(null) }
+    var photoActions by remember { mutableStateOf<Pair<Msg, android.net.Uri>?>(null) }
     var scheduling by remember { mutableStateOf(false) }
     var confirmDeleteThread by remember { mutableStateOf(false) }
     var attachments by remember { mutableStateOf(emptyList<Attachment>()) }
@@ -153,6 +155,8 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
                         onCopyCode = { vm.copy(it) },
                         onOpenVcard = { vm.openVcard(it) },
                         onOpenFile = { vm.openPart(it) },
+                        onOpenImage = { viewing = it },
+                        onImageLongPress = { photoActions = m to it },
                     )
                 }
                 // Séparateur de jour au-dessus du premier message de chaque jour.
@@ -217,6 +221,40 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
                 }
             },
             confirmButton = { TextButton(onClick = { menu = false }) { Text("Fermer", color = c.lichen) } },
+        )
+    }
+
+    viewing?.let { uri ->
+        PhotoViewer(uri, onDismiss = { viewing = null }, onSave = { vm.savePhoto(uri) }, onShare = { vm.sharePhoto(uri) })
+    }
+
+    // Appui long sur une photo : enregistrer, partager, supprimer.
+    photoActions?.let { (m, uri) ->
+        var confirm by remember(uri) { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { photoActions = null },
+            containerColor = c.mousse,
+            title = { Text(if (confirm) "Supprimer la photo ?" else "Photo", style = Fern.type.corps, color = c.creme) },
+            text = {
+                Column {
+                    if (!confirm) {
+                        ActionRow(FernIcons.Image, "Voir en grand") { photoActions = null; viewing = uri }
+                        ActionRow(FernIcons.Check, "Enregistrer dans la galerie") { photoActions = null; vm.savePhoto(uri) }
+                        ActionRow(FernIcons.Send, "Partager") { photoActions = null; vm.sharePhoto(uri) }
+                        ActionRow(FernIcons.Trash, "Supprimer la photo", tint = c.roseCarmin) { confirm = true }
+                    } else {
+                        Text(
+                            if (m.body.isBlank() && m.images.size + m.vcards.size + m.files.size <= 1) "Le message sera effacé du téléphone."
+                            else "Seule la photo sera effacée, le reste du message est gardé.",
+                            style = Fern.type.nomApp, color = c.lichen,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (confirm) TextButton(onClick = { vm.deletePhoto(m, uri); photoActions = null }) { Text("Supprimer", color = c.roseCarmin) }
+                else TextButton(onClick = { photoActions = null }) { Text("Fermer", color = c.lichen) }
+            },
         )
     }
 
@@ -288,6 +326,8 @@ private fun Bubble(
     onCopyCode: (String) -> Unit,
     onOpenVcard: (android.net.Uri) -> Unit,
     onOpenFile: (com.atelierjlg.fern.messages.data.MmsFile) -> Unit,
+    onOpenImage: (android.net.Uri) -> Unit,
+    onImageLongPress: (android.net.Uri) -> Unit,
 ) {
     val c = Fern.colors
     val code = remember(m.key) { if (!m.outgoing) Otp.find(m.body) else null }
@@ -319,7 +359,11 @@ private fun Bubble(
                     val ratio = (bitmap.width.toFloat() / bitmap.height).coerceIn(0.5f, 2f)
                     Image(
                         bitmap, "Photo",
-                        Modifier.width(260.dp).aspectRatio(ratio).clip(RoundedCornerShape(18.dp)),
+                        Modifier
+                            .width(260.dp)
+                            .aspectRatio(ratio)
+                            .clip(RoundedCornerShape(18.dp))
+                            .combinedClickable(onClick = { onOpenImage(uri) }, onLongClick = { onImageLongPress(uri) }),
                         contentScale = ContentScale.Crop,
                     )
                 } else {

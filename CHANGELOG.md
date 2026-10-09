@@ -3,6 +3,12 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.4.1 (code 8) — 2026-10-09
+
+- **Photos** : toucher = la photo en grand dans une fenêtre par-dessus (pincer pour zoomer, Enregistrer, Partager) ;
+  appui long = Voir en grand, **Enregistrer dans la galerie** (Images → Fern Messages), Partager, **Supprimer**
+  (la photo seule si le message contient autre chose, sinon le message).
+
 ## Fern Contact v0.3.2 (code 8) — 2026-10-09
 
 - **Anniversaire** : tous les formats sont acceptés (14/05, 14/05/1999, 14-5-99, 14.05.1999, 1405, 14051999,
