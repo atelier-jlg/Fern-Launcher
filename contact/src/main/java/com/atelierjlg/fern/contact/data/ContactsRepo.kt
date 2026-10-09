@@ -94,10 +94,12 @@ class ContactsRepo(private val context: Context) {
         var note: SingleRow? = null
         val phones = mutableListOf<Labeled>()
         val emails = mutableListOf<Labeled>()
+        // La fiche « Moi » (profil) est rangée à part par Android.
+        val profile = ContactsContract.isProfileId(id)
         resolver.query(
-            Data.CONTENT_URI,
+            if (profile) PROFILE_DATA else Data.CONTENT_URI,
             arrayOf(Data._ID, Data.RAW_CONTACT_ID, Data.MIMETYPE, Data.DATA1, Data.DATA2, Data.DATA3, Data.DATA4, Data.DATA5, Data.DATA6),
-            "${Data.CONTACT_ID} = ?", arrayOf(id.toString()), null,
+            if (profile) null else "${Data.CONTACT_ID} = ?", if (profile) null else arrayOf(id.toString()), null,
         )?.use { c ->
             while (c.moveToNext()) {
                 val rowId = c.getLong(0)
@@ -157,6 +159,49 @@ class ContactsRepo(private val context: Context) {
         return contactIdOfRaw(rawId)
     }
 
+    // ─── Ma fiche (« Moi », le profil d'Android) ─────────────────────────────
+
+    /** L'identifiant de ma fiche, ou null si elle n'existe pas encore. */
+    fun profileId(): Long? = runCatching {
+        resolver.query(ContactsContract.Profile.CONTENT_URI, arrayOf(Contacts._ID), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getLong(0) else null }
+    }.getOrNull()
+
+    fun profile(): ContactDetail? = profileId()?.let(::detail)
+
+    /**
+     * Enregistre ma fiche. Android range le profil dans une base à part : on fait les changements
+     * un par un (chaque ligne est dirigée vers la bonne base d'après son identifiant).
+     */
+    fun saveProfile(original: ContactDetail?, form: ContactForm): Long? {
+        val raw = original?.rawContactId ?: resolver.insert(
+            ContactsContract.Profile.CONTENT_RAW_CONTACTS_URI,
+            ContentValues().apply {
+                putNull(RawContacts.ACCOUNT_TYPE)
+                putNull(RawContacts.ACCOUNT_NAME)
+            },
+        )?.let { ContentUris.parseId(it) } ?: return null
+        planEdit(original, form).forEach { op ->
+            when (op) {
+                is EditOp.Delete -> resolver.delete(ContentUris.withAppendedId(Data.CONTENT_URI, op.rowId), null, null)
+                is EditOp.Update -> resolver.update(ContentUris.withAppendedId(Data.CONTENT_URI, op.rowId), op.values.toContentValues(), null, null)
+                is EditOp.Insert -> resolver.insert(
+                    Data.CONTENT_URI,
+                    op.values.toContentValues().apply {
+                        put(Data.RAW_CONTACT_ID, raw)
+                        put(Data.MIMETYPE, op.mime)
+                    },
+                )
+            }
+        }
+        return profileId()
+    }
+
+    /** Ma carte de visite (vCard), pour l'envoyer à quelqu'un. */
+    fun myVcard(): ByteArray? = runCatching {
+        resolver.openInputStream(ContactsContract.Profile.CONTENT_VCARD_URI)?.use { it.readBytes() }
+    }.getOrNull()?.takeIf { it.isNotEmpty() }
+
     private fun contactIdOfRaw(rawId: Long): Long? =
         resolver.query(ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawId), arrayOf(RawContacts.CONTACT_ID), null, null, null)
             ?.use { if (it.moveToFirst()) it.getLong(0) else null }
@@ -164,7 +209,7 @@ class ContactsRepo(private val context: Context) {
     /** Photo de profil (JPEG déjà réduit). */
     fun setPhoto(rawContactId: Long, jpeg: ByteArray?) {
         val existing = resolver.query(
-            Data.CONTENT_URI, arrayOf(Data._ID),
+            if (ContactsContract.isProfileId(rawContactId)) PROFILE_DATA else Data.CONTENT_URI, arrayOf(Data._ID),
             "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(rawContactId.toString(), Photo.CONTENT_ITEM_TYPE), null,
         )?.use { if (it.moveToFirst()) it.getLong(0) else null }
         when {
@@ -208,6 +253,9 @@ class ContactsRepo(private val context: Context) {
         }.getOrNull()
     }
 }
+
+/** Les lignes de ma fiche (profil). */
+private val PROFILE_DATA: Uri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
 
 private fun Map<String, Any?>.toContentValues() = ContentValues().also { cv ->
     forEach { (k, v) ->

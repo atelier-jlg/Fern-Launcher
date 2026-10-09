@@ -73,11 +73,14 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
     Column(Modifier.fillMaxSize()) {
         TopBar(onBack = { vm.back() }) {
             if (d != null) {
-                IconButtonRound(FernIcons.Star, if (d.starred) c.pistache else c.lichen) {
-                    vm.setStarred(d.id, !d.starred)
-                    detail = d.copy(starred = !d.starred)
+                val isMe = android.provider.ContactsContract.isProfileId(d.id)
+                if (!isMe) {
+                    IconButtonRound(FernIcons.Star, if (d.starred) c.pistache else c.lichen) {
+                        vm.setStarred(d.id, !d.starred)
+                        detail = d.copy(starred = !d.starred)
+                    }
                 }
-                IconButtonRound(FernIcons.Edit, c.lichen) { vm.open(Screen.Edit(d.id)) }
+                IconButtonRound(FernIcons.Edit, c.lichen) { vm.open(Screen.Edit(d.id, me = isMe)) }
             }
         }
         if (d == null) {
@@ -99,6 +102,16 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
             Spacer(Modifier.height(20.dp))
 
             val main = d.phones.firstOrNull()?.value
+            val isMe = android.provider.ContactsContract.isProfileId(d.id)
+            if (isMe) {
+                // Ma fiche : on la partage, on ne s'appelle pas soi-même.
+                Text("MOI", style = Fern.type.libelle, color = c.pistache)
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    RoundAction(FernIcons.Send, "Partager\nma carte", c.pistache, c.nuit) { vm.shareMyCard() }
+                }
+                Spacer(Modifier.height(20.dp))
+            } else
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 RoundAction(FernIcons.Phone, "Appeler", c.pistache, c.nuit, enabled = main != null) { main?.let(vm::call) }
                 RoundAction(FernIcons.Message, "Message", c.lierre, c.creme, enabled = main != null) { main?.let(vm::message) }
@@ -129,6 +142,13 @@ fun DetailScreen(vm: ContactViewModel, id: Long) {
             )
             if (extras.isNotEmpty()) Card { extras.forEach { (icon, value, label) -> ValueRow(icon, value, label) } }
 
+            if (!isMe && main != null) {
+                ActionRow(FernIcons.Send, "Envoyer ma carte", Modifier.fillMaxWidth()) { vm.shareMyCard(main) }
+            }
+            if (isMe) {
+                Spacer(Modifier.height(24.dp))
+                return@Column
+            }
             // Sonnerie propre à ce contact.
             val ringtonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == android.app.Activity.RESULT_OK) {

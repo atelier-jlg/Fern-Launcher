@@ -48,7 +48,7 @@ fun MessagesApp(vm: MessagesViewModel) {
             Screen.Search -> SearchScreen(vm)
             Screen.Scheduled -> ScheduledScreen(vm)
             is Screen.Thread -> ThreadScreen(vm, top.threadId)
-            is Screen.Compose -> ComposeScreen(vm, top.number, top.body, top.image)
+            is Screen.Compose -> ComposeScreen(vm, top.number, top.body, top.image, top.vcard)
         }
     }
 }

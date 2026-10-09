@@ -164,6 +164,7 @@ private fun RecentActions(vm: ContactViewModel, group: RecentGroup, contact: Con
                     ActionRow(FernIcons.Phone, "Appeler") { onDismiss(); vm.call(number) }
                     ActionRow(FernIcons.Message, "Envoyer un message") { onDismiss(); vm.message(number) }
                     if (contact == null) ActionRow(FernIcons.UserPlus, "Créer un contact") { onDismiss(); vm.open(Screen.Edit(null, number)) }
+                    ActionRow(FernIcons.Send, "Envoyer ma carte") { onDismiss(); vm.shareMyCard(number) }
                     ActionRow(FernIcons.Copy, "Copier le numéro") {
                         onDismiss()
                         val cm = vm.getApplication<android.app.Application>().getSystemService(android.content.ClipboardManager::class.java)

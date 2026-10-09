@@ -44,7 +44,7 @@ sealed interface Screen {
     data object Scheduled : Screen
     data class Thread(val threadId: Long) : Screen
     /** Nouveau message, éventuellement pré-rempli (lien « smsto: », partage depuis une autre appli). */
-    data class Compose(val number: String = "", val body: String = "", val image: String? = null) : Screen
+    data class Compose(val number: String = "", val body: String = "", val image: String? = null, val vcard: String? = null) : Screen
 }
 
 data class SetupState(

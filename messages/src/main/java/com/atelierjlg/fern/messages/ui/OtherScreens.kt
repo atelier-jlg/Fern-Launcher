@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 /** Nouveau message : un ou plusieurs destinataires (contacts ou numéros), puis le texte. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: String, prefillImage: String? = null) {
+fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: String, prefillImage: String? = null, prefillVcard: String? = null) {
     val c = Fern.colors
     val scope = rememberCoroutineScope()
     var all by remember { mutableStateOf(emptyList<Recipient>()) }
@@ -62,7 +62,12 @@ fun ComposeScreen(vm: MessagesViewModel, prefillNumber: String, prefillBody: Str
     var body by rememberSaveable { mutableStateOf(prefillBody) }
     var scheduling by remember { mutableStateOf(false) }
     var attachments by remember {
-        mutableStateOf<List<Attachment>>(listOfNotNull(prefillImage?.let { Attachment.Photo(android.net.Uri.parse(it)) }))
+        mutableStateOf<List<Attachment>>(
+            listOfNotNull(
+                prefillImage?.let { Attachment.Photo(android.net.Uri.parse(it)) },
+                prefillVcard?.let { Attachment.VcardFile(android.net.Uri.parse(it)) },
+            ),
+        )
     }
     LaunchedEffect(Unit) {
         all = vm.recipients()

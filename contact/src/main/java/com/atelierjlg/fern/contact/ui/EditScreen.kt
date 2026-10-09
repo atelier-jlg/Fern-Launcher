@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 
 /** « Modifier » ou « Nouveau contact ». Seuls les champs modifiés sont réécrits (voir planEdit). */
 @Composable
-fun EditScreen(vm: ContactViewModel, id: Long?, prefillNumber: String) {
+fun EditScreen(vm: ContactViewModel, id: Long?, prefillNumber: String, me: Boolean = false) {
     val c = Fern.colors
     val scope = rememberCoroutineScope()
     var original by remember { mutableStateOf<ContactDetail?>(null) }
@@ -83,7 +83,7 @@ fun EditScreen(vm: ContactViewModel, id: Long?, prefillNumber: String) {
         if (saving || birthdayParsed == null || f.isEmpty) return
         saving = true
         scope.launch {
-            val savedId = vm.save(original, f.copy(birthday = birthdayParsed))
+            val savedId = vm.save(original, f.copy(birthday = birthdayParsed), me)
             if (savedId != null) {
                 val detail = vm.detail(savedId)
                 if (detail != null && (newPhoto != null || removePhoto)) vm.setPhoto(detail, newPhoto)

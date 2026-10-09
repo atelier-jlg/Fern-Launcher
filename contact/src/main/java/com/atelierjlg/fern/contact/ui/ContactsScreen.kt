@@ -56,6 +56,7 @@ fun ContactSummary.matches(query: String): Boolean {
 fun ContactsScreen(vm: ContactViewModel) {
     val c = Fern.colors
     val contacts by vm.contacts.collectAsState()
+    val me by vm.me.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     val shown = remember(contacts, query) { contacts.filter { it.matches(query) } }
 
@@ -76,6 +77,32 @@ fun ContactsScreen(vm: ContactViewModel) {
             Text("Aucun contact (ou accès pas encore donné).", style = Fern.type.corps, color = c.lichen, modifier = Modifier.padding(top = 24.dp))
         }
         LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
+            // Ma fiche, tout en haut.
+            if (query.isBlank()) {
+                item(key = "moi") {
+                    val mine = me
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(c.mousse)
+                            .clickable { vm.open(if (mine != null) Screen.Detail(mine.id) else Screen.Edit(null, me = true)) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Avatar(mine?.displayName ?: "", mine?.photoUri, 44.dp)
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text(mine?.displayName?.ifBlank { null } ?: "Mes infos", style = Fern.type.corps, color = c.creme)
+                            Text(
+                                mine?.phones?.firstOrNull()?.let { "MOI · " + PhoneNumbers.format(it.value) } ?: "TOUCHE POUR REMPLIR TA FICHE",
+                                style = Fern.type.libelle, color = c.pistache,
+                            )
+                        }
+                        if (mine != null) IconButtonRound(FernIcons.Send, c.lichen) { vm.shareMyCard() }
+                    }
+                }
+            }
             var lastLetter = ""
             shown.forEach { contact ->
                 val letter = SearchText.initial(contact.name)

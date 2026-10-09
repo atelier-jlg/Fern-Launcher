@@ -58,14 +58,18 @@ class MainActivity : ComponentActivity() {
                     ?: ssp.substringAfter("body=", "").takeIf { ssp.contains("body=") }.orEmpty()
                 viewModel.open(Screen.Compose(number, body))
             }
-            // Texte ou photo partagés depuis une autre appli.
+            // Texte, photo ou carte de contact partagés depuis une autre appli.
             Intent.ACTION_SEND -> {
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
                 @Suppress("DEPRECATION")
-                val image = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
-                    ?.takeIf { intent.type?.startsWith("image/") == true }
-                if (text.isBlank() && image == null) return
-                viewModel.open(Screen.Compose("", text, image?.toString()))
+                val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                val type = intent.type.orEmpty().lowercase()
+                val image = stream?.takeIf { type.startsWith("image/") }
+                val vcard = stream?.takeIf { type.contains("vcard") }
+                if (text.isBlank() && image == null && vcard == null) return
+                // « address » : le destinataire, quand l'appli qui partage le connaît (Fern Contact).
+                val number = intent.getStringExtra("address").orEmpty()
+                viewModel.open(Screen.Compose(number, text, image?.toString(), vcard?.toString()))
             }
         }
     }

@@ -392,7 +392,7 @@ fun Composer(
                         is Attachment.Photo -> rememberPhoto(a.uri.toString(), 200)?.let {
                             Image(it, null, Modifier.size(64.dp), contentScale = ContentScale.Crop)
                         }
-                        is Attachment.Contact -> com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.User, c.creme, Modifier.align(Alignment.Center))
+                        else -> com.atelierjlg.fern.ui.theme.FernIcon(FernIcons.User, c.creme, Modifier.align(Alignment.Center))
                     }
                     Box(
                         Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp).clip(CircleShape).background(c.nuit),
@@ -411,6 +411,10 @@ fun Composer(
             Pill("Contact", false) {
                 menu = false
                 pickContact.launch(null)
+            }
+            Pill("Ma carte", false) {
+                menu = false
+                onAttachmentsChange(attachments + Attachment.MyCard)
             }
         }
     }

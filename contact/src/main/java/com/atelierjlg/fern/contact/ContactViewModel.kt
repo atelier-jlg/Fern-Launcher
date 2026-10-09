@@ -48,7 +48,7 @@ sealed interface Screen {
     data object Tabs : Screen
     data class Detail(val id: Long) : Screen
     /** id = null : nouveau contact, éventuellement avec un numéro déjà rempli. */
-    data class Edit(val id: Long?, val number: String = "") : Screen
+    data class Edit(val id: Long?, val number: String = "", val me: Boolean = false) : Screen
     data object Settings : Screen
 }
 
@@ -91,6 +91,10 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
 
     private val _blocked = MutableStateFlow<List<BlockedRepo.Blocked>>(emptyList())
     val blocked: StateFlow<List<BlockedRepo.Blocked>> = _blocked.asStateFlow()
+
+    /** Ma fiche (« Moi »), ou null si elle n'existe pas encore. */
+    private val _me = MutableStateFlow<ContactDetail?>(null)
+    val me: StateFlow<ContactDetail?> = _me.asStateFlow()
 
     private val _setup = MutableStateFlow(SetupState())
     val setup: StateFlow<SetupState> = _setup.asStateFlow()
@@ -155,6 +159,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             delay(150)
             if (has(Manifest.permission.READ_CONTACTS)) {
                 _contacts.value = withContext(Dispatchers.IO) { runCatching { contactsRepo.all() }.getOrDefault(_contacts.value) }
+                _me.value = withContext(Dispatchers.IO) { runCatching { contactsRepo.profile() }.getOrNull() }
             }
             if (has(Manifest.permission.READ_CALL_LOG)) {
                 _recents.value = withContext(Dispatchers.IO) { runCatching { recentsRepo.load() }.getOrDefault(_recents.value) }
@@ -254,8 +259,11 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** Enregistre et renvoie l'identifiant du contact (null en cas d'échec). */
-    suspend fun save(original: ContactDetail?, form: ContactForm): Long? = withContext(Dispatchers.IO) {
-        runCatching { contactsRepo.save(original, form) }
+    suspend fun save(original: ContactDetail?, form: ContactForm, me: Boolean = false): Long? = withContext(Dispatchers.IO) {
+        runCatching {
+            if (me || original?.id?.let(ContactsContract::isProfileId) == true) contactsRepo.saveProfile(original, form)
+            else contactsRepo.save(original, form)
+        }
             .onFailure { withContext(Dispatchers.Main) { toast("Enregistrement impossible : ${it.message}") } }
             .getOrNull()
     }
@@ -400,4 +408,37 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         start(Intent(Intent.ACTION_VIEW).setDataAndType(file, "text/x-vcard").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
 
     fun versionName(): String = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+
+    // ─── Ma carte de visite ──────────────────────────────────────────────────
+
+    /**
+     * Envoie ma carte (vCard). Avec un numéro : directement dans Fern Messages, prête à partir ;
+     * sans numéro : au choix (Signal, mail…).
+     */
+    fun shareMyCard(number: String? = null) = viewModelScope.launch(Dispatchers.IO) {
+        val bytes = contactsRepo.myVcard()
+        if (bytes == null) {
+            withContext(Dispatchers.Main) { toast("Remplis d'abord ta fiche (Contacts → Moi)") }
+            return@launch
+        }
+        val dir = java.io.File(context.cacheDir, "cartes").apply { mkdirs() }
+        val name = (_me.value?.displayName?.ifBlank { null } ?: "ma-carte").replace(Regex("[^\\p{L}0-9 -]"), "").trim().ifBlank { "ma-carte" }
+        val file = java.io.File(dir, "$name.vcf").apply { writeBytes(bytes) }
+        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/x-vcard")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        withContext(Dispatchers.Main) {
+            if (number != null) {
+                send.putExtra("address", number)
+                val fern = Intent(send).setPackage("com.atelierjlg.fern.messages")
+                if (context.packageManager.resolveActivity(fern, 0) != null) {
+                    start(fern)
+                    return@withContext
+                }
+            }
+            start(Intent.createChooser(send, "Envoyer ma carte").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        }
+    }
 }

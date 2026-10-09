@@ -3,6 +3,21 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.3.0 (code 6) · Fern Messages v0.3.0 (code 6) — 2026-10-09
+
+Mes infos et ma carte de visite.
+
+- **Fern Contact → Contacts → « Moi »** (tout en haut) : ta fiche à toi (nom, numéros, e-mail, anniversaire,
+  photo…). C'est la fiche « Moi » standard d'Android : les autres applis la voient aussi.
+- **Envoyer ma carte** (vCard) :
+  - depuis ta fiche (bouton « Partager ma carte », ou l'avion sur la ligne « Moi ») : au choix, Signal, mail… ;
+  - depuis la fiche de quelqu'un, ou un numéro inconnu dans Récents : « Envoyer ma carte » ouvre Fern Messages
+    avec le bon destinataire et ta carte déjà jointe, il n'y a plus qu'à envoyer.
+- **Fern Messages** : « + » → « Ma carte » pour la joindre à n'importe quel message ; accepte aussi les cartes
+  partagées depuis une autre appli.
+- **MMS de groupe** : tes numéros sont repris de ta fiche « Moi », pour que tu ne sois pas compté·e
+  parmi les participants (une conversation de groupe ne se coupe plus en deux).
+
 ## Fern Messages v0.2.2 (code 5) · Fern Contact v0.2.2 (code 5) — 2026-10-09
 
 Corrections après relecture complète (avant les premiers essais sur le téléphone).

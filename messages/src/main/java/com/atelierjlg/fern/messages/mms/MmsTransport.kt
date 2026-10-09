@@ -71,9 +71,24 @@ object MmsTransport {
         smsManager(context, subId).carrierConfigValues.getInt(SmsManager.MMS_CONFIG_MAX_MESSAGE_SIZE, 300 * 1024)
     }.getOrDefault(300 * 1024).coerceIn(100 * 1024, 2 * 1024 * 1024)
 
-    /** Mes propres numéros (pour ne pas m'ajouter moi-même aux conversations de groupe). */
+    /**
+     * Mes propres numéros (pour ne pas m'ajouter moi-même aux conversations de groupe) :
+     * ceux de ma fiche « Moi » (Fern Contact → Contacts → Moi) et ceux que la SIM connaît.
+     */
+    fun myNumbers(context: Context): List<String> = (profileNumbers(context) + simNumbers(context)).distinct()
+
+    private fun profileNumbers(context: Context): List<String> = runCatching {
+        val out = mutableListOf<String>()
+        context.contentResolver.query(
+            Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data"),
+            arrayOf(ContactsContract.Data.DATA1),
+            "${ContactsContract.Data.MIMETYPE} = ?", arrayOf(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE), null,
+        )?.use { c -> while (c.moveToNext()) c.getString(0)?.let(out::add) }
+        out
+    }.getOrDefault(emptyList())
+
     @Suppress("DEPRECATION")
-    fun myNumbers(context: Context): List<String> {
+    private fun simNumbers(context: Context): List<String> {
         if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED &&
             context.checkSelfPermission(Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED
         ) return emptyList()
@@ -201,6 +216,10 @@ object MmsTransport {
     sealed interface Attachment {
         data class Photo(val uri: Uri) : Attachment
         data class Contact(val uri: Uri) : Attachment
+        /** Un fichier .vcf reçu d'une autre appli (ex. « Envoyer ma carte » depuis Fern Contact). */
+        data class VcardFile(val uri: Uri) : Attachment
+        /** Ma propre carte (fiche « Moi » d'Android). */
+        data object MyCard : Attachment
     }
 
     /**
@@ -219,8 +238,13 @@ object MmsTransport {
             if (i == 0) imageName = name
             parts += MmsPart("image/jpeg", jpeg, name = name, contentId = "image$i", contentLocation = name)
         }
-        attachments.filterIsInstance<Attachment.Contact>().forEachIndexed { i, a ->
-            val vcard = readVcard(context, a.uri) ?: return@forEachIndexed
+        attachments.filter { it !is Attachment.Photo }.forEachIndexed { i, a ->
+            val vcard = when (a) {
+                is Attachment.Contact -> readVcard(context, a.uri)
+                is Attachment.VcardFile -> runCatching { context.contentResolver.openInputStream(a.uri)?.use { it.readBytes() } }.getOrNull()
+                Attachment.MyCard -> myVcard(context)
+                is Attachment.Photo -> null
+            } ?: return@forEachIndexed
             val name = "contact$i.vcf"
             if (i == 0) vcardName = name
             parts += MmsPart("text/x-vCard", vcard, name = name, contentId = "contact$i", contentLocation = name)
@@ -284,6 +308,11 @@ object MmsTransport {
             side = (side * 0.7f).toInt()
         }
     }
+
+    /** Ma carte de visite (fiche « Moi »). */
+    fun myVcard(context: Context): ByteArray? = runCatching {
+        context.contentResolver.openInputStream(ContactsContract.Profile.CONTENT_VCARD_URI)?.use { it.readBytes() }
+    }.getOrNull()?.takeIf { it.isNotEmpty() }
 
     /** La carte de visite (vCard) d'un contact choisi. */
     private fun readVcard(context: Context, contactUri: Uri): ByteArray? = runCatching {

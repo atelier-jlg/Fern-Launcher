@@ -121,6 +121,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Ma carte de visite (.vcf), prêtée à Fern Messages ou à une autre appli pour l'envoyer. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_files" />
+        </provider>
+
         <!-- Boutons des notifications d'appel (Répondre, Refuser, Raccrocher). -->
         <receiver
             android:name=".call.CallActionReceiver"

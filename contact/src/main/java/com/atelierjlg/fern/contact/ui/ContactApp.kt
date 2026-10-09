@@ -55,7 +55,7 @@ fun ContactApp(vm: ContactViewModel, onFinish: () -> Unit) {
         when (val top = stack.last()) {
             Screen.Tabs -> TabsScreen(vm, tab)
             is Screen.Detail -> DetailScreen(vm, top.id)
-            is Screen.Edit -> EditScreen(vm, top.id, top.number)
+            is Screen.Edit -> EditScreen(vm, top.id, top.number, top.me)
             Screen.Settings -> SettingsScreen(vm)
         }
     }
