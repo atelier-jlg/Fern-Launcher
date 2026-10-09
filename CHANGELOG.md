@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.3.1 (code 7) — 2026-10-09
+
+- **Favoris comme dans Fil** : une carte par personne (photo, surnom, bouton d'appel), grand titre « Favoris ».
+  Toucher la carte ouvre la fiche, le bouton appelle. Le surnom (« Maman », « Pipoune ») est affiché s'il existe.
+
 ## Fern Contact v0.3.0 (code 6) · Fern Messages v0.3.0 (code 6) — 2026-10-09
 
 Mes infos et ma carte de visite.

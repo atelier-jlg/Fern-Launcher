@@ -43,6 +43,7 @@ class ContactsRepo(private val context: Context) {
         }
         val phones = HashMap<Long, MutableList<String>>()
         val extras = HashMap<Long, StringBuilder>()
+        val nicknames = HashMap<Long, String>()
         resolver.query(
             Data.CONTENT_URI,
             arrayOf(Data.CONTACT_ID, Data.MIMETYPE, Data.DATA1),
@@ -58,11 +59,12 @@ class ContactsRepo(private val context: Context) {
                     if (list.none { PhoneNumbers.same(it, value) }) list += value
                 } else {
                     extras.getOrPut(id) { StringBuilder() }.append(' ').append(value)
+                    if (c.getString(1) == Nickname.CONTENT_ITEM_TYPE && value.isNotBlank()) nicknames.putIfAbsent(id, value)
                 }
             }
         }
         return bases.map {
-            ContactSummary(it.id, it.key, it.name, it.starred, it.photo, phones[it.id].orEmpty(), extras[it.id]?.toString().orEmpty())
+            ContactSummary(it.id, it.key, it.name, it.starred, it.photo, phones[it.id].orEmpty(), extras[it.id]?.toString().orEmpty(), nicknames[it.id])
         }.sortedBy { SearchText.fold(it.name) }
     }
 

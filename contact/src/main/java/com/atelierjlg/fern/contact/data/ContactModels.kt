@@ -52,6 +52,8 @@ data class ContactSummary(
     val phones: List<String> = emptyList(),
     /** Surnom, société… pour la recherche élargie. */
     val extra: String = "",
+    /** Le surnom (« Maman », « Pipoune »), affiché dans les favoris. */
+    val nickname: String? = null,
 )
 
 /** Un contact complet (la fiche). */

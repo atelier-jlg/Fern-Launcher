@@ -2,6 +2,7 @@ package com.atelierjlg.fern.contact.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -138,55 +139,74 @@ fun ContactRow(contact: ContactSummary, onClick: () -> Unit) {
     }
 }
 
-/** Favoris : toucher = appeler, appui long = la fiche. */
-@OptIn(ExperimentalFoundationApi::class)
+/** Favoris : des cartes (photo, surnom, bouton d'appel). Toucher la carte = la fiche, le bouton = appeler. */
 @Composable
 fun FavoritesScreen(vm: ContactViewModel) {
     val c = Fern.colors
     val contacts by vm.contacts.collectAsState()
     val favorites = remember(contacts) { contacts.filter { it.starred } }
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        SectionLabel("Favoris", Modifier.padding(top = 8.dp))
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 8.dp, top = 20.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Favoris", style = Fern.type.titreWidget, color = c.creme, modifier = Modifier.weight(1f))
+            IconButtonRound(FernIcons.Search, c.lichen) { vm.selectTab(com.atelierjlg.fern.contact.Tab.Contacts) }
+        }
         if (favorites.isEmpty()) {
             Text(
                 "Pas encore de favori. Ouvre la fiche d'un contact et touche l'étoile.",
-                style = Fern.type.corps, color = c.lichen,
+                style = Fern.type.corps, color = c.lichen, modifier = Modifier.padding(horizontal = 8.dp),
             )
             return@Column
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 12.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             items(favorites, key = { it.id }) { contact ->
-                Column(
-                    Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .combinedClickable(
-                            onClick = {
-                                val number = contact.phones.firstOrNull()
-                                if (number != null) vm.call(number) else vm.open(Screen.Detail(contact.id))
-                            },
-                            onLongClick = { vm.open(Screen.Detail(contact.id)) },
-                        )
-                        .padding(6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Avatar(contact.name, contact.photoUri, 76.dp)
-                    Text(
-                        contact.name.substringBefore(' '),
-                        style = Fern.type.nomApp,
-                        color = c.creme,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
+                FavoriteCard(
+                    contact,
+                    onOpen = { vm.open(Screen.Detail(contact.id)) },
+                    onCall = contact.phones.firstOrNull()?.let { number -> { vm.call(number) } },
+                )
             }
         }
-        Text("Toucher : appeler · appui long : la fiche", style = Fern.type.nomApp, color = c.moussePale, modifier = Modifier.padding(bottom = 8.dp))
+    }
+}
+
+@Composable
+private fun FavoriteCard(contact: ContactSummary, onOpen: () -> Unit, onCall: (() -> Unit)?) {
+    val c = Fern.colors
+    val shape = RoundedCornerShape(24.dp)
+    Column(
+        Modifier
+            .clip(shape)
+            .background(c.mousse)
+            .border(1.dp, c.sousBois, shape)
+            .clickable(onClick = onOpen)
+            .padding(vertical = 14.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Avatar(contact.name, contact.photoUri, 64.dp)
+        Text(
+            contact.nickname ?: contact.name.substringBefore(' '),
+            style = Fern.type.corps,
+            color = c.creme,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 10.dp, bottom = 10.dp),
+        )
+        Box(
+            Modifier
+                .size(width = 52.dp, height = 32.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (onCall != null) c.lierre else c.nuit)
+                .clickable(enabled = onCall != null) { onCall?.invoke() },
+            contentAlignment = Alignment.Center,
+        ) { FernIcon(FernIcons.Phone, if (onCall != null) c.pistache else c.moussePale, size = 18.dp) }
     }
 }
