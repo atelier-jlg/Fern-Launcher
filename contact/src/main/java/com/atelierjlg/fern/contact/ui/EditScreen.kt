@@ -60,6 +60,7 @@ fun EditScreen(vm: ContactViewModel, id: Long?, prefillNumber: String, me: Boole
     var newPhoto by remember { mutableStateOf<Uri?>(null) }
     var removePhoto by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
+    var pickingDate by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) {
         if (id != null) {
@@ -158,16 +159,35 @@ fun EditScreen(vm: ContactViewModel, id: Long?, prefillNumber: String, me: Boole
             Pill("+ E-mail", selected = false) { form = f.copy(emails = f.emails + Labeled(type = Email.TYPE_HOME)) }
 
             SectionLabel("Anniversaire")
-            FernField(
-                birthdayText, { birthdayText = it }, "JJ/MM ou JJ/MM/AAAA", Modifier.fillMaxWidth(),
-                keyboardType = KeyboardType.Number, error = birthdayParsed == null,
-            )
-            if (birthdayParsed == null) Text("Date illisible : écris par exemple 14/05 ou 14/05/1999.", style = Fern.type.nomApp, color = c.roseCarmin)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FernField(
+                    birthdayText, { birthdayText = it }, "14/05/1999, 14 mai, 19990514…", Modifier.weight(1f),
+                    keyboardType = KeyboardType.Text, error = birthdayParsed == null,
+                )
+                IconButtonRound(FernIcons.Gift, c.pistache) { pickingDate = true }
+            }
+            when {
+                birthdayParsed == null ->
+                    Text("Date illisible : écris par exemple 14/05, 14/05/1999 ou 14 mai, ou utilise le calendrier.", style = Fern.type.nomApp, color = c.roseCarmin)
+                birthdayParsed.isNotEmpty() ->
+                    Text(com.atelierjlg.fern.contact.data.formatBirthday(birthdayParsed), style = Fern.type.nomApp, color = c.lichen)
+            }
 
             SectionLabel("Note")
             FernField(f.note, { form = f.copy(note = it) }, "Une note", Modifier.fillMaxWidth(), singleLine = false)
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (pickingDate) {
+        BirthdayPicker(
+            initial = birthdayParsed,
+            onDismiss = { pickingDate = false },
+            onPick = { raw ->
+                birthdayText = birthdayInput(raw)
+                pickingDate = false
+            },
+        )
     }
 }
 
@@ -192,5 +212,68 @@ private fun LabeledEditor(
         }
         FernField(value.value, { onChange(value.copy(value = it)) }, placeholder, Modifier.weight(1f), keyboardType = keyboard)
         IconButtonRound(FernIcons.Close, Fern.colors.lichen, onClick = onRemove)
+    }
+}
+
+/**
+ * Le calendrier pour choisir un anniversaire. « Sans l'année » : pour quelqu'un dont on ne connaît
+ * que le jour (Android l'enregistre alors sans année).
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun BirthdayPicker(initial: String?, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    val c = Fern.colors
+    val start = remember(initial) {
+        val m = Regex("^(\\d{4}|-)-?(\\d{2})-(\\d{2})").find(initial.orEmpty())
+        val y = m?.groupValues?.get(1)?.toIntOrNull() ?: 2000
+        val date = m?.let { runCatching { java.time.LocalDate.of(y, it.groupValues[2].toInt(), it.groupValues[3].toInt()) }.getOrNull() }
+            ?: java.time.LocalDate.of(2000, 1, 1)
+        date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+    }
+    var noYear by remember { mutableStateOf(initial?.startsWith("--") == true) }
+    val state = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = start,
+        yearRange = 1900..java.time.LocalDate.now().year,
+    )
+    androidx.compose.material3.DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = {
+                val millis = state.selectedDateMillis ?: return@TextButton onDismiss()
+                val d = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                onPick(if (noYear) "--%02d-%02d".format(d.monthValue, d.dayOfMonth) else d.toString())
+            }) { Text("Choisir", color = c.pistache) }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Annuler", color = c.lichen) } },
+        colors = androidx.compose.material3.DatePickerDefaults.colors(containerColor = c.mousse),
+    ) {
+        Column {
+            androidx.compose.material3.DatePicker(
+                state,
+                title = null,
+                colors = androidx.compose.material3.DatePickerDefaults.colors(
+                    containerColor = c.mousse,
+                    selectedDayContainerColor = c.pistache,
+                    selectedDayContentColor = c.nuit,
+                    todayDateBorderColor = c.pistache,
+                    todayContentColor = c.pistache,
+                    dayContentColor = c.creme,
+                    weekdayContentColor = c.lichen,
+                    headlineContentColor = c.creme,
+                    navigationContentColor = c.creme,
+                    yearContentColor = c.creme,
+                    currentYearContentColor = c.pistache,
+                    selectedYearContainerColor = c.pistache,
+                    selectedYearContentColor = c.nuit,
+                ),
+            )
+            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Sans l'année", style = Fern.type.corps, color = c.creme, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(
+                    checked = noYear, onCheckedChange = { noYear = it },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = c.pistache, checkedThumbColor = c.nuit),
+                )
+            }
+        }
     }
 }

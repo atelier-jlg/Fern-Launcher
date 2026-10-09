@@ -3,6 +3,12 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Contact v0.3.2 (code 8) — 2026-10-09
+
+- **Anniversaire** : tous les formats sont acceptés (14/05, 14/05/1999, 14-5-99, 14.05.1999, 1405, 14051999,
+  19990514, 1999-05-14, « 14 mai 1999 », « 1er janvier »…), avec la date relue en clair sous le champ.
+  Clavier complet (avec le « / »), et un **calendrier** (bouton cadeau) avec l'option « Sans l'année ».
+
 ## Fern Messages v0.4.0 (code 7) — 2026-10-09
 
 - **Menu « + » complet** : Photo, **Vidéo**, **Vocal** (enregistré sur place, jusqu'à ~3 min),

@@ -227,18 +227,6 @@ fun formatBirthday(raw: String): String {
     return if (y.length == 4) "$day $month $y" else "$day $month"
 }
 
-/** Saisie « 14/05 » ou « 14/05/1990 » → format Android « --05-14 » / « 1990-05-14 » (null si illisible). */
-fun parseBirthdayInput(text: String): String? {
-    val t = text.trim()
-    if (t.isEmpty()) return ""
-    val m = Regex("^(\\d{1,2})[/.\\- ](\\d{1,2})(?:[/.\\- ](\\d{4}))?$").find(t) ?: return null
-    val d = m.groupValues[1].toInt()
-    val mo = m.groupValues[2].toInt()
-    if (d !in 1..31 || mo !in 1..12) return null
-    val y = m.groupValues[3]
-    return if (y.isEmpty()) "--%02d-%02d".format(mo, d) else "$y-%02d-%02d".format(mo, d)
-}
-
 /** L'inverse, pour pré-remplir le champ : « 1990-05-14 » → « 14/05/1990 ». */
 fun birthdayInput(raw: String): String {
     val m = Regex("^(\\d{4}|-)-?(\\d{2})-(\\d{2})").find(raw.trim()) ?: return raw
