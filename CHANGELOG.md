@@ -3,6 +3,28 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.2.2 (code 5) · Fern Contact v0.2.2 (code 5) — 2026-10-09
+
+Corrections après relecture complète (avant les premiers essais sur le téléphone).
+
+- **Messages** :
+  - un MMS ne peut plus être rangé deux fois (téléchargement relancé pendant qu'il était en cours,
+    annonce reçue en double) ;
+  - un MMS expiré chez l'opérateur n'est plus réessayé sans fin (date limite comptée depuis l'annonce,
+    7 jours au plus) ;
+  - dans un groupe, « Répondre » depuis la notification et les messages programmés partent en MMS
+    à tout le monde (et non en SMS séparés) ;
+  - un long SMS dont un morceau a échoué reste « Échec » ;
+  - un message programmé n'est plus perdu si l'envoi plante ;
+  - plus de notification pour la conversation ouverte à l'écran ;
+  - nettoyage des fichiers temporaires.
+- **Contact** :
+  - si les notifications sont coupées (ou le plein écran refusé), l'écran d'appel entrant s'ouvre
+    quand même ;
+  - « Répondre » dans la notification ouvre directement l'écran d'appel ;
+  - la notification d'appel ne réapparaît plus quand le nom du contact est trouvé ;
+  - plus d'appel « fantôme » après un plantage.
+
 ## v0.26.0 (code 39) · Fern Messages v0.2.1 (code 4) · Fern Contact v0.2.1 (code 4) — 2026-10-09
 
 Les trois applis ensemble (étape 5).

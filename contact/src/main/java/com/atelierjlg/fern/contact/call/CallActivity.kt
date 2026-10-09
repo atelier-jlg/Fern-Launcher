@@ -57,10 +57,23 @@ import kotlinx.coroutines.delay
  * verrouillé et allume l'écran, comme l'appli Téléphone d'origine.
  */
 class CallActivity : ComponentActivity() {
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleAction(intent)
+    }
+
+    /** « Répondre » depuis la notification. */
+    private fun handleAction(intent: Intent?) {
+        if (intent?.action == CallNotifications.ACTION_ANSWER) {
+            CallManager.calls.value.firstOrNull { it.isRinging }?.let { CallManager.answer(it) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
+        handleAction(intent)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

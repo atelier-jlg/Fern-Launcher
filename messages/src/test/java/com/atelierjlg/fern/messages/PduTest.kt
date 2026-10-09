@@ -20,7 +20,8 @@ class PduTest {
         assertEquals("http://mms.free.fr/abc", n.contentLocation)
         assertEquals("+33612345678", n.from)
         assertEquals(48_000L, n.size)
-        assertNotNull(n.expiry)
+        assertEquals(7L * 24 * 3600, n.expiryDelta)
+        assertNull(n.expiry)
     }
 
     @Test

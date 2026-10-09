@@ -60,6 +60,16 @@ object CallNotifications {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+    /** La notification d'appel entrant pourra-t-elle vraiment apparaître (et passer en plein écran) ? */
+    fun canShowIncoming(context: Context): Boolean {
+        channels(context)
+        val nm = context.getSystemService(NotificationManager::class.java)
+        if (!nm.areNotificationsEnabled()) return false
+        val channel = nm.getNotificationChannel(CHANNEL_INCOMING)
+        if (channel == null || channel.importance < NotificationManager.IMPORTANCE_HIGH) return false
+        return Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent()
+    }
+
     /** Met les notifications en accord avec les appels en cours. */
     fun update(context: Context, calls: List<CallInfo>) {
         channels(context)
@@ -78,7 +88,14 @@ object CallNotifications {
     }
 
     private fun incoming(context: Context, call: CallInfo): Notification {
-        val answer = broadcast(context, ACTION_ANSWER, 1)
+        // « Répondre » ouvre directement l'écran d'appel, qui décroche (Android interdit de lancer
+        // un écran depuis un récepteur de notification).
+        val answer = PendingIntent.getActivity(
+            context, 1,
+            Intent(context, CallActivity::class.java).setAction(ACTION_ANSWER)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val decline = broadcast(context, ACTION_DECLINE, 2)
         val screen = openScreen(context, 3)
         val subtitle = if (call.name.isNotBlank() && call.number.isNotBlank()) PhoneNumbers.format(call.number) else "Appel entrant"
@@ -88,6 +105,8 @@ object CallNotifications {
             .setContentText(subtitle)
             .setCategory(Notification.CATEGORY_CALL)
             .setOngoing(true)
+            // Mis à jour quand le nom du contact est trouvé : sans ressonner ni réafficher le bandeau.
+            .setOnlyAlertOnce(true)
             .setContentIntent(screen)
             .setFullScreenIntent(screen, true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)

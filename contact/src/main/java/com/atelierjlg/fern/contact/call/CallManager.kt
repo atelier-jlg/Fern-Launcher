@@ -83,6 +83,14 @@ object CallManager {
         refresh()
     }
 
+    /** Le service d'appel s'arrête : on oublie tout (pas d'appel « fantôme » la fois suivante). */
+    internal fun clear() {
+        tracked.forEach { runCatching { it.unregisterCallback(callback) } }
+        tracked.clear()
+        contacts.clear()
+        refresh()
+    }
+
     internal fun setAudio(state: CallAudioState?) {
         _audio.value = state
     }

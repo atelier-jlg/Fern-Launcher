@@ -41,8 +41,9 @@ class FernInCallService : InCallService() {
         CallManager.add(call)
         resolveContact(call)
         // Appel sortant (ou choix de SIM) : on ouvre l'écran d'appel.
-        // Appel entrant : c'est la notification plein écran qui s'en charge.
-        if (call.state != Call.STATE_RINGING) openCallScreen(this)
+        // Appel entrant : c'est la notification plein écran qui s'en charge… sauf si elle ne peut pas
+        // s'afficher (notifications coupées, plein écran refusé) : on ouvre alors l'écran directement.
+        if (call.state != Call.STATE_RINGING || !CallNotifications.canShowIncoming(this)) openCallScreen(this)
     }
 
     override fun onCallRemoved(call: Call) {
@@ -57,6 +58,7 @@ class FernInCallService : InCallService() {
 
     override fun onDestroy() {
         releaseProximity()
+        CallManager.clear()
         CallNotifications.cancelAll(this)
         scope.cancel()
         if (CallManager.service === this) CallManager.service = null

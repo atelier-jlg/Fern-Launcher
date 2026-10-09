@@ -45,6 +45,8 @@ object MessageNotifier {
     fun notifyThread(context: Context, threadId: Long) {
         val mode = PrefsStore.read(context).notify[threadId] ?: NotifyMode.Son
         if (mode == NotifyMode.Aucune) return
+        // Conversation ouverte à l'écran : on la lit déjà.
+        if (ActiveThread.id == threadId) return
         channels(context)
         val repo = MessagesRepo(context)
         val unread = repo.unreadIn(threadId)

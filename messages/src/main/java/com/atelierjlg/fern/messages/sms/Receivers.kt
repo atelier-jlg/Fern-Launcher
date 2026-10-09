@@ -91,9 +91,11 @@ class NotificationActions : BroadcastReceiver() {
                 thread {
                     try {
                         val repo = MessagesRepo(context)
-                        SmsSender.send(context, repo.addressesOf(threadId), text)
+                        Outgoing.send(context, repo.addressesOf(threadId), text)
                         repo.markRead(threadId)
                         MessageNotifier.cancel(context, threadId)
+                    } catch (e: Exception) {
+                        Log.e("FernSms", "Réponse depuis la notification non envoyée", e)
                     } finally {
                         pending.finish()
                     }
@@ -108,6 +110,8 @@ class NotificationActions : BroadcastReceiver() {
             try {
                 MessagesRepo(context).markRead(threadId)
                 MessageNotifier.cancel(context, threadId)
+            } catch (e: Exception) {
+                Log.e("FernSms", "Marquer comme lu impossible", e)
             } finally {
                 pending.finish()
             }

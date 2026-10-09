@@ -98,6 +98,11 @@ fun ThreadScreen(vm: MessagesViewModel, threadId: Long) {
     // En quittant : on garde le brouillon.
     val currentDraft by rememberUpdatedState(draft)
     DisposableEffect(threadId) { onDispose { vm.saveDraft(threadId, currentDraft) } }
+    // Tant que cette conversation est à l'écran, pas de notification pour elle.
+    androidx.lifecycle.compose.LifecycleResumeEffect(threadId) {
+        com.atelierjlg.fern.messages.sms.ActiveThread.id = threadId
+        onPauseOrDispose { if (com.atelierjlg.fern.messages.sms.ActiveThread.id == threadId) com.atelierjlg.fern.messages.sms.ActiveThread.id = -1L }
+    }
 
     // Du plus récent (en bas) au plus ancien : la liste est « à l'envers ».
     val reversed = remember(messages) { messages.asReversed() }

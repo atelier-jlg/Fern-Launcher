@@ -202,8 +202,8 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
         if ((body.isBlank() && attachments.isEmpty()) || addresses.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                if (attachments.isNotEmpty() || addresses.size > 1) MmsTransport.send(context, addresses, body.trim(), attachments)
-                else SmsSender.send(context, addresses, body.trim())
+                if (attachments.isNotEmpty()) MmsTransport.send(context, addresses, body.trim(), attachments)
+                else com.atelierjlg.fern.messages.sms.Outgoing.send(context, addresses, body)
             }.onFailure { withContext(Dispatchers.Main) { toast("Envoi impossible : ${it.message}") } }
         }
     }

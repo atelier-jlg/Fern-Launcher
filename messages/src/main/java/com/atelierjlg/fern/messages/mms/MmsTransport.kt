@@ -35,10 +35,28 @@ object MmsTransport {
 
     @Suppress("DEPRECATION")
     fun smsManager(context: Context, subId: Int): SmsManager {
+        if (Build.VERSION.SDK_INT < 31) {
+            return if (subId < 0) SmsManager.getDefault() else SmsManager.getSmsManagerForSubscriptionId(subId)
+        }
         val base = context.getSystemService(SmsManager::class.java)
-        if (subId < 0) return base
-        return if (Build.VERSION.SDK_INT >= 31) base.createForSubscriptionId(subId) else SmsManager.getSmsManagerForSubscriptionId(subId)
+        return if (subId < 0) base else base.createForSubscriptionId(subId)
     }
+
+    /** Téléchargements en cours (nom du fichier d'annonce → début), pour ne jamais lancer le même deux fois. */
+    private val inFlight = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Les fichiers temporaires de plus d'un jour (accusés envoyés, téléchargements interrompus) sont supprimés. */
+    private fun cleanCache(context: Context) {
+        val limit = System.currentTimeMillis() - 24 * 3600_000L
+        File(context.cacheDir, "mms").listFiles().orEmpty().filter { it.lastModified() < limit }.forEach { it.delete() }
+    }
+
+    /** Ce MMS (même adresse sur le serveur) est-il déjà rangé dans le téléphone ? */
+    private fun alreadyStored(context: Context, location: String): Boolean = runCatching {
+        context.contentResolver.query(
+            Telephony.Mms.CONTENT_URI, arrayOf(Telephony.Mms._ID), "${Telephony.Mms.CONTENT_LOCATION} = ?", arrayOf(location), null,
+        )?.use { it.count > 0 } ?: false
+    }.getOrDefault(false)
 
     private fun fileUri(context: Context, file: File): Uri =
         FileProvider.getUriForFile(context, "${context.packageName}.mmsfiles", file)
@@ -77,7 +95,7 @@ object MmsTransport {
         val already = dir.listFiles().orEmpty().any { f ->
             runCatching { Pdu.parseNotification(f.readBytes())?.contentLocation == notification.contentLocation }.getOrDefault(false)
         }
-        if (already) return
+        if (already || alreadyStored(context, notification.contentLocation)) return
         val file = File(dir, "${System.currentTimeMillis()}_$subId.pdu")
         file.writeBytes(pdu)
         download(context, file)
@@ -85,6 +103,7 @@ object MmsTransport {
 
     /** Relance tous les MMS en attente (au démarrage de l'appli, bouton « Réessayer »). */
     fun retryPending(context: Context) {
+        cleanCache(context)
         File(context.filesDir, PENDING_DIR).listFiles().orEmpty().filter { it.extension == "pdu" }.forEach { download(context, it) }
     }
 
@@ -92,17 +111,27 @@ object MmsTransport {
         File(context.filesDir, PENDING_DIR).listFiles().orEmpty().count { it.extension == "pdu" }
 
     private fun download(context: Context, pending: File) {
+        // Déjà en cours (moins de 10 min) : on ne relance pas.
+        val started = inFlight[pending.name]
+        if (started != null && System.currentTimeMillis() - started < 10 * 60_000L) return
         val notification = Pdu.parseNotification(pending.readBytes())
-        if (notification == null) {
+        if (notification == null || alreadyStored(context, notification.contentLocation)) {
             pending.delete()
             return
         }
-        val expired = notification.expiry?.let { it * 1000 < System.currentTimeMillis() } == true
-        if (expired) {
+        // Date limite : absolue, ou relative à l'arrivée de l'annonce (heure inscrite dans le nom du fichier).
+        // Au-delà de 7 jours, on abandonne de toute façon (l'opérateur l'a effacé).
+        val arrivedAt = pending.nameWithoutExtension.substringBefore('_').toLongOrNull() ?: pending.lastModified()
+        val deadline = minOf(
+            notification.expiry?.let { it * 1000 } ?: notification.expiryDelta?.let { arrivedAt + it * 1000 } ?: Long.MAX_VALUE,
+            arrivedAt + 7 * 24 * 3600_000L,
+        )
+        if (deadline < System.currentTimeMillis()) {
             pending.delete()
             MessageNotifier.info(context, -1L, "MMS expiré", "Un MMS de ${notification.from ?: "quelqu'un"} n'est plus disponible chez l'opérateur.")
             return
         }
+        inFlight[pending.name] = System.currentTimeMillis()
         val subId = pending.nameWithoutExtension.substringAfter('_', "-1").toIntOrNull() ?: -1
         val target = workFile(context, "recu")
         target.createNewFile()
@@ -116,11 +145,21 @@ object MmsTransport {
         )
         runCatching {
             smsManager(context, subId).downloadMultimediaMessage(context, notification.contentLocation, fileUri(context, target), null, pi)
-        }.onFailure { Log.e(TAG, "Téléchargement impossible", it) }
+        }.onFailure {
+            Log.e(TAG, "Téléchargement impossible", it)
+            inFlight.remove(pending.name)
+        }
     }
 
     /** Le MMS est téléchargé : on le range, on prévient l'opérateur, on notifie. */
+    @Synchronized
     internal fun onDownloaded(context: Context, ok: Boolean, file: File, pending: File, subId: Int) {
+        inFlight.remove(pending.name)
+        // Annonce déjà traitée (téléchargement en double) : rien à faire.
+        if (!pending.exists()) {
+            file.delete()
+            return
+        }
         try {
             val bytes = if (ok && file.exists()) file.readBytes() else null
             val message = bytes?.let(Pdu::parseMessage)
@@ -132,7 +171,8 @@ object MmsTransport {
                 )
                 return
             }
-            val threadId = MmsStore.saveIncoming(context, message, subId, myNumbers(context))
+            val location = Pdu.parseNotification(pending.readBytes())?.contentLocation
+            val threadId = MmsStore.saveIncoming(context, message, subId, myNumbers(context), location)
             pending.delete()
             acknowledge(context, message, pending, subId)
             MessageNotifier.notifyThread(context, threadId)

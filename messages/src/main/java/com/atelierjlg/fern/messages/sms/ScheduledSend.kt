@@ -52,8 +52,9 @@ object ScheduledSend {
     /** L'alarme sonne : on envoie, on retire de la liste, on prévient discrètement. */
     internal fun fire(context: Context, id: Long) {
         val item = PrefsStore.read(context).scheduled.firstOrNull { it.id == id } ?: return
+        // Retiré de la liste seulement une fois confié au réseau (sinon il resterait visible, à renvoyer).
+        Outgoing.send(context, item.addresses, item.body)
         PrefsStore.update(context) { p -> p.copy(scheduled = p.scheduled.filterNot { it.id == id }) }
-        SmsSender.send(context, item.addresses, item.body)
         val repo = MessagesRepo(context)
         val threadId = runCatching { repo.threadIdFor(item.addresses) }.getOrDefault(-1L)
         MessageNotifier.info(context, threadId, "Message programmé envoyé", "À ${repo.displayFor(item.addresses).first}")
@@ -70,6 +71,8 @@ class ScheduledReceiver : BroadcastReceiver() {
         thread {
             try {
                 ScheduledSend.fire(context, id)
+            } catch (e: Exception) {
+                android.util.Log.e("FernSms", "Message programmé non envoyé", e)
             } finally {
                 pending.finish()
             }
@@ -85,6 +88,8 @@ class BootReceiver : BroadcastReceiver() {
             thread {
                 try {
                     ScheduledSend.rearmAll(context)
+                } catch (e: Exception) {
+                    android.util.Log.e("FernSms", "Alarmes non réarmées", e)
                 } finally {
                     pending.finish()
                 }

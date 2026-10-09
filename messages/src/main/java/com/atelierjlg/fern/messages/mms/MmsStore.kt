@@ -18,7 +18,7 @@ object MmsStore {
     private const val CHARSET_UTF8 = 106
 
     /** Enregistre un MMS reçu. [myNumbers] : mes numéros, retirés des participants du groupe. Renvoie la conversation. */
-    fun saveIncoming(context: Context, m: MmsMessage, subId: Int, myNumbers: List<String>): Long {
+    fun saveIncoming(context: Context, m: MmsMessage, subId: Int, myNumbers: List<String>, contentLocation: String? = null): Long {
         val from = m.from?.takeIf { it.isNotBlank() } ?: "Inconnu"
         val others = (m.to + m.cc).filterNot { addr -> myNumbers.any { PhoneNumbers.same(it, addr) } }
         // Groupe : l'expéditeur + les autres destinataires (sans moi). Sinon : l'expéditeur seul.
@@ -38,6 +38,8 @@ object MmsStore {
             put(Telephony.Mms.CONTENT_TYPE, m.contentType ?: Pdu.MULTIPART_RELATED)
             m.messageId?.let { put(Telephony.Mms.MESSAGE_ID, it) }
             m.transactionId?.let { put(Telephony.Mms.TRANSACTION_ID, it) }
+            // L'adresse sur le serveur de l'opérateur : évite de ranger deux fois le même MMS.
+            contentLocation?.let { put(Telephony.Mms.CONTENT_LOCATION, it) }
             m.subject?.let {
                 put(Telephony.Mms.SUBJECT, it)
                 put(Telephony.Mms.SUBJECT_CHARSET, CHARSET_UTF8)

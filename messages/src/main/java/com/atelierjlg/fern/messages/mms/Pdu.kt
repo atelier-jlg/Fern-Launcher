@@ -36,9 +36,11 @@ data class MmsNotification(
     val contentLocation: String,
     val from: String?,
     val size: Long,
-    /** Date limite (secondes depuis 1970), ou null. */
+    /** Date limite absolue (secondes depuis 1970), ou null. */
     val expiry: Long?,
     val subject: String?,
+    /** Ou bien : durée de validité (secondes) à compter de l'arrivée de l'annonce. */
+    val expiryDelta: Long? = null,
 )
 
 /** Un MMS complet (reçu ou à envoyer). */
@@ -134,6 +136,7 @@ object Pdu {
         var from: String? = null
         var size = 0L
         var expiry: Long? = null
+        var expiryDelta: Long? = null
         var subject: String? = null
         while (r.hasMore()) {
             val field = r.peek()
@@ -148,13 +151,13 @@ object Pdu {
                 CONTENT_LOCATION -> location = r.textString()
                 FROM -> from = r.fromValue()
                 MESSAGE_SIZE -> size = r.longInteger()
-                EXPIRY -> expiry = r.expiry()
+                EXPIRY -> r.expiry().let { (absolute, v) -> if (absolute) expiry = v else expiryDelta = v }
                 SUBJECT -> subject = r.encodedString()
                 else -> r.skipValue()
             }
         }
         if (type != NOTIFICATION_IND || location == null) null
-        else MmsNotification(trId.orEmpty(), location, from?.let(::cleanAddress), size, expiry, subject)
+        else MmsNotification(trId.orEmpty(), location, from?.let(::cleanAddress), size, expiry, subject, expiryDelta)
     }.getOrNull()
 
     /** Lit un MMS complet (reçu : « retrieve-conf », envoyé : « send-req », réponse « send-conf »…). */
@@ -269,13 +272,14 @@ object Pdu {
             return value
         }
 
-        fun expiry(): Long? {
+        /** Expiration : (absolue ?, valeur). Relative = secondes à compter de la réception de l'annonce. */
+        fun expiry(): Pair<Boolean, Long> {
             val len = valueLength()
             val stop = pos + len
             val token = read()
-            val v = longInteger()
+            val v = integerValue()
             pos = stop
-            return if (token == 0x80) v else System.currentTimeMillis() / 1000 + v
+            return (token == 0x80) to v
         }
 
         /** Saute une valeur inconnue (règle générale des en-têtes WSP). */

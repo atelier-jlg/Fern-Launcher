@@ -42,7 +42,7 @@ object SmsSender {
         )
         val id = uri?.let { ContentUris.parseId(it) } ?: -1L
         try {
-            val sms = context.getSystemService(SmsManager::class.java)
+            val sms = com.atelierjlg.fern.messages.mms.MmsTransport.smsManager(context, -1)
             val parts = sms.divideMessage(body)
             val sent = ArrayList<PendingIntent>(parts.size)
             val delivered = ArrayList<PendingIntent>(parts.size)
@@ -72,12 +72,16 @@ object SmsSender {
         sendOne(context, address, body)
     }
 
-    internal fun setType(context: Context, id: Long, type: Int) {
+    /** [onlyIfSending] : ne pas écraser un « échec » (un morceau d'un long SMS a pu échouer avant). */
+    internal fun setType(context: Context, id: Long, type: Int, onlyIfSending: Boolean = false) {
         if (id < 0) return
-        context.contentResolver.update(
-            ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
-            ContentValues().apply { put(Telephony.Sms.TYPE, type) }, null, null,
-        )
+        runCatching {
+            context.contentResolver.update(
+                ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
+                ContentValues().apply { put(Telephony.Sms.TYPE, type) },
+                if (onlyIfSending) "${Telephony.Sms.TYPE} = ${Telephony.Sms.MESSAGE_TYPE_OUTBOX}" else null, null,
+            )
+        }
     }
 }
 
@@ -87,7 +91,7 @@ class SendStatusReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra(SmsSender.EXTRA_ID, -1L)
         when {
             resultCode != Activity.RESULT_OK -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
-            intent.getBooleanExtra(SmsSender.EXTRA_LAST, true) -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_SENT)
+            intent.getBooleanExtra(SmsSender.EXTRA_LAST, true) -> SmsSender.setType(context, id, Telephony.Sms.MESSAGE_TYPE_SENT, onlyIfSending = true)
         }
     }
 }
@@ -106,9 +110,11 @@ class DeliveryReceiver : BroadcastReceiver() {
             status < 0x40 -> Telephony.Sms.STATUS_PENDING
             else -> Telephony.Sms.STATUS_FAILED
         }
-        context.contentResolver.update(
-            ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
-            ContentValues().apply { put(Telephony.Sms.STATUS, value) }, null, null,
-        )
+        runCatching {
+            context.contentResolver.update(
+                ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id),
+                ContentValues().apply { put(Telephony.Sms.STATUS, value) }, null, null,
+            )
+        }
     }
 }
