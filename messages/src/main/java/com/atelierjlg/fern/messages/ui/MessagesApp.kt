@@ -47,6 +47,7 @@ fun MessagesApp(vm: MessagesViewModel) {
             Screen.Archived -> InboxScreen(vm, archived = true)
             Screen.Search -> SearchScreen(vm)
             Screen.Scheduled -> ScheduledScreen(vm)
+            Screen.Settings -> MessagesSettingsScreen(vm)
             is Screen.Thread -> ThreadScreen(vm, top.threadId)
             is Screen.Compose -> ComposeScreen(vm, top.number, top.body, top.image, top.vcard)
         }

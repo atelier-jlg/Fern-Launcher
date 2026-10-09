@@ -60,7 +60,8 @@ object SmsSender {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
                 )
             }
-            sms.sendMultipartTextMessage(address, null, parts, sent, delivered)
+            val reports = com.atelierjlg.fern.messages.data.PrefsStore.read(context).deliveryReports
+            sms.sendMultipartTextMessage(address, null, parts, sent, if (reports) delivered else null)
         } catch (e: Exception) {
             setType(context, id, Telephony.Sms.MESSAGE_TYPE_FAILED)
         }

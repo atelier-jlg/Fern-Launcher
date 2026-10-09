@@ -26,6 +26,12 @@ data class MessagesPrefs(
     /** Brouillons : texte commencé mais pas envoyé, par conversation. */
     val drafts: Map<Long, String> = emptyMap(),
     val scheduled: List<Scheduled> = emptyList(),
+    /** Réglages : accusés de remise (« Remis »). */
+    val deliveryReports: Boolean = true,
+    /** Plusieurs destinataires = une conversation de groupe (MMS) ; sinon un SMS chacun. */
+    val groupAsMms: Boolean = true,
+    /** Écran verrouillé : notification sans le texte du message. */
+    val hideOnLockscreen: Boolean = true,
 )
 
 /**

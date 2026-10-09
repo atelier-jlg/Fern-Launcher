@@ -86,7 +86,7 @@ object MessageNotifier {
             .setNumber(unread.size)
             .setContentIntent(openThread(context, threadId))
             // Écran verrouillé : on dit qu'il y a un message, sans montrer le texte (codes, etc.).
-            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setVisibility(if (PrefsStore.read(context).hideOnLockscreen) Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_PUBLIC)
             .setPublicVersion(
                 Notification.Builder(context, CHANNEL_SILENT)
                     .setSmallIcon(R.drawable.ic_notification_message)

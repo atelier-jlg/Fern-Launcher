@@ -11,7 +11,8 @@ object Outgoing {
     fun send(context: Context, addresses: List<String>, body: String) {
         val to = addresses.filter { it.isNotBlank() }
         if (to.isEmpty() || body.isBlank()) return
-        if (to.size > 1) MmsTransport.send(context, to, body.trim(), emptyList()) else SmsSender.send(context, to, body.trim())
+        val group = to.size > 1 && com.atelierjlg.fern.messages.data.PrefsStore.read(context).groupAsMms
+        if (group) MmsTransport.send(context, to, body.trim(), emptyList()) else SmsSender.send(context, to, body.trim())
     }
 }
 

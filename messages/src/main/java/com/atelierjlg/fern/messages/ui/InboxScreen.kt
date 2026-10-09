@@ -91,6 +91,7 @@ fun InboxScreen(vm: MessagesViewModel, archived: Boolean) {
                     IconButtonRound(FernIcons.Search, c.lichen) { vm.open(Screen.Search) }
                     IconButtonRound(FernIcons.Clock, c.lichen) { vm.open(Screen.Scheduled) }
                     IconButtonRound(FernIcons.Archive, c.lichen) { vm.open(Screen.Archived) }
+                    IconButtonRound(FernIcons.Settings, c.lichen) { vm.open(Screen.Settings) }
                 }
             }
             if (!archived && !setup.complete) SetupCard(vm, setup)

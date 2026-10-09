@@ -42,6 +42,7 @@ sealed interface Screen {
     data object Archived : Screen
     data object Search : Screen
     data object Scheduled : Screen
+    data object Settings : Screen
     data class Thread(val threadId: Long) : Screen
     /** Nouveau message, éventuellement pré-rempli (lien « smsto: », partage depuis une autre appli). */
     data class Compose(val number: String = "", val body: String = "", val image: String? = null, val vcard: String? = null) : Screen
@@ -342,6 +343,46 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
     fun saveDraft(threadId: Long, text: String) = updatePrefs { p ->
         p.copy(drafts = if (text.isBlank()) p.drafts - threadId else p.drafts + (threadId to text))
     }
+
+    fun setDeliveryReports(on: Boolean) = updatePrefs { it.copy(deliveryReports = on) }
+    fun setGroupAsMms(on: Boolean) = updatePrefs { it.copy(groupAsMms = on) }
+    fun setHideOnLockscreen(on: Boolean) = updatePrefs { it.copy(hideOnLockscreen = on) }
+
+    /** Réglages des notifications d'Android pour l'appli (sons, vibreur, canaux). */
+    fun notificationSettingsIntent() = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+
+    // ─── Numéros bloqués (liste d'Android, partagée avec Fern Contact) ───────
+
+    private val _blocked = MutableStateFlow<List<String>>(emptyList())
+    val blocked: StateFlow<List<String>> = _blocked.asStateFlow()
+
+    fun loadBlocked() = viewModelScope.launch(Dispatchers.IO) {
+        _blocked.value = runCatching {
+            val out = mutableListOf<String>()
+            context.contentResolver.query(
+                BlockedNumberContract.BlockedNumbers.CONTENT_URI,
+                arrayOf(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER), null, null, null,
+            )?.use { c -> while (c.moveToNext()) c.getString(0)?.let(out::add) }
+            out
+        }.getOrDefault(emptyList())
+    }
+
+    fun unblock(number: String) = viewModelScope.launch(Dispatchers.IO) {
+        runCatching { BlockedNumberContract.unblock(context, number) }
+        loadBlocked()
+    }
+
+    /** Mes numéros (fiche « Moi » + SIM), pour l'écran Réglages. */
+    suspend fun myNumbers(): List<String> = withContext(Dispatchers.IO) { MmsTransport.myNumbers(context) }
+
+    /** Ouvre ma fiche dans Fern Contact (pour y mettre mes numéros). */
+    fun openMyCard() {
+        val fern = context.packageManager.getLaunchIntentForPackage("com.atelierjlg.fern.contact")
+        if (fern != null) start(fern) else toast("Installe Fern Contact pour remplir ta fiche « Moi »")
+    }
+
+    fun versionName(): String = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
 
     private fun updatePrefs(transform: (MessagesPrefs) -> MessagesPrefs) {
         _prefs.value = PrefsStore.update(context, transform)

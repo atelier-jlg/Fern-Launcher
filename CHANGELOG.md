@@ -3,6 +3,12 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Messages v0.5.0 (code 10) — 2026-10-09
+
+- **Réglages** (roue dentée en haut de la liste) : appli SMS par défaut, masquer le texte sur l'écran verrouillé,
+  sons et vibreur, accusés de remise, groupe MMS ou SMS séparés, MMS en attente (Réessayer), programmés,
+  archives, alarmes exactes, numéros bloqués (Débloquer), mes numéros (fiche « Moi »), version.
+
 ## Fern Contact v0.4.0 (code 10) · Fern Messages v0.4.2 (code 9) — 2026-10-09
 
 Animations.
