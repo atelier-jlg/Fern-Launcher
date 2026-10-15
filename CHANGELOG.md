@@ -3,6 +3,18 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.5.0 (code 7) — 2026-10-15
+
+- **Dictée hors ligne avec Whisper** (micro pistache au bout de la barre, ou barre d'outils) : tu parles,
+  le texte s'écrit avec la ponctuation, sur le téléphone, sans Internet. Onde qui suit ta voix, gros micro
+  qui respire, arrêt automatique quand tu te tais (réglable), 30 s maximum par prise.
+- **Réglages → Dictée** : autoriser le micro, importer le modèle Whisper téléchargé une fois
+  (conseillé : ggml-small-q5_1.bin ≈ 190 Mo ; mieux mais plus lent : ggml-medium-q5_0.bin ≈ 540 Mo),
+  le changer ou le supprimer.
+- Le texte dicté se recolle proprement (espace, majuscule en début de phrase) et les « génériques »
+  inventés par Whisper sur un silence (« Sous-titres réalisés par… ») sont retirés.
+- Technique : whisper.cpp v1.7.6 (MIT) compilé pour arm64 (Fairphone 6) avec les instructions dotprod/fp16.
+
 ## Fern Clavier v0.4.0 (code 6) · Fern Launcher v0.26.2 (code 41) — 2026-10-15
 
 - **Memes et stickers** (barre d'outils → plaque pistache) : tes images en grille, filtres par mots-clés,

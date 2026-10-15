@@ -59,6 +59,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.atelierjlg.fern.keyboard.logic.MemeLibrary
+import com.atelierjlg.fern.keyboard.voice.Dictation
+import com.atelierjlg.fern.keyboard.voice.ModelImport
 import com.atelierjlg.fern.theme.FernSharedTheme
 import com.atelierjlg.fern.ui.kit.FernField
 import com.atelierjlg.fern.ui.kit.Pill
@@ -126,6 +128,23 @@ private fun SettingsScreen() {
     var learned by remember { mutableIntStateOf(0) }
     LaunchedEffect(check) { learned = withContext(Dispatchers.IO) { Lexicon.learnedCount(context) } }
     var confirmForget by remember { mutableStateOf(false) }
+
+    // Dictée : micro et modèle Whisper.
+    var importing by remember { mutableStateOf<String?>(null) }
+    val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { check++ }
+    val pickModel = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            importing = "0 Mo"
+            ModelImport.copy(context, uri, progress = { mb -> importing = "$mb Mo" }) { name ->
+                importing = null
+                if (name != null) {
+                    Dictation.unloadModel()
+                    update(settings.copy(whisperModel = name))
+                }
+                check++
+            }
+        }
+    }
 
     // Memes : la liste suit les changements (import, mots-clés, suppression).
     var memeList by remember { mutableStateOf(Memes.library.all) }
@@ -295,6 +314,56 @@ private fun SettingsScreen() {
             )
         }
 
+        SectionLabel("Dictée (Whisper, hors ligne)")
+        Card {
+            val micOk = remember(check) { context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED }
+            StepRow(
+                number = "1",
+                title = "Autoriser le micro",
+                detail = if (micOk) "C'est fait" else "Le son reste dans le téléphone",
+                done = micOk,
+                onClick = { askMic.launch(Manifest.permission.RECORD_AUDIO) },
+            )
+            val model = Dictation.modelFile(context)
+            val hasModel = remember(check, importing) { model.exists() }
+            StepRow(
+                number = "2",
+                title = if (hasModel) "Modèle : ${settings.whisperModel.ifEmpty { "importé" }}" else "Importer un modèle Whisper",
+                detail = when {
+                    importing != null -> "Copie… ${importing}"
+                    hasModel -> "${model.length() / (1024 * 1024)} Mo · toucher pour en changer"
+                    else -> "Un fichier .bin téléchargé une fois (voir ci-dessous)"
+                },
+                done = hasModel && importing == null,
+                onClick = { if (importing == null) pickModel.launch(arrayOf("*/*")) },
+            )
+            Text(
+                "Télécharge un modèle depuis huggingface.co/ggerganov/whisper.cpp (dossier « Files ») :\n" +
+                    "· ggml-small-q5_1.bin (≈ 190 Mo) : rapide, bon français — conseillé pour commencer ;\n" +
+                    "· ggml-medium-q5_0.bin (≈ 540 Mo) : meilleur, mais plus lent.\n" +
+                    "Puis importe-le ici. Le clavier, lui, n'a jamais accès à Internet.",
+                style = Fern.type.nomApp,
+                color = c.lichen,
+            )
+            Toggle("Arrêt automatique", "La dictée s'arrête quand tu te tais", settings.autoStopDictation) {
+                update(settings.copy(autoStopDictation = it))
+            }
+            if (hasModel && importing == null) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable {
+                        model.delete()
+                        Dictation.unloadModel()
+                        update(settings.copy(whisperModel = ""))
+                        check++
+                    }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Supprimer le modèle", style = Fern.type.corps, color = c.creme, modifier = Modifier.weight(1f))
+                    FernIcon(FernIcons.Trash, c.lichen, size = 20.dp)
+                }
+            }
+        }
+
         SectionLabel("Memes et stickers")
         Card {
             Text(
@@ -363,7 +432,7 @@ private fun SettingsScreen() {
 
         SectionLabel("Bientôt")
         Text(
-            "Dictée Whisper hors ligne.",
+            "Tout ce qui était prévu est là. Dis-moi ce qui manque !",
             style = Fern.type.nomApp,
             color = c.lichen,
         )

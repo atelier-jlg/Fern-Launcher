@@ -28,6 +28,10 @@ data class KeyboardSettings(
     /** Teinte de peau des emoji (0 = jaune, 1 à 5 = claire à foncée). */
     val skinTone: Int = 0,
     val emojiSuggestions: Boolean = true,
+    /** La dictée s'arrête toute seule quand on se tait. */
+    val autoStopDictation: Boolean = true,
+    /** Nom du modèle Whisper importé (affiché dans le panneau), vide si aucun. */
+    val whisperModel: String = "",
 )
 
 /** Rangement des réglages dans le téléphone (SharedPreferences : un petit fichier clé → valeur). */
@@ -54,6 +58,8 @@ object KeyboardPrefs {
             clipCount = p.getInt("clipCount", d.clipCount),
             skinTone = p.getInt("skinTone", d.skinTone),
             emojiSuggestions = p.getBoolean("emojiSuggestions", d.emojiSuggestions),
+            autoStopDictation = p.getBoolean("autoStopDictation", d.autoStopDictation),
+            whisperModel = p.getString("whisperModel", d.whisperModel) ?: "",
         )
     }
 
@@ -74,6 +80,8 @@ object KeyboardPrefs {
             .putInt("clipCount", s.clipCount)
             .putInt("skinTone", s.skinTone)
             .putBoolean("emojiSuggestions", s.emojiSuggestions)
+            .putBoolean("autoStopDictation", s.autoStopDictation)
+            .putString("whisperModel", s.whisperModel)
             .apply()
     }
 }

@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Optionnel (réglage « Noms de mes contacts ») : pour ne jamais « corriger » un prénom. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Dictée hors ligne (Whisper) : le son ne quitte jamais le téléphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Fern Messages prête le dernier code reçu par SMS. -->
     <queries>

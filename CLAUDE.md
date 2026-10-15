@@ -202,6 +202,10 @@ app/src/main/java/com/atelierjlg/fern/
 - v0.4 : `Memes` (dossier privé `memes/`, liste `memes.tsv`, miniatures), envoi par `commitContent`
   (FileProvider `${applicationId}.images`) sinon partage vers l'appli ouverte. Fern Launcher prête ses stickers :
   `content://com.atelierjlg.fern.stickers/list` et `/file/<nom>` (FernStickersProvider, permission READ_THEME).
+- v0.5 : dictée Whisper. `src/main/cpp` (CMake : whisper.cpp v1.7.6 téléchargé par FetchContent pendant la
+  compilation, arm64 seulement, `GGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16`), pont JNI `whisper_jni.cpp`
+  (texte rendu en octets UTF-8), `voice/Dictation` (AudioRecord 16 kHz, arrêt sur silence), `voice/ModelImport`
+  (modèle copié dans `files/whisper/model.bin`, vérifié par l'en-tête « lmgg »).
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

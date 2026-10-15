@@ -1,6 +1,7 @@
 package com.atelierjlg.fern.keyboard.ui
 
 import android.view.ViewGroup
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -65,6 +67,7 @@ fun RowScope.ToolbarRow(controller: KeyboardController) {
         ToolPlate(KeyIcons.Clipboard, "Presse-papiers", c.creme, c.nuit) { controller.openPanel(Panel.Clipboard) }
         ToolPlate(KeyIcons.Smile, "Emoji", c.roseCarmin, c.nuit) { controller.openPanel(Panel.Emoji) }
         ToolPlate(FernIcons.Image, "Memes et stickers", c.pistache, c.nuit) { controller.openPanel(Panel.Memes) }
+        ToolPlate(FernIcons.Mic, "Dictée", c.sousBois, c.creme) { controller.startDictation() }
         Spacer(Modifier.weight(1f))
         controller.favorites.take(3).forEach { e ->
             Box(
@@ -383,6 +386,117 @@ private fun MemeCell(meme: com.atelierjlg.fern.keyboard.logic.MemeLibrary.Meme, 
             )
         }
     }
+}
+
+// ─── Dictée ────────────────────────────────────────────────────────────────
+
+/** Le micro au bout de la barre (quand il y a de la place). */
+@Composable
+fun MicButton(controller: KeyboardController) {
+    val c = Fern.colors
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).background(c.pistache).clickable { controller.startDictation() }
+            .semantics { contentDescription = "Dicter" },
+        contentAlignment = Alignment.Center,
+    ) { FernIcon(FernIcons.Mic, c.nuit, size = 18.dp) }
+}
+
+/** Le panneau de dictée : l'onde, le gros micro, l'état (écoute, écriture). */
+@Composable
+fun DictationPanel(controller: KeyboardController, height: Dp) {
+    val c = Fern.colors
+    val d = controller.dictation
+    val state = d.state
+    val listening = state == com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening
+    val halo by androidx.compose.animation.core.rememberInfiniteTransition(label = "halo").animateFloat(
+        initialValue = 1f,
+        targetValue = if (listening) 1.12f else 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(900),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "halo",
+    )
+    Column(
+        Modifier.fillMaxWidth().height(height).padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "DICTÉE · HORS LIGNE",
+                color = c.lichen,
+                style = TextStyle(fontFamily = labelFont, fontSize = 11.sp, letterSpacing = 1.4.sp),
+                modifier = Modifier.weight(1f),
+            )
+            val model = controller.settings.whisperModel
+            if (model.isNotEmpty()) {
+                Box(Modifier.clip(CircleShape).background(c.lierre).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text(model, color = c.lichen, style = TextStyle(fontFamily = keyFont, fontSize = 11.sp), maxLines = 1)
+                }
+            }
+        }
+        // L'onde : des barres arrondies qui suivent le volume de la voix.
+        Row(
+            Modifier.fillMaxWidth().height(64.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            d.levels.forEach { level ->
+                val h = 6.dp + 56.dp * level
+                Box(
+                    Modifier.width(5.dp).height(h).clip(RoundedCornerShape(3.dp))
+                        .background(if (level > 0.3f) c.pistache else if (level > 0.1f) c.lichen else c.sousBois),
+                )
+            }
+        }
+        Box(
+            Modifier.size(116.dp).scale(halo).clip(CircleShape).background(c.lierre),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(84.dp).clip(CircleShape).background(if (listening) c.pistache else c.sousBois)
+                    .clickable {
+                        when (state) {
+                            com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening -> controller.stopDictation()
+                            com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> controller.startDictation()
+                            else -> Unit
+                        }
+                    }
+                    .semantics { contentDescription = if (listening) "Terminer" else "Dicter" },
+                contentAlignment = Alignment.Center,
+            ) { FernIcon(FernIcons.Mic, if (listening) c.nuit else c.creme, size = 30.dp) }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            d.message ?: when (state) {
+                com.atelierjlg.fern.keyboard.voice.Dictation.State.Loading -> "Je me prépare…"
+                com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening ->
+                    if (controller.settings.autoStopDictation) "Je t'écoute… je m'arrête quand tu te tais" else "Je t'écoute… touche pour terminer"
+                com.atelierjlg.fern.keyboard.voice.Dictation.State.Transcribing -> "J'écris…"
+                com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> "Touche le micro pour parler"
+            },
+            color = if (d.message != null) c.roseCarmin else c.creme,
+            style = TextStyle(fontFamily = keyFont, fontSize = 15.sp),
+            maxLines = 2,
+        )
+        Spacer(Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WidePill("Annuler", Modifier.weight(1f)) { controller.cancelDictation() }
+            WidePill(if (d.message != null) "Réglages" else "Clavier", Modifier.weight(1f)) {
+                if (d.message != null) controller.openSettings()
+                controller.cancelDictation()
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidePill(text: String, modifier: Modifier, onClick: () -> Unit) {
+    val c = Fern.colors
+    Box(
+        modifier.height(44.dp).clip(CircleShape).background(c.lierre).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, color = c.creme, style = TextStyle(fontFamily = labelFont, fontSize = 14.sp)) }
 }
 
 // ─── Petits morceaux communs ───────────────────────────────────────────────

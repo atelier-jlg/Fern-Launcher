@@ -26,6 +26,18 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
+        // Dictée Whisper : code natif compilé pour les téléphones 64 bits (le Fairphone 6).
+        ndk { abiFilters += listOf("arm64-v8a") }
+        externalNativeBuild {
+            cmake { arguments += listOf("-DANDROID_STL=c++_static") }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {
@@ -42,6 +54,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Whisper doit être compilé optimisé, sinon la dictée est 10 fois plus lente.
+            externalNativeBuild { cmake { arguments += listOf("-DCMAKE_BUILD_TYPE=Release") } }
             signingConfig = if (keystorePath != null) {
                 signingConfigs.getByName("release")
             } else {

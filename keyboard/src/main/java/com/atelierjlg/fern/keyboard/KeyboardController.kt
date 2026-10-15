@@ -28,16 +28,18 @@ import com.atelierjlg.fern.keyboard.logic.KeyAction
 import com.atelierjlg.fern.keyboard.logic.MemeLibrary
 import com.atelierjlg.fern.keyboard.logic.Page
 import com.atelierjlg.fern.keyboard.logic.Predictor
+import com.atelierjlg.fern.keyboard.logic.SpeechText
 import com.atelierjlg.fern.keyboard.logic.ShiftMode
 import com.atelierjlg.fern.keyboard.logic.Strip
 import com.atelierjlg.fern.keyboard.logic.TextRules
 import com.atelierjlg.fern.keyboard.logic.Words
+import com.atelierjlg.fern.keyboard.voice.Dictation
 
 /** À quoi sert la touche Entrée dans le champ actuel (son picto change). */
 enum class EnterKind { NewLine, Send, Search, Go, Next, Previous, Done }
 
-/** Ce qui remplace les touches : rien (les touches), le presse-papiers, les emoji, les memes. */
-enum class Panel { None, Clipboard, Emoji, Memes }
+/** Ce qui remplace les touches : rien (les touches), le presse-papiers, les emoji, les memes, la dictée. */
+enum class Panel { None, Clipboard, Emoji, Memes, Dictation }
 
 /**
  * Le « cerveau » du clavier : reçoit les touches et écrit dans le champ de texte de l'appli ouverte.
@@ -203,6 +205,7 @@ class KeyboardController(private val service: InputMethodService) {
 
     /** Le clavier se ferme : on laisse le mot en cours tel quel et on range ce qui a été appris. */
     fun finish() {
+        if (panel == Panel.Dictation) dictation.cancel()
         inlineViews = emptyList()
         panel = Panel.None
         emojiQuery = null
@@ -769,6 +772,39 @@ class KeyboardController(private val service: InputMethodService) {
             }
         }
         notice = "Cette appli ne prend pas les images du clavier : choisis la conversation."
+    }
+
+    // ─── Dictée (Whisper, hors ligne) ──────────────────────────────────────
+
+    val dictation = Dictation(service)
+
+    /** Toucher du micro : le panneau de dictée s'ouvre et l'écoute commence. */
+    fun startDictation() {
+        finishWord(autocorrect = true)
+        strip = Strip.Empty
+        toolbar = false
+        emojiQuery = null
+        panel = Panel.Dictation
+        dictation.start(settings.autoStopDictation) { text -> insertDictation(text) }
+    }
+
+    /** Toucher du gros micro pendant l'écoute : fin de la prise de parole. */
+    fun stopDictation() = dictation.stop()
+
+    fun cancelDictation() {
+        dictation.cancel()
+        closePanel()
+    }
+
+    private fun insertDictation(text: String) {
+        val ic = ic ?: return
+        val before = ic.getTextBeforeCursor(4, 0) ?: ""
+        ic.commitText(SpeechText.forInsertion(text, before), 1)
+        lastWasSpace = false
+        lastCorrection = null
+        closePanel()
+        val words = text.trimEnd('.', '!', '?', ' ').split(' ')
+        previousWord = words.lastOrNull()?.let { Words.splitElision(it).second }
     }
 
     // ─── Proton Pass & co (suggestions « en ligne ») ──────────────────────

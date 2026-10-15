@@ -23,6 +23,6 @@ ondulation brève à l'ouverture). Pas d'écriture en glissant, pas de GIF (déj
    code SMS reçu par Fern Messages proposé d'un toucher, suggestions de Proton Pass dans la barre (saisie auto).
 4. ✅ **v0.4** — memes et stickers : bibliothèque commune avec les stickers de Fern, mots-clés, envoi direct
    (Signal, WhatsApp, Fern Messages) ou copie à coller.
-5. **v0.5** — dictée **Whisper** hors ligne (whisper.cpp, modèle « small » importé une fois par Jules).
+5. ✅ **v0.5** — dictée **Whisper** hors ligne (whisper.cpp, modèle « small » importé une fois par Jules).
 
 Plus tard, si l'envie vient : traduction hors ligne, mode une main, mélanges d'emoji, raccourcis de texte.
