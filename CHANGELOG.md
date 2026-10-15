@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.1.1 (code 2) — 2026-10-15
+
+- **Écume repensée** : un seul ruban qui naît du bord de la vague, se divise en deux brins qui se croisent,
+  puis revient s'y fondre. Raccords tout en douceur (aucune coupure), fondu de transparence aux deux bouts,
+  bords adoucis, léger voile d'embruns et fin liseré sur la crête.
+- **Ouverture** : l'écume se soulève et s'étoffe en 1,3 s, la vague glisse et se pose, puis tout se fige.
+
 ## Fern Clavier v0.1.0 (code 1) · Fern Launcher v0.26.1 (code 40) — 2026-10-15
 
 Nouvelle appli sœur : **Fern Clavier** (`com.atelierjlg.fern.keyboard`), le clavier de l'univers Fern.
