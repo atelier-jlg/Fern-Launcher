@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.atelierjlg.fern.keyboard.EnterKind
 import com.atelierjlg.fern.keyboard.KeyboardController
+import com.atelierjlg.fern.keyboard.Panel
 import com.atelierjlg.fern.keyboard.logic.Key
 import com.atelierjlg.fern.keyboard.logic.KeyAction
 import com.atelierjlg.fern.keyboard.logic.Layouts
@@ -75,7 +76,7 @@ private const val LONG_PRESS_SPACE_MS = 600L
 
 /** Bricolage Grotesque un peu étroite et demi-grasse, pour les lettres des touches. */
 @OptIn(ExperimentalTextApi::class)
-private val keyFont = FontFamily(
+internal val keyFont = FontFamily(
     Font(
         resId = ThemeR.font.bricolage_grotesque,
         weight = FontWeight(600),
@@ -84,7 +85,7 @@ private val keyFont = FontFamily(
 )
 
 @OptIn(ExperimentalTextApi::class)
-private val labelFont = FontFamily(
+internal val labelFont = FontFamily(
     Font(
         resId = ThemeR.font.bricolage_grotesque,
         weight = FontWeight(700),
@@ -138,8 +139,14 @@ fun FernKeyboard(controller: KeyboardController) {
                     .navigationBarsPadding()
                     .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
             ) {
-                TopStrip(controller)
-                rows.forEachIndexed { index, row ->
+                if (controller.emojiQuery != null) EmojiSearchBar(controller) else TopStrip(controller)
+                // Les panneaux prennent exactement la place des touches (le clavier ne saute pas).
+                val keysHeight = keyHeight * 4 + if (settings.numberRow) keyHeight * 0.82f else 0.dp
+                val panel = controller.panel
+                if (panel == Panel.Clipboard) ClipboardPanel(controller, keysHeight)
+                if (panel == Panel.Emoji && controller.emojiQuery == null) EmojiPanel(controller, keysHeight)
+                val showKeys = panel == Panel.None || controller.emojiQuery != null
+                if (showKeys) rows.forEachIndexed { index, row ->
                     // La rangée de chiffres est un peu plus basse ; le pavé numérique un peu plus haut.
                     val height = when {
                         settings.numberRow && page == Page.Lettres && index == 0 -> keyHeight * 0.82f
@@ -159,8 +166,9 @@ fun FernKeyboard(controller: KeyboardController) {
 }
 
 /**
- * La barre du haut : les 3 suggestions pendant la frappe (ou le mot suivant), sinon le dernier texte
- * copié (à coller d'un toucher). Les réglages à droite.
+ * La barre du haut. À gauche, le bouton de la barre d'outils. Puis, selon le moment :
+ * la barre d'outils · les suggestions de Proton Pass · les 3 suggestions de mots ·
+ * le code SMS reçu / le dernier texte copié. Les réglages à droite quand il y a de la place.
  */
 @Composable
 private fun TopStrip(controller: KeyboardController) {
@@ -169,48 +177,85 @@ private fun TopStrip(controller: KeyboardController) {
         Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val strip = controller.strip
-        val clip = controller.clip
-        if (!strip.isEmpty) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                SuggestionSlot(strip.left, literal = strip.leftIsLiteral, highlight = false, bold = false, controller)
-                SuggestionSlot(strip.middle, literal = false, highlight = strip.middleIsCorrection, bold = true, controller)
-                SuggestionSlot(strip.right, literal = false, highlight = false, bold = false, controller)
-            }
-        } else {
-            Box(Modifier.weight(1f).padding(start = 2.dp)) {
-                if (clip != null) {
-                    Row(
-                        Modifier
-                            .widthIn(max = 260.dp)
-                            .clip(CircleShape)
-                            .background(c.lierre)
-                            .clickable { controller.pasteClip() }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        FernIcon(FernIcons.Copy, c.lichen, size = 16.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            clip.replace('\n', ' '),
-                            color = c.creme,
-                            style = TextStyle(fontFamily = keyFont, fontSize = 14.sp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
         Box(
             Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .clickable { controller.openSettings() }
-                .semantics { contentDescription = "Réglages du clavier" },
+                .background(if (controller.toolbar) c.lierre else c.mousse)
+                .clickable { controller.toggleToolbar() }
+                .semantics { contentDescription = "Barre d'outils" },
             contentAlignment = Alignment.Center,
         ) {
-            FernIcon(FernIcons.Settings, c.lichen, size = 18.dp)
+            FernIcon(if (controller.toolbar) FernIcons.Close else KeyIcons.Grid, c.lichen, size = 18.dp)
+        }
+        Spacer(Modifier.width(4.dp))
+        val strip = controller.strip
+        val showSettings: Boolean
+        when {
+            controller.toolbar -> {
+                ToolbarRow(controller)
+                showSettings = true
+            }
+            controller.inlineViews.isNotEmpty() -> {
+                InlineRow(controller)
+                showSettings = false
+            }
+            !strip.isEmpty -> {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    SuggestionSlot(strip.left, literal = strip.leftIsLiteral, highlight = false, bold = false, controller)
+                    SuggestionSlot(strip.middle, literal = false, highlight = strip.middleIsCorrection, bold = true, controller)
+                    SuggestionSlot(strip.right, literal = false, highlight = false, bold = false, controller)
+                    controller.stripEmoji?.let { e ->
+                        Box(
+                            Modifier.size(40.dp).clip(CircleShape).clickable { controller.insertEmoji(e) },
+                            contentAlignment = Alignment.Center,
+                        ) { Text(e, style = TextStyle(fontSize = 22.sp)) }
+                    }
+                }
+                showSettings = false
+            }
+            else -> {
+                Box(Modifier.weight(1f)) {
+                    val code = controller.smsCode
+                    val clip = controller.clip
+                    if (code != null) {
+                        CodeChip(code) { controller.pasteCode() }
+                    } else if (clip != null) {
+                        Row(
+                            Modifier
+                                .widthIn(max = 260.dp)
+                                .clip(CircleShape)
+                                .background(c.lierre)
+                                .clickable { controller.pasteClip() }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FernIcon(FernIcons.Copy, c.lichen, size = 16.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                clip.replace('\n', ' '),
+                                color = c.creme,
+                                style = TextStyle(fontFamily = keyFont, fontSize = 14.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                showSettings = true
+            }
+        }
+        if (showSettings) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable { controller.openSettings() }
+                    .semantics { contentDescription = "Réglages du clavier" },
+                contentAlignment = Alignment.Center,
+            ) {
+                FernIcon(FernIcons.Settings, c.lichen, size = 18.dp)
+            }
         }
     }
 }

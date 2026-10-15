@@ -3,6 +3,8 @@ package com.atelierjlg.fern.keyboard
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
+import android.net.Uri
+import android.view.View
 import android.inputmethodservice.InputMethodService
 import android.media.AudioManager
 import android.os.Build
@@ -20,6 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.atelierjlg.fern.keyboard.logic.ClipHistory
+import com.atelierjlg.fern.keyboard.logic.EmojiIndex
 import com.atelierjlg.fern.keyboard.logic.KeyAction
 import com.atelierjlg.fern.keyboard.logic.Page
 import com.atelierjlg.fern.keyboard.logic.Predictor
@@ -30,6 +34,9 @@ import com.atelierjlg.fern.keyboard.logic.Words
 
 /** À quoi sert la touche Entrée dans le champ actuel (son picto change). */
 enum class EnterKind { NewLine, Send, Search, Go, Next, Previous, Done }
+
+/** Ce qui remplace les touches : rien (les touches), le presse-papiers, les emoji. */
+enum class Panel { None, Clipboard, Emoji }
 
 /**
  * Le « cerveau » du clavier : reçoit les touches et écrit dans le champ de texte de l'appli ouverte.
@@ -59,6 +66,35 @@ class KeyboardController(private val service: InputMethodService) {
     /** Les 3 suggestions affichées (mot en cours, ou mot suivant). */
     var strip by mutableStateOf(Strip.Empty)
         private set
+    /** Un emoji qui va avec le mot en cours (« chat » → 🐈), proposé au bout de la barre. */
+    var stripEmoji by mutableStateOf<String?>(null)
+        private set
+
+    // ─── Barre d'outils et panneaux (v0.3) ───
+    var panel by mutableStateOf(Panel.None)
+        private set
+    /** La barre d'outils est ouverte à la place des suggestions. */
+    var toolbar by mutableStateOf(false)
+        private set
+    /** Recherche d'emoji en cours (null = pas de recherche) : les touches écrivent ici. */
+    var emojiQuery by mutableStateOf<String?>(null)
+        private set
+    /** Onglet des emoji : -2 favoris, -1 récents, 0… groupes. */
+    var emojiTab by mutableIntStateOf(-1)
+        private set
+    var clips by mutableStateOf<List<ClipHistory.Entry>>(emptyList())
+        private set
+    var favorites by mutableStateOf<List<String>>(emptyList())
+        private set
+    var recents by mutableStateOf<List<String>>(emptyList())
+        private set
+    /** Le dernier code de vérification reçu par Fern Messages (10 minutes). */
+    var smsCode by mutableStateOf<String?>(null)
+        private set
+    /** Suggestions de Proton Pass (ou d'un autre gestionnaire de mots de passe), déjà dessinées par Android. */
+    var inlineViews by mutableStateOf<List<View>>(emptyList())
+        private set
+    private var usedCode: String? = null
 
     /** Comment gérer la majuscule auto dans ce champ. */
     private enum class Caps { None, Sentences, System }
@@ -122,6 +158,12 @@ class KeyboardController(private val service: InputMethodService) {
         learnOn = composeOn && settings.learnWords &&
             info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0
         if (composeOn) Lexicon.ensureLoaded(service, settings.contactNames)
+        KeyboardData.ensureLoaded(service, settings.clipCount) { refreshData() }
+        panel = Panel.None
+        toolbar = false
+        emojiQuery = null
+        stripEmoji = null
+        refreshCode()
 
         enterKind = resolveEnter(info)
         shift = ShiftMode.Off
@@ -139,6 +181,9 @@ class KeyboardController(private val service: InputMethodService) {
 
     /** Le clavier se ferme : on laisse le mot en cours tel quel et on range ce qui a été appris. */
     fun finish() {
+        inlineViews = emptyList()
+        panel = Panel.None
+        emojiQuery = null
         if (composing.isNotEmpty()) {
             ic?.finishComposingText()
             composing.clear()
@@ -175,6 +220,12 @@ class KeyboardController(private val service: InputMethodService) {
 
     /** Écrit un texte (lettre, accent choisi à l'appui long, signe…). */
     fun type(text: String) {
+        // Recherche d'emoji : les touches écrivent dans la recherche, pas dans l'appli.
+        emojiQuery?.let { q ->
+            emojiQuery = q + TextRules.applyShift(text, shift)
+            if (shift == ShiftMode.Once) shift = ShiftMode.Off
+            return
+        }
         val ic = ic ?: return
         val out = TextRules.applyShift(text, shift)
         lastWasSpace = false
@@ -261,6 +312,10 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     fun delete() {
+        emojiQuery?.let { q ->
+            emojiQuery = q.dropLast(1)
+            return
+        }
         val ic = ic ?: return
         lastWasSpace = false
         // 1. ⌫ juste après une correction : on remet le mot tapé (et on le retient).
@@ -315,6 +370,10 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     fun space() {
+        emojiQuery?.let { q ->
+            emojiQuery = "$q "
+            return
+        }
         val ic = ic ?: return
         if (composing.isNotEmpty()) {
             finishWord(autocorrect = true, separator = " ")
@@ -342,6 +401,10 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     fun enter() {
+        if (emojiQuery != null) {
+            emojiQuery = null
+            return
+        }
         lastWasSpace = false
         finishWord(autocorrect = true)
         lastCorrection = null
@@ -424,10 +487,13 @@ class KeyboardController(private val service: InputMethodService) {
             return
         }
         val corrector = Lexicon.corrector() ?: return
+        val emojis = if (settings.emojiSuggestions) KeyboardData.emojis else null
         Lexicon.worker.execute {
             val s = runCatching { corrector.strip(word) }.getOrNull() ?: return@execute
+            val emoji = runCatching { emojis?.forWord(Words.splitElision(word).second) }.getOrNull()
             main.post {
                 if (seq != stripSeq) return@post
+                stripEmoji = emoji?.let { tone(it) }
                 computedFor = word
                 computed = if (word == keepAsIs) s.withoutCorrection() else s
                 strip = when {
@@ -442,6 +508,7 @@ class KeyboardController(private val service: InputMethodService) {
     /** Après un espace : les mots qui suivent souvent. */
     private fun refreshPredictions() {
         val seq = ++stripSeq
+        stripEmoji = null
         val previous = previousWord
         val before = beforePreviousWord
         if (!suggestOn || previous == null) {
@@ -503,16 +570,139 @@ class KeyboardController(private val service: InputMethodService) {
             ?.let { runCatching { it.coerceToText(service) }.getOrNull() }
             ?.toString()?.trim()
         clip = if (!sensitive && recent && !text.isNullOrEmpty() && text != pastedClip) text else null
+        // Historique : tout ce qui n'est pas sensible (même ancien), pour le tiroir du presse-papiers.
+        if (!sensitive && !text.isNullOrEmpty() && settings.clipCount > 0) {
+            if (KeyboardData.clips.add(text, desc?.timestamp ?: System.currentTimeMillis())) {
+                KeyboardData.saveClips(service)
+                clips = KeyboardData.clips.entries
+            }
+        }
     }
 
     fun pasteClip() {
         val text = clip ?: return
-        finishWord(autocorrect = false)
-        ic?.commitText(text, 1)
+        pasteText(text)
         pastedClip = text
         clip = null
+    }
+
+    /** Colle un texte (presse-papiers, code SMS…) à la place du mot en cours. */
+    fun pasteText(text: String) {
+        finishWord(autocorrect = false)
+        ic?.commitText(text, 1)
         lastWasSpace = false
         lastCorrection = null
+        strip = Strip.Empty
+    }
+
+    // ─── Code SMS (prêté par Fern Messages) ────────────────────────────────
+
+    fun refreshCode() {
+        val found = runCatching {
+            service.contentResolver.query(CODES_URI, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull()
+        smsCode = found?.takeIf { it != usedCode }
+    }
+
+    fun pasteCode() {
+        val code = smsCode ?: return
+        pasteText(code)
+        usedCode = code
+        smsCode = null
+    }
+
+    // ─── Barre d'outils, presse-papiers, emoji ─────────────────────────────
+
+    /** Relit les données (après chargement ou changement). */
+    private fun refreshData() {
+        clips = KeyboardData.clips.entries
+        favorites = KeyboardData.memory.favorites.toList()
+        recents = KeyboardData.memory.recents.toList()
+        if (emojiTab == -1 && recents.isEmpty()) emojiTab = if (favorites.isNotEmpty()) -2 else 0
+    }
+
+    fun toggleToolbar() {
+        toolbar = !toolbar
+    }
+
+    fun openPanel(target: Panel) {
+        finishWord(autocorrect = false)
+        strip = Strip.Empty
+        toolbar = false
+        emojiQuery = null
+        panel = if (panel == target) Panel.None else target
+        if (panel == Panel.Emoji && emojiTab == -1 && recents.isEmpty()) emojiTab = if (favorites.isNotEmpty()) -2 else 0
+    }
+
+    fun closePanel() {
+        panel = Panel.None
+        emojiQuery = null
+    }
+
+    fun pickClip(text: String) {
+        closePanel()
+        pasteText(text)
+    }
+
+    fun togglePinClip(text: String) {
+        KeyboardData.clips.togglePin(text)
+        KeyboardData.saveClips(service)
+        clips = KeyboardData.clips.entries
+    }
+
+    fun removeClip(text: String) {
+        KeyboardData.clips.remove(text)
+        KeyboardData.saveClips(service)
+        clips = KeyboardData.clips.entries
+    }
+
+    fun clearClips() {
+        KeyboardData.clips.clearUnpinned()
+        KeyboardData.saveClips(service)
+        clips = KeyboardData.clips.entries
+        clip = null
+    }
+
+    fun selectEmojiTab(tab: Int) {
+        emojiTab = tab
+    }
+
+    fun startEmojiSearch() {
+        emojiQuery = ""
+        page = Page.Lettres
+        shift = ShiftMode.Off
+    }
+
+    /** Écrit un emoji (avec la teinte de peau choisie) et le range dans les récents. */
+    fun insertEmoji(emoji: String) {
+        finishWord(autocorrect = true, separator = if (composing.isNotEmpty()) " " else "")
+        ic?.commitText(emoji, 1)
+        lastWasSpace = false
+        lastCorrection = null
+        strip = Strip.Empty
+        stripEmoji = null
+        KeyboardData.memory.used(emoji)
+        KeyboardData.saveMemory(service)
+        recents = KeyboardData.memory.recents.toList()
+    }
+
+    /** Teinte de peau des réglages appliquée à un emoji du clavier. */
+    fun tone(e: com.atelierjlg.fern.keyboard.logic.Emoji): String = EmojiIndex.withSkinTone(e, settings.skinTone)
+
+    /** Appui long sur un emoji : favori (ou plus favori). */
+    fun toggleFavorite(emoji: String): Boolean {
+        val now = KeyboardData.memory.toggleFavorite(emoji)
+        KeyboardData.saveMemory(service)
+        favorites = KeyboardData.memory.favorites.toList()
+        return now
+    }
+
+    // ─── Proton Pass & co (suggestions « en ligne ») ──────────────────────
+
+    fun setInline(views: List<View>) {
+        inlineViews = views
     }
 
     // ─── Retours (vibration, son) et petits services ──────────────────────────
@@ -555,6 +745,9 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     companion object {
+        /** Le dernier code SMS, prêté par Fern Messages (permission de niveau signature). */
+        val CODES_URI: Uri = Uri.parse("content://com.atelierjlg.fern.messages.codes/latest")
+
         /** Un texte copié reste proposé 3 minutes. */
         private const val CLIP_RECENT_MS = 3 * 60_000L
         private const val MAX_WORD = 40

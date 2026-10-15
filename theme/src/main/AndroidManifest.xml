@@ -10,6 +10,13 @@
         android:protectionLevel="signature" />
     <uses-permission android:name="com.atelierjlg.fern.permission.READ_THEME" />
 
+    <!-- Le dernier code de vérification reçu par Fern Messages, lisible par Fern Clavier. -->
+    <permission
+        android:name="com.atelierjlg.fern.permission.READ_CODES"
+        android:label="Lire les codes de vérification de Fern Messages"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.atelierjlg.fern.permission.READ_CODES" />
+
     <!-- Depuis Android 11, il faut déclarer les applis qu'on veut « voir ». -->
     <queries>
         <package android:name="com.atelierjlg.fern" />

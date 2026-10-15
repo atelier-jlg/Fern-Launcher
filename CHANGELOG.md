@@ -3,6 +3,21 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.3.0 (code 5) · Fern Messages v0.5.1 (code 11) — 2026-10-15
+
+- **Barre d'outils** (bouton à gauche de la barre) : presse-papiers, emoji, tes 3 emoji favoris d'un toucher,
+  réglages.
+- **Presse-papiers** : les 5 derniers textes copiés (3, 5 ou 10, au choix), à épingler pour les garder,
+  à retirer d'un toucher. Les copies de mots de passe (marquées sensibles, ex. Proton Pass) n'y entrent jamais.
+- **Emoji** : 1 870 emoji par groupe, onglets Favoris et Récents, **recherche en français** (« chat »,
+  « coeur », « fête », « mdr »…), appui long = favori, teinte de peau au choix. Pendant la frappe, l'emoji
+  qui va avec le mot est proposé au bout de la barre (« chat » → 🐈).
+- **Code SMS** : le code de vérification reçu par Fern Messages est proposé 10 minutes dans la barre,
+  à coller d'un toucher (lisible seulement par nos applis, même clé de signature).
+- **Proton Pass** : ses suggestions d'identifiants s'affichent dans la barre du clavier (Android 11+).
+  Le clavier ne voit jamais le mot de passe : c'est Android qui remplit le champ.
+- Fern Messages : prête le dernier code reçu à Fern Clavier.
+
 ## Fern Clavier v0.2.1 (code 4) — 2026-10-15
 
 - **Correctif** : dans la v0.2.0, le dictionnaire n'était jamais chargé (les outils Android avaient

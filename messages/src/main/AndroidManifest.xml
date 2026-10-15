@@ -112,6 +112,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/mms_files" />
         </provider>
+        <!-- Dernier code de vérification reçu, lisible par Fern Clavier (même clé de signature). -->
+        <provider
+            android:name=".data.CodesProvider"
+            android:authorities="${applicationId}.codes"
+            android:exported="true"
+            android:readPermission="com.atelierjlg.fern.permission.READ_CODES" />
         <receiver android:name=".sms.NotificationActions" android:exported="false" />
         <receiver android:name=".sms.ScheduledReceiver" android:exported="false" />
         <receiver

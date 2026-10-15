@@ -215,6 +215,40 @@ private fun SettingsScreen() {
             }
         }
 
+        SectionLabel("Presse-papiers et emoji")
+        Card {
+            Text("Textes copiés gardés", style = Fern.type.corps, color = c.creme)
+            Text("Les copies de mots de passe ne sont jamais gardées", style = Fern.type.nomApp, color = c.lichen)
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0 to "Aucun", 3 to "3", 5 to "5", 10 to "10").forEach { (n, label) ->
+                    Pill(label, selected = settings.clipCount == n) { update(settings.copy(clipCount = n)) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Teinte des emoji", style = Fern.type.corps, color = c.creme)
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("👋", "👋🏻", "👋🏼", "👋🏽", "👋🏾", "👋🏿").forEachIndexed { i, hand ->
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape)
+                            .background(if (settings.skinTone == i) c.pistache else c.lierre)
+                            .clickable { update(settings.copy(skinTone = i)) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(hand, style = Fern.type.corps) }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Toggle("Emoji suggérés", "« chat » → 🐈 au bout de la barre", settings.emojiSuggestions) {
+                update(settings.copy(emojiSuggestions = it))
+            }
+            Text(
+                "Appui long sur un emoji pour l'ajouter à tes favoris (3 favoris dans la barre d'outils).",
+                style = Fern.type.nomApp,
+                color = c.lichen,
+            )
+        }
+
         SectionLabel("Frappe")
         Card {
             Toggle("Majuscules automatiques", "En début de phrase", settings.autoCaps) { update(settings.copy(autoCaps = it)) }
@@ -253,7 +287,7 @@ private fun SettingsScreen() {
 
         SectionLabel("Bientôt")
         Text(
-            "Presse-papiers (5 derniers), emoji favoris, memes et stickers, dictée Whisper hors ligne.",
+            "Memes et stickers, dictée Whisper hors ligne.",
             style = Fern.type.nomApp,
             color = c.lichen,
         )

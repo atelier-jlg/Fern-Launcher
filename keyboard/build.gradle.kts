@@ -75,6 +75,8 @@ base {
 
 dependencies {
     implementation(project(":theme"))
+    // Suggestions des gestionnaires de mots de passe (Proton Pass…) dans la barre du clavier.
+    implementation(libs.androidx.autofill)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

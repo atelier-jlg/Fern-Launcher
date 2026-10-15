@@ -19,7 +19,7 @@ ondulation brève à l'ouverture). Pas d'écriture en glissant, pas de GIF (déj
    - correction prudente (touches voisines en AZERTY, accents oubliés), jamais sur un mot connu ;
    - apprentissage : ⌫ juste après une correction remet le mot et le retient ; noms des contacts connus ;
    - Kotlin pur, testé hors du téléphone avec les phrases de Jules.
-3. **v0.3** — presse-papiers (5 derniers, épingler), emoji favoris / récents / recherche en français,
+3. ✅ **v0.3** — presse-papiers (5 derniers, épingler), emoji favoris / récents / recherche en français,
    code SMS reçu par Fern Messages proposé d'un toucher, suggestions de Proton Pass dans la barre (saisie auto).
 4. **v0.4** — memes et stickers : bibliothèque commune avec les stickers de Fern, mots-clés, envoi direct
    (Signal, WhatsApp, Fern Messages) ou copie à coller.

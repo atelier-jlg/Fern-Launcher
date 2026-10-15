@@ -23,6 +23,11 @@ data class KeyboardSettings(
     val suggestions: Boolean = true,
     val learnWords: Boolean = true,
     val contactNames: Boolean = false,
+    /** Combien de textes copiés garder (0 = pas d'historique). */
+    val clipCount: Int = 5,
+    /** Teinte de peau des emoji (0 = jaune, 1 à 5 = claire à foncée). */
+    val skinTone: Int = 0,
+    val emojiSuggestions: Boolean = true,
 )
 
 /** Rangement des réglages dans le téléphone (SharedPreferences : un petit fichier clé → valeur). */
@@ -46,6 +51,9 @@ object KeyboardPrefs {
             suggestions = p.getBoolean("suggestions", d.suggestions),
             learnWords = p.getBoolean("learnWords", d.learnWords),
             contactNames = p.getBoolean("contactNames", d.contactNames),
+            clipCount = p.getInt("clipCount", d.clipCount),
+            skinTone = p.getInt("skinTone", d.skinTone),
+            emojiSuggestions = p.getBoolean("emojiSuggestions", d.emojiSuggestions),
         )
     }
 
@@ -63,6 +71,9 @@ object KeyboardPrefs {
             .putBoolean("suggestions", s.suggestions)
             .putBoolean("learnWords", s.learnWords)
             .putBoolean("contactNames", s.contactNames)
+            .putInt("clipCount", s.clipCount)
+            .putInt("skinTone", s.skinTone)
+            .putBoolean("emojiSuggestions", s.emojiSuggestions)
             .apply()
     }
 }

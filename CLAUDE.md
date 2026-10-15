@@ -195,6 +195,10 @@ app/src/main/java/com/atelierjlg/fern/
   `logic/Corrector` (prudent, élisions, accents, apostrophes, AZERTY), `Predictor` (mot suivant),
   `UserDictionary` (mots appris, fichier `mots-appris.tsv`). `Lexicon` charge tout sur un fil à part.
   Les tests de `CorrectorTest` utilisent le vrai dictionnaire : y ajouter les mots que Jules signale.
+- v0.3 : `KeyboardData` (emoji `assets/emoji_fr.tsv` via `tools/build_emoji.py`, favoris/récents, historique
+  du presse-papiers), `ui/Panels.kt` (barre d'outils, presse-papiers, emoji, recherche). Code SMS : Fern Messages
+  publie `content://com.atelierjlg.fern.messages.codes/latest` (permission signature `READ_CODES`, module theme).
+  Proton Pass : suggestions « inline » (InlineSuggestionsRequest, androidx.autofill) dans la barre.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

@@ -8,6 +8,11 @@
     <!-- Optionnel (réglage « Noms de mes contacts ») : pour ne jamais « corriger » un prénom. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <!-- Fern Messages prête le dernier code reçu par SMS. -->
+    <queries>
+        <package android:name="com.atelierjlg.fern.messages" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

@@ -76,6 +76,8 @@ object MessageNotifier {
         }
 
         val code = Otp.find(unread.last().body)
+        // Prêté à Fern Clavier (10 minutes) pour le coller d'un toucher.
+        if (code != null) com.atelierjlg.fern.messages.data.LastCode.save(context, code, unread.last().date)
         val builder = Notification.Builder(context, if (mode == NotifyMode.Son) CHANNEL_SOUND else CHANNEL_SILENT)
             .setSmallIcon(R.drawable.ic_notification_message)
             .setStyle(style)

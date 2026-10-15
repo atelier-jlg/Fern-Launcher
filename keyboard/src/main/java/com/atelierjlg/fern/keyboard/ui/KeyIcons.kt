@@ -33,4 +33,25 @@ object KeyIcons {
     val Return = icon("corner-down-left", "M20 4v7a4 4 0 0 1-4 4H4", "M9 10l-5 5 5 5")
     /** Aller / suivant. */
     val ArrowRight = icon("arrow-right", "M5 12h14", "M12 5l7 7-7 7")
+    /** Ouvrir / fermer la barre d'outils. */
+    val Grid = icon(
+        "grid",
+        "M5 3h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+        "M16 3h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+        "M5 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z",
+        "M16 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z",
+    )
+    val Clipboard = icon(
+        "clipboard",
+        "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2",
+        "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z",
+    )
+    val Smile = icon("smile", "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01")
+    val Pin = icon(
+        "pin",
+        "M12 17v5",
+        "M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z",
+    )
+    /** Code de vérification (un bouclier). */
+    val Shield = icon("shield", "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", "M9 12l2 2 4-4")
 }
