@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Fabrique le dictionnaire de Fern Clavier : keyboard/src/main/assets/dico_fr.txt.gz
+Fabrique le dictionnaire de Fern Clavier : keyboard/src/main/assets/dico_fr.dat
+(texte « mot<TAB>fréquence » compressé en gzip ; extension .dat car les outils Android décompressent
+d'office les fichiers .gz des assets et les renomment)
 
 Deux sources libres, téléchargées une fois :
   1. an-array-of-french-words (MIT) : 336 000 mots français bien orthographiés (avec accents).
@@ -148,7 +150,7 @@ def main(words_json: str, subtitles: str) -> None:
         entries[w] = max(entries.get(w, 0), 500)
 
     out = sorted(entries.items(), key=lambda kv: (fold(kv[0]), kv[0]))
-    target = Path(__file__).resolve().parent.parent / "keyboard/src/main/assets/dico_fr.txt.gz"
+    target = Path(__file__).resolve().parent.parent / "keyboard/src/main/assets/dico_fr.dat"
     target.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(target, "wt", encoding="utf-8", compresslevel=9) as f:
         for w, c in out:

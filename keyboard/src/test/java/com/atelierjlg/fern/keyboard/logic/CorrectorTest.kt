@@ -7,13 +7,13 @@ import org.junit.Test
 import java.io.File
 
 /**
- * La correction, testée avec le VRAI dictionnaire (src/main/assets/dico_fr.txt.gz).
+ * La correction, testée avec le VRAI dictionnaire (src/main/assets/dico_fr.dat).
  * Ajoute ici les phrases que le clavier massacre : elles deviennent des tests qui doivent passer.
  */
 class CorrectorTest {
     companion object {
         private val dict: Dictionary by lazy {
-            File("src/main/assets/dico_fr.txt.gz").inputStream().use { Dictionary.load(it) }
+            File("src/main/assets/dico_fr.dat").inputStream().use { Dictionary.load(it) }
         }
         private val corrector by lazy { Corrector(dict) }
     }

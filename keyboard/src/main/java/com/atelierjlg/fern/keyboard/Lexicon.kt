@@ -13,7 +13,7 @@ import java.util.concurrent.Executors
 
 /**
  * Tout le vocabulaire du clavier, chargé une fois en arrière-plan :
- * - le dictionnaire français (assets/dico_fr.txt.gz, ≈ 1 s au premier démarrage) ;
+ * - le dictionnaire français (assets/dico_fr.dat, ≈ 1 s au premier démarrage) ;
  * - les mots appris (fichier mots-appris.tsv, dans le téléphone uniquement) ;
  * - les prénoms et noms des contacts (si Jules l'a autorisé).
  *
@@ -42,7 +42,7 @@ object Lexicon {
             loading = true
             worker.execute {
                 runCatching {
-                    val dict = app.assets.open("dico_fr.txt.gz").use { Dictionary.load(it) }
+                    val dict = app.assets.open("dico_fr.dat").use { Dictionary.load(it) }
                     user = readUser(app)
                     contacts = if (withContacts) readContacts(app) else emptyMap()
                     dictionary = dict

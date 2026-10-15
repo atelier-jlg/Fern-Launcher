@@ -3,6 +3,11 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.2.1 (code 4) — 2026-10-15
+
+- **Correctif** : dans la v0.2.0, le dictionnaire n'était jamais chargé (les outils Android avaient
+  décompressé et renommé le fichier dans l'APK) : pas de correction ni de suggestions. Réparé.
+
 ## Fern Clavier v0.2.0 (code 3) — 2026-10-15
 
 Correction automatique et suggestions, pensées pour le français parlé.
