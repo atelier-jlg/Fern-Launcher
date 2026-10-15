@@ -674,7 +674,11 @@ private fun AboutSection() {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SettingRow(title = "Fern Launcher", subtitle = "Version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})", onClick = {})
         // Les applis sœurs : même thème, même clé. Toucher = l'ouvrir.
-        listOf("com.atelierjlg.fern.messages" to "Fern Messages", "com.atelierjlg.fern.contact" to "Fern Contact").forEach { (pkg, name) ->
+        listOf(
+            "com.atelierjlg.fern.messages" to "Fern Messages",
+            "com.atelierjlg.fern.contact" to "Fern Contact",
+            "com.atelierjlg.fern.keyboard" to "Fern Clavier",
+        ).forEach { (pkg, name) ->
             val version = remember(pkg) {
                 runCatching { context.packageManager.getPackageInfo(pkg, 0).versionName }.getOrNull()
             }

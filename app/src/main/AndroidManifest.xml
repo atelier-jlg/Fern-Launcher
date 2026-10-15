@@ -49,6 +49,7 @@
         <!-- Applis sœurs (À propos, fiche contact). -->
         <package android:name="com.atelierjlg.fern.messages" />
         <package android:name="com.atelierjlg.fern.contact" />
+        <package android:name="com.atelierjlg.fern.keyboard" />
         <!-- Navigateurs Firefox possibles pour la recherche web. -->
         <package android:name="org.mozilla.firefox" />
         <package android:name="org.mozilla.fennec_fdroid" />

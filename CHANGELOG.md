@@ -3,6 +3,25 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.1.0 (code 1) · Fern Launcher v0.26.1 (code 40) — 2026-10-15
+
+Nouvelle appli sœur : **Fern Clavier** (`com.atelierjlg.fern.keyboard`), le clavier de l'univers Fern.
+
+- **Look « Vague »** : le haut du clavier est une vague douce, avec deux filets d'écume qui s'en détachent et
+  y reviennent ; l'écume ondule un instant à l'ouverture. Lettres posées sans plaques, majuscule et effacer
+  dans des ronds, Entrée en carmin. Couleurs du thème de Fern, police Bricolage Grotesque.
+- **AZERTY français** : accents à l'appui long (é è ê ë, à â, ç, ô œ, ù û…), majuscule (double toucher =
+  verrouillée), chiffres à l'appui long sur la rangée du haut ou rangée de chiffres en option, deux pages de
+  symboles, pavé numérique pour les numéros de téléphone.
+- **Petits plus** : majuscule automatique en début de phrase, deux espaces → « . », glisser sur l'espace pour
+  déplacer le curseur, appui long sur l'espace pour changer de clavier, effacer qui accélère, aperçu de la
+  lettre au-dessus du doigt, Entrée qui s'adapte (envoyer, rechercher, suivant…).
+- **Dernier texte copié** proposé quelques minutes en haut du clavier (jamais les mots de passe marqués
+  sensibles, comme ceux de Proton Pass).
+- **Réglages** : mise en route en 2 étapes, champ d'essai, vibration, son, hauteur des touches, écume animée.
+- **Aucune permission Internet** : rien de ce que tu tapes ne peut sortir du téléphone.
+- Fern Launcher : Fern Clavier apparaît dans Paramètres → À propos.
+
 ## Fern Messages v0.5.0 (code 10) — 2026-10-09
 
 - **Réglages** (roue dentée en haut de la liste) : appli SMS par défaut, masquer le texte sur l'écran verrouillé,

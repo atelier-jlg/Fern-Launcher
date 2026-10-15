@@ -157,10 +157,11 @@ app/src/main/java/com/atelierjlg/fern/
   Décision : **réécriture en Kotlin + Compose dans ce dépôt** (on garde l'esprit du natif Kotlin d'origine).
   Audit détaillé et feuille de route : `docs/applis-soeurs.md`. Les zips d'origine ne sont pas dans le dépôt.
 - Modules : `:app` (lanceur), `:theme` (commun : FernColors, FernType, police, thème partagé),
-  `:messages` (`com.atelierjlg.fern.messages`), `:contact` (`com.atelierjlg.fern.contact`). Identifiants définitifs.
+  `:messages` (`com.atelierjlg.fern.messages`), `:contact` (`com.atelierjlg.fern.contact`),
+  `:keyboard` (`com.atelierjlg.fern.keyboard`). Identifiants définitifs.
 - **Thème partagé** : Fern publie le thème actif (`ThemeShare`, format = export de thème) via
   `FernThemeProvider` (`content://com.atelierjlg.fern.theme/active`), permission `READ_THEME` de niveau signature
-  (déclarée par le module `theme` dans les trois applis) ⇒ **les trois APK doivent être signés avec la même clé**.
+  (déclarée par le module `theme` dans chaque appli) ⇒ **tous les APK doivent être signés avec la même clé**.
   Côté applis sœurs : `FernSharedTheme { }` (relu au retour dans l'appli + observateur ; dernier thème gardé en cache).
 - Versions séparées dans `gradle.properties` (`messagesVersionName/Code`, `contactVersionName/Code`),
   tags `messages-vX.Y.Z` / `contact-vX.Y.Z`, APK `fern-messages-vX.Y.Z-release.apk`, une entrée dans CHANGELOG.md.
@@ -177,6 +178,17 @@ app/src/main/java/com/atelierjlg/fern/
   `PhoneNumbers.kt` et leurs tests en local (le SDK Android, lui, n'est dispo que dans la CI).
 - Attention : deux fichiers de même nom dans le même package mais deux modules (ex. `FernTheme.kt`) ⇒ classes
   `…Kt` en double au moment du dex. Toujours des noms de fichiers uniques.
+
+## Fern Clavier (depuis le 2026-10-15)
+- Module `:keyboard` (`com.atelierjlg.fern.keyboard`, identifiant définitif). Versions `keyboardVersionName/Code`,
+  tags `clavier-vX.Y.Z`, APK `fern-clavier-vX.Y.Z-release.apk`. Feuille de route et choix : `docs/clavier.md`.
+- **Pas de permission INTERNET, jamais** (promesse faite à Jules). Pas de GIF en ligne, pas de cloud.
+- `FernKeyboardService` (InputMethodService + cycle de vie maison pour Compose), `KeyboardController` (écrit
+  dans l'InputConnection), `ui/FernKeyboard` (touches, gestes, accents), `ui/Wave` (vague + écume).
+  Logique pure testée dans `logic/` (Layouts, TextRules, WaveShape) — compilable en local dans un petit
+  projet Kotlin/JVM.
+- Look retenu : « Vague » (maquette B), écume à deux filets couleur Lichen, ondulation brève à l'ouverture.
+- Mots de passe : rien n'est gardé (Jules utilise Proton Pass). Copies « sensibles » jamais proposées.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

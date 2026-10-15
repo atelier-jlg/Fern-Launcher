@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Déclaration du clavier pour Android : ses réglages et sa langue (français, AZERTY). -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.atelierjlg.fern.keyboard.SettingsActivity"
+    android:supportsSwitchingToNextInputMethod="true">
+    <subtype
+        android:imeSubtypeLocale="fr_FR"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/subtype_fr" />
+</input-method>

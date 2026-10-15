@@ -1,10 +1,11 @@
-# Compile les APK de Fern Launcher, Fern Messages et Fern Contact sur les serveurs de GitHub.
+# Compile les APK de Fern Launcher, Fern Messages, Fern Contact et Fern Clavier sur les serveurs de GitHub.
 #
 # - À chaque push : l'APK est disponible dans l'onglet « Actions » (section Artifacts).
 # - Sur un tag « v0.2.0 » : une « Release » est créée avec l'APK à télécharger.
 # - Sur un push (hors pull request) avec un numéro de version pas encore publié : la Release
 #   (et son tag) sont créés automatiquement, avec l'APK signé.
-#   Chaque appli a son numéro (gradle.properties) et ses tags : v0.25.0, messages-v0.1.0, contact-v0.1.0.
+#   Chaque appli a son numéro (gradle.properties) et ses tags : v0.25.0, messages-v0.1.0, contact-v0.1.0,
+#   clavier-v0.1.0.
 name: Build APK
 
 on:
@@ -45,7 +46,8 @@ jobs:
           echo "name=$(prop fernVersionName)" >> "$GITHUB_OUTPUT"
           echo "messages=$(prop messagesVersionName)" >> "$GITHUB_OUTPUT"
           echo "contact=$(prop contactVersionName)" >> "$GITHUB_OUTPUT"
-          echo "Fern Launcher v$(prop fernVersionName) · Messages v$(prop messagesVersionName) · Contact v$(prop contactVersionName)"
+          echo "keyboard=$(prop keyboardVersionName)" >> "$GITHUB_OUTPUT"
+          echo "Fern Launcher v$(prop fernVersionName) · Messages v$(prop messagesVersionName) · Contact v$(prop contactVersionName) · Clavier v$(prop keyboardVersionName)"
 
       - name: Vérifier que le tag correspond à la version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -62,6 +64,7 @@ jobs:
           echo "exists=$(exists v${{ steps.version.outputs.name }})" >> "$GITHUB_OUTPUT"
           echo "messages=$(exists messages-v${{ steps.version.outputs.messages }})" >> "$GITHUB_OUTPUT"
           echo "contact=$(exists contact-v${{ steps.version.outputs.contact }})" >> "$GITHUB_OUTPUT"
+          echo "keyboard=$(exists clavier-v${{ steps.version.outputs.keyboard }})" >> "$GITHUB_OUTPUT"
 
       - name: Préparer la clé de signature
         env:
@@ -102,6 +105,12 @@ jobs:
           path: contact/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fern-clavier-v${{ steps.version.outputs.keyboard }}${{ env.SIGNATURE }}
+          path: keyboard/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
       - name: Publier la Release de Fern Launcher
         if: >-
           startsWith(github.ref, 'refs/tags/v') ||
@@ -133,4 +142,14 @@ jobs:
           tag_name: contact-v${{ steps.version.outputs.contact }}
           target_commitish: ${{ github.sha }}
           files: contact/build/outputs/apk/release/*.apk
+          make_latest: false
+
+      - name: Publier la Release de Fern Clavier
+        if: github.event_name == 'push' && env.SIGNATURE == '' && steps.published.outputs.keyboard == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Fern Clavier v${{ steps.version.outputs.keyboard }}
+          tag_name: clavier-v${{ steps.version.outputs.keyboard }}
+          target_commitish: ${{ github.sha }}
+          files: keyboard/build/outputs/apk/release/*.apk
           make_latest: false

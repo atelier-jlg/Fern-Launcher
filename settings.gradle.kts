@@ -25,3 +25,4 @@ include(":app")      // Fern Launcher
 include(":theme")    // commun : couleurs, police, thème partagé
 include(":messages") // Fern Messages (SMS/MMS)
 include(":contact")  // Fern Contact (contacts + téléphone)
+include(":keyboard") // Fern Clavier (clavier AZERTY)
