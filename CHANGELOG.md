@@ -3,6 +3,25 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.2.0 (code 3) — 2026-10-15
+
+Correction automatique et suggestions, pensées pour le français parlé.
+
+- **Dictionnaire** de 356 000 mots, classés par fréquence dans des sous-titres de films (la langue orale :
+  « ouais », « chelou », « resto », « dis-moi »…), + formes SMS (mdr, jsp, tkt, chui, koi…).
+- **Élisions gérées** : « m'ennuie », « t'inquiète », « qu'est-ce » ne sont plus jamais touchés.
+- **Correction prudente** à l'espace ou à la ponctuation, seulement si c'est sûr :
+  accents oubliés (deja → déjà, tres → très), apostrophes oubliées (jai → j'ai, cest → c'est,
+  daccord → d'accord), fautes de frappe AZERTY (bonjoru → bonjour, maintenat → maintenant),
+  mots collés (quelquechose → quelque chose, biensur → bien sûr, sava → ça va).
+- **Barre de 3 suggestions** : le mot tel que tapé « entre guillemets », la correction en pistache
+  (celle que l'espace écrira), d'autres propositions et complétions. Un toucher = le mot + un espace.
+- **Mot suivant** proposé après un espace (« on se » → voit, « bonne » → journée…), puis selon tes habitudes.
+- **Apprentissage** : ⌫ juste après une correction remet ton mot ET le retient ; un mot gardé deux fois
+  est appris. Rien n'est appris dans les champs de mot de passe ou « incognito ».
+- **Noms des contacts** (option, demande l'autorisation) : jamais corrigés.
+- Réglages : correction, suggestions, apprentissage, contacts, « Oublier les mots appris ».
+
 ## Fern Clavier v0.1.1 (code 2) — 2026-10-15
 
 - **Écume repensée** : un seul ruban qui naît du bord de la vague, se divise en deux brins qui se croisent,

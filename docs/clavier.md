@@ -12,8 +12,9 @@ ondulation brève à l'ouverture). Pas d'écriture en glissant, pas de GIF (déj
 1. ✅ **v0.1** — clavier de base : AZERTY, accents à l'appui long, majuscules (auto + verrouillage), chiffres,
    2 pages de symboles, pavé numérique, point auto, curseur sur l'espace, dernier texte copié, vague + écume,
    thème de Fern, réglages.
-2. **v0.2** — correction et suggestions :
-   - dictionnaire du français parlé (Lexique, fréquences tirées des sous-titres de films) + formes familières/SMS ;
+2. ✅ **v0.2** — correction et suggestions :
+   - dictionnaire du français parlé (fréquences des sous-titres OpenSubtitles + liste de mots MIT, voir
+     `tools/build_dictionary.py`) + formes familières/SMS ;
    - apostrophes gérées (m', t', j', l', d', qu'… : « m'ennuie » n'est plus massacré) ;
    - correction prudente (touches voisines en AZERTY, accents oubliés), jamais sur un mot connu ;
    - apprentissage : ⌫ juste après une correction remet le mot et le retient ; noms des contacts connus ;

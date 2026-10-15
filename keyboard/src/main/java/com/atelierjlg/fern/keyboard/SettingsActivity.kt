@@ -1,14 +1,18 @@
 package com.atelierjlg.fern.keyboard
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,10 +33,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +59,8 @@ import com.atelierjlg.fern.ui.kit.SectionLabel
 import com.atelierjlg.fern.ui.theme.Fern
 import com.atelierjlg.fern.ui.theme.FernIcon
 import com.atelierjlg.fern.ui.theme.FernIcons
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * L'écran de réglages de Fern Clavier (icône dans le tiroir, ou roue dentée sur le clavier).
@@ -106,6 +116,29 @@ private fun SettingsScreen() {
         KeyboardPrefs.save(context, new)
     }
 
+    var learned by remember { mutableIntStateOf(0) }
+    LaunchedEffect(check) { learned = withContext(Dispatchers.IO) { Lexicon.learnedCount(context) } }
+    var confirmForget by remember { mutableStateOf(false) }
+    val askContacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        update(settings.copy(contactNames = granted))
+        Lexicon.reloadContacts(context, granted)
+    }
+    if (confirmForget) {
+        AlertDialog(
+            onDismissRequest = { confirmForget = false },
+            title = { Text("Oublier les mots appris ?") },
+            text = { Text("Le clavier repartira de zéro (le dictionnaire, lui, reste).") },
+            confirmButton = {
+                TextButton(onClick = {
+                    Lexicon.forgetAll(context)
+                    learned = 0
+                    confirmForget = false
+                }) { Text("Oublier") }
+            },
+            dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("Annuler") } },
+        )
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -153,6 +186,35 @@ private fun SettingsScreen() {
             singleLine = false,
         )
 
+        SectionLabel("Correction")
+        Card {
+            Toggle("Correction automatique", "Corrige à l'espace, seulement quand c'est sûr", settings.autoCorrect) {
+                update(settings.copy(autoCorrect = it))
+            }
+            Toggle("Suggestions", "Trois mots au-dessus des touches", settings.suggestions) { update(settings.copy(suggestions = it)) }
+            Toggle("Apprendre mes mots", "⌫ juste après une correction = ton mot est retenu", settings.learnWords) {
+                update(settings.copy(learnWords = it))
+            }
+            Toggle("Noms de mes contacts", "Pour ne jamais « corriger » un prénom", settings.contactNames) { on ->
+                if (on && context.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    askContacts.launch(Manifest.permission.READ_CONTACTS)
+                } else {
+                    update(settings.copy(contactNames = on))
+                    Lexicon.reloadContacts(context, on)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { confirmForget = true }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Oublier les mots appris", style = Fern.type.corps, color = c.creme)
+                    Text("$learned mot${if (learned > 1) "s" else ""} retenu${if (learned > 1) "s" else ""}", style = Fern.type.nomApp, color = c.lichen)
+                }
+                FernIcon(FernIcons.Trash, c.lichen, size = 20.dp)
+            }
+        }
+
         SectionLabel("Frappe")
         Card {
             Toggle("Majuscules automatiques", "En début de phrase", settings.autoCaps) { update(settings.copy(autoCaps = it)) }
@@ -191,8 +253,14 @@ private fun SettingsScreen() {
 
         SectionLabel("Bientôt")
         Text(
-            "Correction automatique et suggestions, presse-papiers (5 derniers), emoji favoris, " +
-                "memes et stickers, dictée Whisper hors ligne.",
+            "Presse-papiers (5 derniers), emoji favoris, memes et stickers, dictée Whisper hors ligne.",
+            style = Fern.type.nomApp,
+            color = c.lichen,
+        )
+        SectionLabel("Crédits")
+        Text(
+            "Dictionnaire : fréquences des sous-titres OpenSubtitles (FrequencyWords, CC BY-SA 4.0) et " +
+                "liste de mots an-array-of-french-words (MIT). Police Bricolage Grotesque (OFL).",
             style = Fern.type.nomApp,
             color = c.lichen,
         )

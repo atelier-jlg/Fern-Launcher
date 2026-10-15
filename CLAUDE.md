@@ -189,6 +189,11 @@ app/src/main/java/com/atelierjlg/fern/
   projet Kotlin/JVM.
 - Look retenu : « Vague » (maquette B), écume à deux filets couleur Lichen, ondulation brève à l'ouverture.
 - Mots de passe : rien n'est gardé (Jules utilise Proton Pass). Copies « sensibles » jamais proposées.
+- Correction (v0.2) : dictionnaire `keyboard/src/main/assets/dico_fr.txt.gz` fabriqué par
+  `tools/build_dictionary.py` (sources téléchargées à la main, voir l'en-tête du script ; CC BY-SA 4.0).
+  `logic/Corrector` (prudent, élisions, accents, apostrophes, AZERTY), `Predictor` (mot suivant),
+  `UserDictionary` (mots appris, fichier `mots-appris.tsv`). `Lexicon` charge tout sur un fil à part.
+  Les tests de `CorrectorTest` utilisent le vrai dictionnaire : y ajouter les mots que Jules signale.
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

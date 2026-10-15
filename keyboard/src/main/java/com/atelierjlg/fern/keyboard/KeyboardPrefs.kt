@@ -19,6 +19,10 @@ data class KeyboardSettings(
     val cursorOnSpace: Boolean = true,
     val foamAnimation: Boolean = true,
     val keyHeight: KeyHeight = KeyHeight.Normale,
+    val autoCorrect: Boolean = true,
+    val suggestions: Boolean = true,
+    val learnWords: Boolean = true,
+    val contactNames: Boolean = false,
 )
 
 /** Rangement des réglages dans le téléphone (SharedPreferences : un petit fichier clé → valeur). */
@@ -38,6 +42,10 @@ object KeyboardPrefs {
             foamAnimation = p.getBoolean("foamAnimation", d.foamAnimation),
             keyHeight = p.getString("keyHeight", null)
                 ?.let { name -> KeyHeight.entries.firstOrNull { it.name == name } } ?: d.keyHeight,
+            autoCorrect = p.getBoolean("autoCorrect", d.autoCorrect),
+            suggestions = p.getBoolean("suggestions", d.suggestions),
+            learnWords = p.getBoolean("learnWords", d.learnWords),
+            contactNames = p.getBoolean("contactNames", d.contactNames),
         )
     }
 
@@ -51,6 +59,10 @@ object KeyboardPrefs {
             .putBoolean("cursorOnSpace", s.cursorOnSpace)
             .putBoolean("foamAnimation", s.foamAnimation)
             .putString("keyHeight", s.keyHeight.name)
+            .putBoolean("autoCorrect", s.autoCorrect)
+            .putBoolean("suggestions", s.suggestions)
+            .putBoolean("learnWords", s.learnWords)
+            .putBoolean("contactNames", s.contactNames)
             .apply()
     }
 }

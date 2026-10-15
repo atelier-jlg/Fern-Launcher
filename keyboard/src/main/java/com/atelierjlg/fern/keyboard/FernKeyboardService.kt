@@ -76,6 +76,7 @@ class FernKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegi
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        controller.finish()
         super.onFinishInputView(finishingInput)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     }
@@ -85,7 +86,7 @@ class FernKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegi
         candidatesStart: Int, candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        controller.onSelectionChanged()
+        controller.onSelectionChanged(newSelStart, newSelEnd, candidatesEnd)
     }
 
     /**

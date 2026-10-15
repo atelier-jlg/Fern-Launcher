@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -157,35 +158,47 @@ fun FernKeyboard(controller: KeyboardController) {
     }
 }
 
-/** La barre du haut : le dernier texte copié (à coller d'un toucher) et les réglages. */
+/**
+ * La barre du haut : les 3 suggestions pendant la frappe (ou le mot suivant), sinon le dernier texte
+ * copié (à coller d'un toucher). Les réglages à droite.
+ */
 @Composable
 private fun TopStrip(controller: KeyboardController) {
     val c = Fern.colors
     Row(
-        Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 6.dp),
+        Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.weight(1f)) {
-            val clip = controller.clip
-            if (clip != null) {
-                Row(
-                    Modifier
-                        .widthIn(max = 260.dp)
-                        .clip(CircleShape)
-                        .background(c.lierre)
-                        .clickable { controller.pasteClip() }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FernIcon(FernIcons.Copy, c.lichen, size = 16.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        clip.replace('\n', ' '),
-                        color = c.creme,
-                        style = TextStyle(fontFamily = keyFont, fontSize = 14.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+        val strip = controller.strip
+        val clip = controller.clip
+        if (!strip.isEmpty) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                SuggestionSlot(strip.left, literal = strip.leftIsLiteral, highlight = false, bold = false, controller)
+                SuggestionSlot(strip.middle, literal = false, highlight = strip.middleIsCorrection, bold = true, controller)
+                SuggestionSlot(strip.right, literal = false, highlight = false, bold = false, controller)
+            }
+        } else {
+            Box(Modifier.weight(1f).padding(start = 2.dp)) {
+                if (clip != null) {
+                    Row(
+                        Modifier
+                            .widthIn(max = 260.dp)
+                            .clip(CircleShape)
+                            .background(c.lierre)
+                            .clickable { controller.pasteClip() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FernIcon(FernIcons.Copy, c.lichen, size = 16.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            clip.replace('\n', ' '),
+                            color = c.creme,
+                            style = TextStyle(fontFamily = keyFont, fontSize = 14.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -198,6 +211,37 @@ private fun TopStrip(controller: KeyboardController) {
             contentAlignment = Alignment.Center,
         ) {
             FernIcon(FernIcons.Settings, c.lichen, size = 18.dp)
+        }
+    }
+}
+
+/** Une case de suggestion. La correction qui sera appliquée à l'espace est en pistache. */
+@Composable
+private fun RowScope.SuggestionSlot(word: String?, literal: Boolean, highlight: Boolean, bold: Boolean, controller: KeyboardController) {
+    val c = Fern.colors
+    Box(
+        Modifier
+            .weight(1f)
+            .height(40.dp)
+            .padding(horizontal = 2.dp)
+            .clip(CircleShape)
+            .background(if (highlight) c.pistache else c.mousse)
+            .then(if (word != null) Modifier.clickable { controller.pick(word) } else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (word != null) {
+            Text(
+                if (literal) "« $word »" else word,
+                color = when {
+                    highlight -> c.nuit
+                    bold -> c.creme
+                    else -> c.lichen
+                },
+                style = TextStyle(fontFamily = if (bold) labelFont else keyFont, fontSize = 16.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 6.dp),
+            )
         }
     }
 }

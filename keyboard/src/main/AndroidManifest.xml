@@ -5,6 +5,8 @@
          il ne doit rien pouvoir envoyer nulle part. -->
     <!-- Le petit « tic » au toucher des touches. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Optionnel (réglage « Noms de mes contacts ») : pour ne jamais « corriger » un prénom. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:allowBackup="true"
