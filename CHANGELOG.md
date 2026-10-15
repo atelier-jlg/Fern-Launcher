@@ -3,6 +3,15 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.4.0 (code 6) · Fern Launcher v0.26.2 (code 41) — 2026-10-15
+
+- **Memes et stickers** (barre d'outils → plaque pistache) : tes images en grille, filtres par mots-clés,
+  les plus utilisées en premier. Un toucher = envoyé dans la conversation (Signal, WhatsApp… quand l'appli
+  accepte les images du clavier ; sinon le partage d'Android s'ouvre, vers la même appli).
+- **Bibliothèque** (réglages du clavier) : « Ajouter des images » depuis la galerie, « Stickers de Fern » pour
+  récupérer d'un coup les stickers importés dans Fern Launcher, mots-clés et suppression d'un toucher.
+- Fern Launcher : prête ses stickers à Fern Clavier (lecture seule, même clé de signature).
+
 ## Fern Clavier v0.3.0 (code 5) · Fern Messages v0.5.1 (code 11) — 2026-10-15
 
 - **Barre d'outils** (bouton à gauche de la barre) : presse-papiers, emoji, tes 3 emoji favoris d'un toucher,

@@ -11,6 +11,13 @@
     <!-- Fern Messages prête le dernier code reçu par SMS. -->
     <queries>
         <package android:name="com.atelierjlg.fern.messages" />
+        <!-- Fern Launcher prête les stickers de Jules. -->
+        <package android:name="com.atelierjlg.fern" />
+        <!-- Envoi d'un meme vers l'appli ouverte (repli quand elle n'accepte pas les images du clavier). -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="image/*" />
+        </intent>
     </queries>
 
     <application
@@ -30,6 +37,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Les memes prêtés à l'appli où l'on écrit, le temps de l'envoi. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.images"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/meme_files" />
+        </provider>
 
         <!-- Le clavier lui-même : un « service de saisie » qu'Android affiche sous les champs de texte. -->
         <service

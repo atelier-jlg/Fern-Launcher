@@ -199,6 +199,9 @@ app/src/main/java/com/atelierjlg/fern/
   du presse-papiers), `ui/Panels.kt` (barre d'outils, presse-papiers, emoji, recherche). Code SMS : Fern Messages
   publie `content://com.atelierjlg.fern.messages.codes/latest` (permission signature `READ_CODES`, module theme).
   Proton Pass : suggestions « inline » (InlineSuggestionsRequest, androidx.autofill) dans la barre.
+- v0.4 : `Memes` (dossier privé `memes/`, liste `memes.tsv`, miniatures), envoi par `commitContent`
+  (FileProvider `${applicationId}.images`) sinon partage vers l'appli ouverte. Fern Launcher prête ses stickers :
+  `content://com.atelierjlg.fern.stickers/list` et `/file/<nom>` (FernStickersProvider, permission READ_THEME).
 
 ## Décisions de détail (session du 2026-10-06)
 - Recherche (glisser ↓) : panneau **du haut**, résultats **applis puis web**. Le web s'ouvre comme un

@@ -142,5 +142,11 @@
             android:authorities="${applicationId}.theme"
             android:exported="true"
             android:readPermission="com.atelierjlg.fern.permission.READ_THEME" />
+        <!-- Les stickers de Jules, prêtés à Fern Clavier (même clé de signature). -->
+        <provider
+            android:name=".data.FernStickersProvider"
+            android:authorities="${applicationId}.stickers"
+            android:exported="true"
+            android:readPermission="com.atelierjlg.fern.permission.READ_THEME" />
     </application>
 </manifest>

@@ -145,6 +145,7 @@ fun FernKeyboard(controller: KeyboardController) {
                 val panel = controller.panel
                 if (panel == Panel.Clipboard) ClipboardPanel(controller, keysHeight)
                 if (panel == Panel.Emoji && controller.emojiQuery == null) EmojiPanel(controller, keysHeight)
+                if (panel == Panel.Memes) MemesPanel(controller, keysHeight)
                 val showKeys = panel == Panel.None || controller.emojiQuery != null
                 if (showKeys) rows.forEachIndexed { index, row ->
                     // La rangée de chiffres est un peu plus basse ; le pavé numérique un peu plus haut.
@@ -218,7 +219,17 @@ private fun TopStrip(controller: KeyboardController) {
                 Box(Modifier.weight(1f)) {
                     val code = controller.smsCode
                     val clip = controller.clip
-                    if (code != null) {
+                    val notice = controller.notice
+                    if (notice != null) {
+                        Text(
+                            notice,
+                            color = c.lichen,
+                            style = TextStyle(fontFamily = keyFont, fontSize = 13.sp),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 6.dp),
+                        )
+                    } else if (code != null) {
                         CodeChip(code) { controller.pasteCode() }
                     } else if (clip != null) {
                         Row(

@@ -30,10 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
@@ -62,6 +64,7 @@ fun RowScope.ToolbarRow(controller: KeyboardController) {
     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ToolPlate(KeyIcons.Clipboard, "Presse-papiers", c.creme, c.nuit) { controller.openPanel(Panel.Clipboard) }
         ToolPlate(KeyIcons.Smile, "Emoji", c.roseCarmin, c.nuit) { controller.openPanel(Panel.Emoji) }
+        ToolPlate(FernIcons.Image, "Memes et stickers", c.pistache, c.nuit) { controller.openPanel(Panel.Memes) }
         Spacer(Modifier.weight(1f))
         controller.favorites.take(3).forEach { e ->
             Box(
@@ -320,6 +323,68 @@ fun EmojiSearchBar(controller: KeyboardController) {
     }
 }
 
+// ─── Memes et stickers ─────────────────────────────────────────────────────
+
+@Composable
+fun MemesPanel(controller: KeyboardController, height: Dp) {
+    val c = Fern.colors
+    val filter = controller.memeFilter
+    val shown = remember(controller.memes, filter) {
+        if (filter == null) controller.memes else controller.memes.filter { filter in it.tags }
+    }
+    Column(Modifier.fillMaxWidth().height(height).padding(horizontal = 6.dp)) {
+        PanelHeader("Memes et stickers", onBack = { controller.closePanel() }, action = FernIcons.Plus to { controller.openSettings() })
+        if (controller.memeTags.isNotEmpty()) {
+            LazyRow(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                items(controller.memeTags, key = { it }) { tag ->
+                    val on = tag == filter
+                    Box(
+                        Modifier.height(32.dp).clip(CircleShape).background(if (on) c.pistache else c.lierre)
+                            .clickable { controller.selectMemeFilter(tag) }.padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(tag, color = if (on) c.nuit else c.creme, style = TextStyle(fontFamily = keyFont, fontSize = 14.sp)) }
+                }
+            }
+        }
+        if (shown.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "Pas encore de memes.\nAjoute tes images ou tes stickers de Fern dans les réglages (+).",
+                    color = c.lichen,
+                    style = TextStyle(fontFamily = keyFont, fontSize = 14.sp),
+                )
+            }
+        } else {
+            LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize().padding(top = 4.dp)) {
+                items(shown, key = { it.id }) { meme -> MemeCell(meme, controller) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemeCell(meme: com.atelierjlg.fern.keyboard.logic.MemeLibrary.Meme, controller: KeyboardController) {
+    val c = Fern.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val bitmap by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, meme.file) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { com.atelierjlg.fern.keyboard.Memes.thumbnail(context, meme) }.getOrNull() }
+    }
+    Box(
+        Modifier.padding(3.dp).height(84.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.lierre)
+            .clickable { controller.sendMeme(meme) },
+        contentAlignment = Alignment.Center,
+    ) {
+        bitmap?.let {
+            androidx.compose.foundation.Image(
+                it.asImageBitmap(),
+                contentDescription = meme.tags.joinToString(", ").ifEmpty { "meme" },
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(4.dp),
+            )
+        }
+    }
+}
+
 // ─── Petits morceaux communs ───────────────────────────────────────────────
 
 @Composable
@@ -335,7 +400,7 @@ private fun PanelHeader(title: String, onBack: () -> Unit, action: Pair<ImageVec
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
-        action?.let { (icon, run) -> SmallIcon(icon, c.lichen, "Tout effacer", run) }
+        action?.let { (icon, run) -> SmallIcon(icon, c.lichen, if (icon == FernIcons.Plus) "Ajouter" else "Tout effacer", run) }
     }
 }
 

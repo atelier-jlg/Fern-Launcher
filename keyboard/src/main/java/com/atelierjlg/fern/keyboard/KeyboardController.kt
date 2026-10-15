@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import com.atelierjlg.fern.keyboard.logic.ClipHistory
 import com.atelierjlg.fern.keyboard.logic.EmojiIndex
 import com.atelierjlg.fern.keyboard.logic.KeyAction
+import com.atelierjlg.fern.keyboard.logic.MemeLibrary
 import com.atelierjlg.fern.keyboard.logic.Page
 import com.atelierjlg.fern.keyboard.logic.Predictor
 import com.atelierjlg.fern.keyboard.logic.ShiftMode
@@ -35,8 +36,8 @@ import com.atelierjlg.fern.keyboard.logic.Words
 /** À quoi sert la touche Entrée dans le champ actuel (son picto change). */
 enum class EnterKind { NewLine, Send, Search, Go, Next, Previous, Done }
 
-/** Ce qui remplace les touches : rien (les touches), le presse-papiers, les emoji. */
-enum class Panel { None, Clipboard, Emoji }
+/** Ce qui remplace les touches : rien (les touches), le presse-papiers, les emoji, les memes. */
+enum class Panel { None, Clipboard, Emoji, Memes }
 
 /**
  * Le « cerveau » du clavier : reçoit les touches et écrit dans le champ de texte de l'appli ouverte.
@@ -95,6 +96,25 @@ class KeyboardController(private val service: InputMethodService) {
     var inlineViews by mutableStateOf<List<View>>(emptyList())
         private set
     private var usedCode: String? = null
+
+    // ─── Memes et stickers (v0.4) ───
+    var memes by mutableStateOf<List<MemeLibrary.Meme>>(emptyList())
+        private set
+    var memeTags by mutableStateOf<List<String>>(emptyList())
+        private set
+    /** Filtre par mot-clé (null = tous). */
+    var memeFilter by mutableStateOf<String?>(null)
+        private set
+    /** Petit message dans la barre (« Image copiée… »), effacé à la prochaine touche. */
+    var notice by mutableStateOf<String?>(null)
+        private set
+
+    init {
+        Memes.observe {
+            memes = Memes.library.all
+            memeTags = Memes.library.topTags(12)
+        }
+    }
 
     /** Comment gérer la majuscule auto dans ce champ. */
     private enum class Caps { None, Sentences, System }
@@ -159,6 +179,8 @@ class KeyboardController(private val service: InputMethodService) {
             info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0
         if (composeOn) Lexicon.ensureLoaded(service, settings.contactNames)
         KeyboardData.ensureLoaded(service, settings.clipCount) { refreshData() }
+        Memes.ensureLoaded(service)
+        notice = null
         panel = Panel.None
         toolbar = false
         emojiQuery = null
@@ -220,6 +242,7 @@ class KeyboardController(private val service: InputMethodService) {
 
     /** Écrit un texte (lettre, accent choisi à l'appui long, signe…). */
     fun type(text: String) {
+        notice = null
         // Recherche d'emoji : les touches écrivent dans la recherche, pas dans l'appli.
         emojiQuery?.let { q ->
             emojiQuery = q + TextRules.applyShift(text, shift)
@@ -697,6 +720,55 @@ class KeyboardController(private val service: InputMethodService) {
         KeyboardData.saveMemory(service)
         favorites = KeyboardData.memory.favorites.toList()
         return now
+    }
+
+    // ─── Memes ─────────────────────────────────────────────────────────────
+
+    fun selectMemeFilter(tag: String?) {
+        memeFilter = if (memeFilter == tag) null else tag
+    }
+
+    /**
+     * Envoie un meme dans l'appli ouverte. Si elle accepte les images venues du clavier (Signal,
+     * WhatsApp…), il arrive directement dans la conversation ; sinon on passe par le partage d'Android,
+     * vers la même appli (Fern Messages le prend ainsi).
+     */
+    fun sendMeme(meme: MemeLibrary.Meme) {
+        val info = editorInfo ?: return
+        val file = Memes.file(service, meme)
+        val uri = runCatching {
+            androidx.core.content.FileProvider.getUriForFile(service, "${service.packageName}.images", file)
+        }.getOrNull() ?: return
+        finishWord(autocorrect = true)
+        val accepted = androidx.core.view.inputmethod.EditorInfoCompat.getContentMimeTypes(info)
+            .any { ClipDescription.compareMimeTypes(meme.mime, it) }
+        val ic = ic
+        val sent = accepted && ic != null && androidx.core.view.inputmethod.InputConnectionCompat.commitContent(
+            ic,
+            info,
+            androidx.core.view.inputmethod.InputContentInfoCompat(uri, ClipDescription("meme", arrayOf(meme.mime)), null),
+            androidx.core.view.inputmethod.InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION,
+            null,
+        )
+        if (!sent) shareImage(uri, meme.mime, info.packageName)
+        Memes.used(service, meme.id)
+        closePanel()
+    }
+
+    private fun shareImage(uri: Uri, mime: String, target: String?) {
+        val send = Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        send.clipData = android.content.ClipData.newRawUri("meme", uri)
+        val direct = target?.let { Intent(send).setPackage(it) }
+        val ok = direct != null && runCatching { service.startActivity(direct) }.isSuccess
+        if (!ok) {
+            runCatching {
+                service.startActivity(
+                    Intent.createChooser(send, "Envoyer l'image").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                )
+            }
+        }
+        notice = "Cette appli ne prend pas les images du clavier : choisis la conversation."
     }
 
     // ─── Proton Pass & co (suggestions « en ligne ») ──────────────────────

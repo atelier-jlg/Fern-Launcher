@@ -12,8 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,18 +42,23 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.atelierjlg.fern.keyboard.logic.MemeLibrary
 import com.atelierjlg.fern.theme.FernSharedTheme
 import com.atelierjlg.fern.ui.kit.FernField
 import com.atelierjlg.fern.ui.kit.Pill
@@ -119,6 +126,45 @@ private fun SettingsScreen() {
     var learned by remember { mutableIntStateOf(0) }
     LaunchedEffect(check) { learned = withContext(Dispatchers.IO) { Lexicon.learnedCount(context) } }
     var confirmForget by remember { mutableStateOf(false) }
+
+    // Memes : la liste suit les changements (import, mots-clés, suppression).
+    var memeList by remember { mutableStateOf(Memes.library.all) }
+    var memeMessage by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<MemeLibrary.Meme?>(null) }
+    DisposableEffect(Unit) {
+        Memes.ensureLoaded(context)
+        val stop = Memes.observe { memeList = Memes.library.all }
+        memeList = Memes.library.all
+        onDispose { stop() }
+    }
+    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
+        if (uris.isNotEmpty()) Memes.importUris(context, uris) { n -> memeMessage = "$n image${if (n > 1) "s" else ""} ajoutée${if (n > 1) "s" else ""}" }
+    }
+    editing?.let { meme ->
+        var tags by remember(meme.id) { mutableStateOf(meme.tags.joinToString(", ")) }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Mots-clés") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Séparés par des virgules : chat, lundi, mdr…", style = Fern.type.nomApp, color = c.lichen)
+                    FernField(value = tags, onValueChange = { tags = it }, placeholder = "chat, dodo")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Memes.setTags(context, meme.id, tags)
+                    editing = null
+                }) { Text("Enregistrer") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    Memes.delete(context, meme.id)
+                    editing = null
+                }) { Text("Supprimer") }
+            },
+        )
+    }
     val askContacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         update(settings.copy(contactNames = granted))
         Lexicon.reloadContacts(context, granted)
@@ -249,6 +295,36 @@ private fun SettingsScreen() {
             )
         }
 
+        SectionLabel("Memes et stickers")
+        Card {
+            Text(
+                "Tes images, envoyées d'un toucher depuis la barre d'outils du clavier. Ajoute des mots-clés pour les retrouver.",
+                style = Fern.type.nomApp,
+                color = c.lichen,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("Ajouter des images", selected = false) {
+                    pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+                Pill("Stickers de Fern", selected = false) {
+                    Memes.importFromFern(context) { n ->
+                        memeMessage = when {
+                            n < 0 -> "Fern Launcher n'a pas répondu (installé, même version de clé ?)"
+                            n == 0 -> "Aucun nouveau sticker dans Fern"
+                            else -> "$n sticker${if (n > 1) "s" else ""} ajouté${if (n > 1) "s" else ""}"
+                        }
+                    }
+                }
+            }
+            memeMessage?.let { Text(it, style = Fern.type.nomApp, color = c.pistache) }
+            memeList.chunked(4).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { meme -> MemeThumb(meme, Modifier.weight(1f)) { editing = meme } }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+
         SectionLabel("Frappe")
         Card {
             Toggle("Majuscules automatiques", "En début de phrase", settings.autoCaps) { update(settings.copy(autoCaps = it)) }
@@ -287,7 +363,7 @@ private fun SettingsScreen() {
 
         SectionLabel("Bientôt")
         Text(
-            "Memes et stickers, dictée Whisper hors ligne.",
+            "Dictée Whisper hors ligne.",
             style = Fern.type.nomApp,
             color = c.lichen,
         )
@@ -358,6 +434,29 @@ private fun Toggle(title: String, detail: String, checked: Boolean, onChange: (B
             checked = checked,
             onCheckedChange = onChange,
             colors = SwitchDefaults.colors(checkedTrackColor = c.pistache, checkedThumbColor = c.nuit, uncheckedTrackColor = c.lierre),
+        )
+    }
+}
+
+/** Miniature d'un meme dans les réglages (toucher = mots-clés / supprimer). */
+@Composable
+private fun MemeThumb(meme: MemeLibrary.Meme, modifier: Modifier, onClick: () -> Unit) {
+    val c = Fern.colors
+    val context = LocalContext.current
+    val bitmap by produceState<android.graphics.Bitmap?>(null, meme.file) {
+        value = withContext(Dispatchers.IO) { runCatching { Memes.thumbnail(context, meme) }.getOrNull() }
+    }
+    Column(modifier.clip(RoundedCornerShape(14.dp)).background(c.lierre).clickable(onClick = onClick).padding(4.dp)) {
+        Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) {
+            bitmap?.let {
+                Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
+        }
+        Text(
+            meme.tags.joinToString(", ").ifEmpty { "+ mots-clés" },
+            style = Fern.type.nomApp,
+            color = if (meme.tags.isEmpty()) c.moussePale else c.lichen,
+            maxLines = 1,
         )
     }
 }
