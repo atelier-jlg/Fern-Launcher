@@ -3,6 +3,20 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.5.2 (code 9) — 2026-10-16
+
+- **Proton Pass** : les identifiants proposés dans la barre apparaissent enfin (le clavier ne les demandait pas
+  à Android).
+- **Dictée** : « Annuler », fermer le clavier ou ouvrir un autre panneau coupe vraiment le micro, et une
+  dictée annulée n'écrit plus jamais son texte plus tard. Arrêt tout seul après 6 s sans rien entendre.
+  Le panneau tient dans la hauteur du clavier (le message et les boutons étaient coupés).
+- **Frappe rapide à deux pouces** : les lettres ne s'inversent plus.
+- Une vieille suggestion ne réapparaît plus après l'envoi d'un message (la toucher réécrivait le mot).
+- Memes : la grille n'est plus vide quand les réglages ont été ouverts avant.
+- Presse-papiers : l'historique (et les textes épinglés) n'est plus écrasé au démarrage du clavier.
+- Plus fluide : le code SMS est lu en arrière-plan, les calculs de suggestions dépassés sont sautés,
+  le mot repris est réécrit d'un seul coup (plus de clignotement dans certaines applis).
+
 ## Fern Clavier v0.5.1 (code 8) — 2026-10-16
 
 - **Clavier moins haut** : la rangée de chiffres n'a plus sa propre ligne. Elle partage celle de la barre de

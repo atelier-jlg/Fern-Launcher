@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -408,15 +409,20 @@ fun DictationPanel(controller: KeyboardController, height: Dp) {
     val d = controller.dictation
     val state = d.state
     val listening = state == com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening
-    val halo by androidx.compose.animation.core.rememberInfiniteTransition(label = "halo").animateFloat(
-        initialValue = 1f,
-        targetValue = if (listening) 1.12f else 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            androidx.compose.animation.core.tween(900),
-            androidx.compose.animation.core.RepeatMode.Reverse,
-        ),
-        label = "halo",
-    )
+    // Le micro « respire » seulement pendant l'écoute (sinon, aucune animation ne tourne pour rien).
+    val halo = if (listening) {
+        val t by androidx.compose.animation.core.rememberInfiniteTransition(label = "halo").animateFloat(
+            initialValue = 1f,
+            targetValue = 1.1f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(900),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "halo",
+        )
+        t
+    } else 1f
+    // Tout doit tenir dans la hauteur des touches (176 dp avec les petites) : l'onde prend ce qui reste.
     Column(
         Modifier.fillMaxWidth().height(height).padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -430,56 +436,60 @@ fun DictationPanel(controller: KeyboardController, height: Dp) {
             )
             val model = controller.settings.whisperModel
             if (model.isNotEmpty()) {
-                Box(Modifier.clip(CircleShape).background(c.lierre).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Box(Modifier.clip(CircleShape).background(c.lierre).padding(horizontal = 10.dp, vertical = 3.dp)) {
                     Text(model, color = c.lichen, style = TextStyle(fontFamily = keyFont, fontSize = 11.sp), maxLines = 1)
                 }
             }
         }
         // L'onde : des barres arrondies qui suivent le volume de la voix.
         Row(
-            Modifier.fillMaxWidth().height(64.dp),
+            Modifier.fillMaxWidth().weight(1f).padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             d.levels.forEach { level ->
-                val h = 6.dp + 56.dp * level
                 Box(
-                    Modifier.width(5.dp).height(h).clip(RoundedCornerShape(3.dp))
+                    Modifier.width(5.dp).fillMaxHeight(0.12f + 0.88f * level.coerceIn(0f, 1f)).clip(RoundedCornerShape(3.dp))
                         .background(if (level > 0.3f) c.pistache else if (level > 0.1f) c.lichen else c.sousBois),
                 )
             }
         }
-        Box(
-            Modifier.size(116.dp).scale(halo).clip(CircleShape).background(c.lierre),
-            contentAlignment = Alignment.Center,
-        ) {
+        // Le micro et ce qui se passe, côte à côte.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(84.dp).clip(CircleShape).background(if (listening) c.pistache else c.sousBois)
-                    .clickable {
-                        when (state) {
-                            com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening -> controller.stopDictation()
-                            com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> controller.startDictation()
-                            else -> Unit
-                        }
-                    }
-                    .semantics { contentDescription = if (listening) "Terminer" else "Dicter" },
+                Modifier.size(68.dp).scale(halo).clip(CircleShape).background(c.lierre),
                 contentAlignment = Alignment.Center,
-            ) { FernIcon(FernIcons.Mic, if (listening) c.nuit else c.creme, size = 30.dp) }
+            ) {
+                Box(
+                    Modifier.size(54.dp).clip(CircleShape).background(if (listening) c.pistache else c.sousBois)
+                        .clickable {
+                            when (state) {
+                                com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening -> controller.stopDictation()
+                                com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> controller.startDictation()
+                                else -> Unit
+                            }
+                        }
+                        .semantics { contentDescription = if (listening) "Terminer" else "Dicter" },
+                    contentAlignment = Alignment.Center,
+                ) { FernIcon(FernIcons.Mic, if (listening) c.nuit else c.creme, size = 24.dp) }
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                d.message ?: when (state) {
+                    com.atelierjlg.fern.keyboard.voice.Dictation.State.Loading -> "Je me prépare…"
+                    com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening ->
+                        if (controller.settings.autoStopDictation) "Je t'écoute… je m'arrête quand tu te tais" else "Je t'écoute… touche le micro pour finir"
+                    com.atelierjlg.fern.keyboard.voice.Dictation.State.Transcribing -> "J'écris…"
+                    com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> "Touche le micro pour parler"
+                },
+                color = if (d.message != null) c.roseCarmin else c.creme,
+                style = TextStyle(fontFamily = keyFont, fontSize = 15.sp),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
         }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            d.message ?: when (state) {
-                com.atelierjlg.fern.keyboard.voice.Dictation.State.Loading -> "Je me prépare…"
-                com.atelierjlg.fern.keyboard.voice.Dictation.State.Listening ->
-                    if (controller.settings.autoStopDictation) "Je t'écoute… je m'arrête quand tu te tais" else "Je t'écoute… touche pour terminer"
-                com.atelierjlg.fern.keyboard.voice.Dictation.State.Transcribing -> "J'écris…"
-                com.atelierjlg.fern.keyboard.voice.Dictation.State.Idle -> "Touche le micro pour parler"
-            },
-            color = if (d.message != null) c.roseCarmin else c.creme,
-            style = TextStyle(fontFamily = keyFont, fontSize = 15.sp),
-            maxLines = 2,
-        )
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             WidePill("Annuler", Modifier.weight(1f)) { controller.cancelDictation() }
             WidePill(if (d.message != null) "Réglages" else "Clavier", Modifier.weight(1f)) {

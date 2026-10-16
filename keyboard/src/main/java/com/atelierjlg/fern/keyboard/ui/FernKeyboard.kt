@@ -111,8 +111,18 @@ private class PopupState(
     fun indexAt(x: Float): Int = ((x - left) / cell).toInt().coerceIn(0, raw.lastIndex)
 }
 
+/** Une lettre touchée dont le doigt n'est pas encore levé. */
+private class HeldKey(val action: KeyAction) {
+    var done = false
+}
+
 @Stable
 private class Overlay {
+    /**
+     * La lettre encore enfoncée. Si un autre doigt touche une touche avant qu'elle soit relâchée
+     * (frappe rapide à deux pouces), on l'écrit tout de suite : l'ordre des lettres est respecté.
+     */
+    var held: HeldKey? = null
     var preview by mutableStateOf<Preview?>(null)
     var popup by mutableStateOf<PopupState?>(null)
     var rootWidth = 0f
@@ -349,24 +359,42 @@ private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, 
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             down.consume()
+            // Une lettre est encore enfoncée par l'autre pouce : elle passe d'abord.
+            overlay.held?.let { other ->
+                if (!other.done) {
+                    other.done = true
+                    controller.onKey(other.action)
+                }
+            }
+            overlay.held = null
             controller.feedback(key.action)
             pressed = true
+            var myPopup: PopupState? = null
+            try {
             when (val action = key.action) {
                 is KeyAction.Text -> {
                     val shown = TextRules.applyShift(key.label, controller.shift)
                     overlay.preview = Preview(shown, bounds.value, key)
+                    val mine = HeldKey(action)
+                    overlay.held = mine
                     val released = if (key.popup.isEmpty()) {
                         awaitRelease(down.id)
                     } else {
                         withTimeoutOrNull(LONG_PRESS_MS) { awaitRelease(down.id) }
                     }
-                    when (released) {
-                        true -> controller.onKey(action)
-                        false -> Unit
-                        null -> {
+                    // Déjà écrite parce qu'une autre touche a été enfoncée entre-temps ?
+                    val flushed = mine.done
+                    mine.done = true
+                    if (overlay.held === mine) overlay.held = null
+                    when {
+                        flushed -> if (released == null) awaitRelease(down.id)
+                        released == true -> controller.onKey(action)
+                        released == false -> Unit
+                        else -> {
                             // Appui long : la rangée d'accents (ou de signes) s'ouvre au-dessus.
                             overlay.preview = null
                             val popup = createPopup(key, controller.shift, bounds.value, overlay.rootWidth, this)
+                            myPopup = popup
                             overlay.popup = popup
                             val ok = trackPopup(down.id, bounds.value, popup)
                             overlay.popup = null
@@ -405,8 +433,12 @@ private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, 
                 }
                 else -> if (awaitRelease(down.id)) controller.onKey(action)
             }
-            pressed = false
-            if (overlay.preview?.owner == key) overlay.preview = null
+            } finally {
+                // Même si le geste est interrompu (changement de page…), la touche se relâche.
+                pressed = false
+                if (overlay.preview?.owner == key) overlay.preview = null
+                if (myPopup != null && overlay.popup === myPopup) overlay.popup = null
+            }
         }
     }
 

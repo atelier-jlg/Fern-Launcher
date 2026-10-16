@@ -47,7 +47,12 @@ class Dictation(private val context: Context) {
 
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var recording = false
-    @Volatile private var cancelled = false
+    /**
+     * Numéro de la prise en cours. Chaque début ou abandon le change : un ancien travail
+     * (enregistrement, transcription) qui voit un autre numéro s'arrête sans rien écrire.
+     * Sinon, une dictée annulée pouvait écrire son texte dans la suivante.
+     */
+    @Volatile private var session = 0
     private var onText: ((String) -> Unit)? = null
 
     fun hasPermission() = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -70,22 +75,30 @@ class Dictation(private val context: Context) {
             return
         }
         this.onText = onText
-        cancelled = false
+        val mine = ++session
+        recording = true
         state = if (contextPtr == 0L) State.Loading else State.Listening
         worker.execute {
+            if (mine != session) return@execute
             if (contextPtr == 0L) {
                 contextPtr = runCatching { WhisperLib.initContext(model.path) }.getOrDefault(0L)
                 loadedFor = model.lastModified()
             }
             if (contextPtr == 0L) {
                 main.post {
+                    if (mine != session) return@post
                     state = State.Idle
                     message = "Le modèle n'a pas pu être chargé. Réimporte-le dans les réglages."
                 }
                 return@execute
             }
-            main.post { if (!cancelled) state = State.Listening }
-            record(autoStop)
+            // Annulé (ou déjà arrêté) pendant le chargement du modèle : on n'ouvre même pas le micro.
+            if (mine != session || !recording) {
+                main.post { if (mine == session) state = State.Idle }
+                return@execute
+            }
+            main.post { if (mine == session) state = State.Listening }
+            record(autoStop, mine)
         }
     }
 
@@ -96,19 +109,20 @@ class Dictation(private val context: Context) {
 
     /** Abandon : rien ne sera écrit. */
     fun cancel() {
-        cancelled = true
+        session++
         recording = false
-        main.post { state = State.Idle }
+        state = State.Idle
     }
 
     @SuppressLint("MissingPermission") // vérifiée dans start()
-    private fun record(autoStop: Boolean) {
+    private fun record(autoStop: Boolean, mine: Int) {
         val minBuf = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val recorder = runCatching {
             AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, RATE / 5 * 2))
         }.getOrNull()
         if (recorder == null || recorder.state != AudioRecord.STATE_INITIALIZED) {
             main.post {
+                if (mine != session) return@post
                 state = State.Idle
                 message = "Le micro est occupé par une autre appli."
             }
@@ -120,9 +134,8 @@ class Dictation(private val context: Context) {
         val chunk = ShortArray(RATE / 20) // 50 ms
         var spoke = false
         var quietMs = 0
-        recording = true
         recorder.startRecording()
-        while (recording && total < all.size) {
+        while (recording && mine == session && total < all.size) {
             val n = recorder.read(chunk, 0, minOf(chunk.size, all.size - total))
             if (n <= 0) break
             chunk.copyInto(all, total, 0, n)
@@ -133,23 +146,25 @@ class Dictation(private val context: Context) {
             if (level > SPEECH_LEVEL) {
                 spoke = true
                 quietMs = 0
-            } else if (spoke) {
+            } else {
                 quietMs += n * 1000 / RATE
-                if (autoStop && quietMs >= SILENCE_MS) recording = false
+                // Après avoir parlé : 1,6 s de silence. Sans rien dire du tout (micro coupé…) : 6 s.
+                if (autoStop && quietMs >= if (spoke) SILENCE_MS else NO_SPEECH_MS) break
             }
         }
-        recording = false
         runCatching { recorder.stop() }
         recorder.release()
-        if (cancelled) return
+        if (mine != session) return
+        recording = false
         if (!spoke || total < RATE / 2) {
             main.post {
+                if (mine != session) return@post
                 state = State.Idle
                 message = "Je n'ai rien entendu."
             }
             return
         }
-        main.post { state = State.Transcribing }
+        main.post { if (mine == session) state = State.Transcribing }
         val audio = SpeechText.toFloat(all, total)
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
         val text = runCatching {
@@ -157,8 +172,8 @@ class Dictation(private val context: Context) {
         }.getOrDefault("")
         val clean = SpeechText.clean(text)
         main.post {
+            if (mine != session) return@post
             state = State.Idle
-            if (cancelled) return@post
             if (clean.isEmpty()) message = "Je n'ai pas compris, réessaie." else onText?.invoke(clean)
         }
     }
@@ -169,6 +184,7 @@ class Dictation(private val context: Context) {
         private const val BARS = 24
         private const val SPEECH_LEVEL = 0.08f
         private const val SILENCE_MS = 1600
+        private const val NO_SPEECH_MS = 6000
         private const val PROMPT = "Bonjour ! Oui, ça va, et toi ? Je m'ennuie un peu ce soir, on se voit vers 20 h ?"
 
         /** Un seul fil pour Whisper, et le modèle chargé une fois pour toutes. */

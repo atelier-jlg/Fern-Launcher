@@ -119,11 +119,22 @@ class KeyboardController(private val service: InputMethodService) {
         get() = toolbar || inlineViews.isNotEmpty() || !strip.isEmpty ||
             smsCode != null || clip != null || notice != null
 
+    private val stopObservingMemes = Memes.observe { refreshMemes() }
+
     init {
-        Memes.observe {
-            memes = Memes.library.all
-            memeTags = Memes.library.topTags(12)
-        }
+        // Déjà chargés (par les réglages, ou un clavier précédent) : on les prend tout de suite.
+        refreshMemes()
+    }
+
+    private fun refreshMemes() {
+        memes = Memes.library.all
+        memeTags = Memes.library.topTags(12)
+    }
+
+    /** Le service s'arrête : on ne suit plus les memes et on coupe le micro s'il tournait. */
+    fun destroy() {
+        stopObservingMemes()
+        dictation.cancel()
     }
 
     /** Comment gérer la majuscule auto dans ce champ. */
@@ -150,7 +161,7 @@ class KeyboardController(private val service: InputMethodService) {
     private var keepAsIs: String? = null
     private var previousWord: String? = null
     private var beforePreviousWord: String? = null
-    private var stripSeq = 0
+    @Volatile private var stripSeq = 0
     private var computedFor: String? = null
     private var computed: Strip = Strip.Empty
     private val main = Handler(Looper.getMainLooper())
@@ -204,7 +215,7 @@ class KeyboardController(private val service: InputMethodService) {
         composing.clear()
         lastCorrection = null
         keepAsIs = null
-        strip = Strip.Empty
+        clearStrip()
         readPreviousWords()
         refreshClip()
         updateAutoCaps()
@@ -221,7 +232,7 @@ class KeyboardController(private val service: InputMethodService) {
             ic?.finishComposingText()
             composing.clear()
         }
-        strip = Strip.Empty
+        clearStrip()
         Lexicon.saveUser(service)
     }
 
@@ -268,15 +279,18 @@ class KeyboardController(private val service: InputMethodService) {
         val startsWord = c != null && c.isLetterOrDigit()
         val continuesWord = c != null && composing.isNotEmpty() && Words.isWordChar(c)
         if (composeOn && (startsWord || continuesWord) && canCompose(ic)) {
+            // Groupé : l'appli voit d'un coup « mot repris + lettre », sans clignotement.
+            ic.beginBatchEdit()
             if (composing.isEmpty()) resumeWord(ic)
             composing.append(out)
             ic.setComposingText(composing, 1)
+            ic.endBatchEdit()
             refreshStrip()
         } else {
             // Ponctuation de fin de mot : on corrige le mot avant de la poser.
             val punctuation = c != null && c in WORD_END
             finishWord(autocorrect = punctuation, separator = out)
-            if (punctuation) refreshPredictions() else strip = Strip.Empty
+            if (punctuation) refreshPredictions() else clearStrip()
         }
         if (shift == ShiftMode.Once) {
             shift = ShiftMode.Off
@@ -377,14 +391,14 @@ class KeyboardController(private val service: InputMethodService) {
             composing.setLength(start)
             if (composing.isEmpty()) {
                 ic.commitText("", 1)
-                strip = Strip.Empty
+                clearStrip()
             } else {
                 ic.setComposingText(composing, 1)
                 refreshStrip()
             }
             return
         }
-        strip = Strip.Empty
+        clearStrip()
         val selected = ic.getSelectedText(0)
         if (!selected.isNullOrEmpty()) {
             ic.commitText("", 1)
@@ -422,7 +436,7 @@ class KeyboardController(private val service: InputMethodService) {
                 lastWasSpace = false
                 lastCorrection = null
                 previousWord = null
-                strip = Strip.Empty
+                clearStrip()
                 return
             }
             ic.commitText(" ", 1)
@@ -442,7 +456,7 @@ class KeyboardController(private val service: InputMethodService) {
         lastWasSpace = false
         finishWord(autocorrect = true)
         lastCorrection = null
-        strip = Strip.Empty
+        clearStrip()
         val info = editorInfo
         if (enterKind == EnterKind.NewLine || info == null) {
             service.sendKeyChar('\n')
@@ -491,7 +505,7 @@ class KeyboardController(private val service: InputMethodService) {
         if (composing.isNotEmpty()) {
             ic?.finishComposingText()
             composing.clear()
-            strip = Strip.Empty
+            clearStrip()
         }
         lastWasSpace = false
         lastCorrection = null
@@ -505,7 +519,7 @@ class KeyboardController(private val service: InputMethodService) {
             ic?.finishComposingText()
             composing.clear()
             lastCorrection = null
-            strip = Strip.Empty
+            clearStrip()
         }
         updateAutoCaps()
     }
@@ -517,16 +531,18 @@ class KeyboardController(private val service: InputMethodService) {
         val word = composing.toString()
         val seq = ++stripSeq
         if (word.isEmpty()) {
-            strip = Strip.Empty
+            clearStrip()
             return
         }
         val corrector = Lexicon.corrector() ?: return
         val emojis = if (settings.emojiSuggestions) KeyboardData.emojis else null
         Lexicon.worker.execute {
+            // Déjà dépassé (une autre lettre a été tapée entre-temps) : inutile de calculer.
+            if (seq != stripSeq) return@execute
             val s = runCatching { corrector.strip(word) }.getOrNull() ?: return@execute
             val emoji = runCatching { emojis?.forWord(Words.splitElision(word).second) }.getOrNull()
             main.post {
-                if (seq != stripSeq) return@post
+                if (seq != stripSeq || composing.toString() != word) return@post
                 stripEmoji = emoji?.let { tone(it) }
                 computedFor = word
                 computed = if (word == keepAsIs) s.withoutCorrection() else s
@@ -539,6 +555,16 @@ class KeyboardController(private val service: InputMethodService) {
         }
     }
 
+    /**
+     * Vide la barre de suggestions. Le numéro change aussi : un calcul encore en route ne viendra pas
+     * la remplir après coup (sinon toucher cette vieille suggestion réécrivait un mot déjà envoyé).
+     */
+    private fun clearStrip() {
+        stripSeq++
+        strip = Strip.Empty
+        stripEmoji = null
+    }
+
     /** Après un espace : les mots qui suivent souvent. */
     private fun refreshPredictions() {
         val seq = ++stripSeq
@@ -546,10 +572,11 @@ class KeyboardController(private val service: InputMethodService) {
         val previous = previousWord
         val before = beforePreviousWord
         if (!suggestOn || previous == null) {
-            strip = Strip.Empty
+            clearStrip()
             return
         }
         Lexicon.worker.execute {
+            if (seq != stripSeq) return@execute
             val next = runCatching { Predictor.next(before, previous, Lexicon.user) }.getOrDefault(emptyList())
             main.post {
                 if (seq != stripSeq) return@post
@@ -626,18 +653,22 @@ class KeyboardController(private val service: InputMethodService) {
         ic?.commitText(text, 1)
         lastWasSpace = false
         lastCorrection = null
-        strip = Strip.Empty
+        clearStrip()
     }
 
     // ─── Code SMS (prêté par Fern Messages) ────────────────────────────────
 
     fun refreshCode() {
-        val found = runCatching {
-            service.contentResolver.query(CODES_URI, null, null, null, null)?.use { c ->
-                if (c.moveToFirst()) c.getString(0) else null
-            }
-        }.getOrNull()
-        smsCode = found?.takeIf { it != usedCode }
+        // En arrière-plan : si Fern Messages dort, le réveiller ne doit pas retarder le clavier.
+        val resolver = service.contentResolver
+        Lexicon.worker.execute {
+            val found = runCatching {
+                resolver.query(CODES_URI, null, null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0) else null
+                }
+            }.getOrNull()
+            main.post { smsCode = found?.takeIf { it != usedCode } }
+        }
     }
 
     fun pasteCode() {
@@ -662,8 +693,9 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     fun openPanel(target: Panel) {
+        if (panel == Panel.Dictation) dictation.cancel()
         finishWord(autocorrect = false)
-        strip = Strip.Empty
+        clearStrip()
         toolbar = false
         emojiQuery = null
         panel = if (panel == target) Panel.None else target
@@ -671,6 +703,7 @@ class KeyboardController(private val service: InputMethodService) {
     }
 
     fun closePanel() {
+        if (panel == Panel.Dictation) dictation.cancel()
         panel = Panel.None
         emojiQuery = null
     }
@@ -715,7 +748,7 @@ class KeyboardController(private val service: InputMethodService) {
         ic?.commitText(emoji, 1)
         lastWasSpace = false
         lastCorrection = null
-        strip = Strip.Empty
+        clearStrip()
         stripEmoji = null
         KeyboardData.memory.used(emoji)
         KeyboardData.saveMemory(service)
@@ -789,7 +822,7 @@ class KeyboardController(private val service: InputMethodService) {
     /** Toucher du micro : le panneau de dictée s'ouvre et l'écoute commence. */
     fun startDictation() {
         finishWord(autocorrect = true)
-        strip = Strip.Empty
+        clearStrip()
         toolbar = false
         emojiQuery = null
         panel = Panel.Dictation

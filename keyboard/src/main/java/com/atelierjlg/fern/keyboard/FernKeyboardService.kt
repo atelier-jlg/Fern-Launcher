@@ -183,6 +183,7 @@ class FernKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegi
     override fun onDestroy() {
         runCatching { contentResolver.unregisterContentObserver(codeObserver) }
         getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipListener)
+        if (::controller.isInitialized) controller.destroy()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
     }
