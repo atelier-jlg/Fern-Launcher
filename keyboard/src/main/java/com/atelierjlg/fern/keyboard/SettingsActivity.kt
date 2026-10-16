@@ -398,7 +398,7 @@ private fun SettingsScreen() {
         Card {
             Toggle("Majuscules automatiques", "En début de phrase", settings.autoCaps) { update(settings.copy(autoCaps = it)) }
             Toggle("Point automatique", "Deux espaces → « . »", settings.autoPeriod) { update(settings.copy(autoPeriod = it)) }
-            Toggle("Rangée de chiffres", "Sinon : appui long sur la rangée du haut", settings.numberRow) { update(settings.copy(numberRow = it)) }
+            Toggle("Rangée de chiffres", "Sur la ligne des suggestions, quand elle est libre (et toujours à l’appui long sur la rangée du haut)", settings.numberRow) { update(settings.copy(numberRow = it)) }
             Toggle("Curseur sur la barre d'espace", "Glisser sur l'espace déplace le curseur", settings.cursorOnSpace) {
                 update(settings.copy(cursorOnSpace = it))
             }

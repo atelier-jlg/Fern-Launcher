@@ -3,6 +3,13 @@
 Chaque version installée sur le téléphone a une entrée ici.
 Format : `vX.Y.Z (code N) — date`. Le numéro est défini dans `gradle.properties`.
 
+## Fern Clavier v0.5.1 (code 8) — 2026-10-16
+
+- **Clavier moins haut** : la rangée de chiffres n'a plus sa propre ligne. Elle partage celle de la barre de
+  suggestions : les chiffres quand la barre est libre, les suggestions (ou le texte copié, le code SMS, les
+  outils) dès qu'il y a quelque chose à proposer. Les chiffres restent toujours à l'appui long sur A Z E R T Y…
+- Barre du haut un peu plus fine (44 dp) et touches un poil plus basses (Petite 44 · Normale 50 · Grande 56 dp).
+
 ## Fern Clavier v0.5.0 (code 7) — 2026-10-15
 
 - **Dictée hors ligne avec Whisper** (micro pistache au bout de la barre, ou barre d'outils) : tu parles,

@@ -126,7 +126,9 @@ fun FernKeyboard(controller: KeyboardController) {
     val settings = controller.settings
     val overlay = remember { Overlay() }
     val page = controller.page
-    val rows = remember(page, settings.numberRow) { Layouts.rows(page, settings.numberRow && page == Page.Lettres) }
+    // Les chiffres ne prennent plus de rangée à eux : ils partagent la ligne de la barre de suggestions
+    // (voir plus bas). La rangée du haut garde donc toujours ses chiffres à l'appui long.
+    val rows = remember(page) { Layouts.rows(page) }
     val keyHeight = settings.keyHeight.dp.dp
 
     Box(Modifier.fillMaxWidth().onGloballyPositioned { overlay.rootWidth = it.size.width.toFloat() }) {
@@ -137,24 +139,28 @@ fun FernKeyboard(controller: KeyboardController) {
                     .fillMaxWidth()
                     .background(c.mousse)
                     .navigationBarsPadding()
-                    .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+                    .padding(start = 4.dp, end = 4.dp, bottom = 6.dp),
             ) {
-                if (controller.emojiQuery != null) EmojiSearchBar(controller) else TopStrip(controller)
-                // Les panneaux prennent exactement la place des touches (le clavier ne saute pas).
-                val keysHeight = keyHeight * 4 + if (settings.numberRow) keyHeight * 0.82f else 0.dp
                 val panel = controller.panel
+                val showKeys = panel == Panel.None || controller.emojiQuery != null
+                // Une seule ligne au-dessus des touches : les chiffres quand la barre n'a rien à dire,
+                // sinon les suggestions (ou le presse-papiers, le code SMS, la barre d'outils…).
+                val digits = settings.numberRow && page == Page.Lettres && showKeys &&
+                    controller.emojiQuery == null && !controller.stripBusy
+                when {
+                    controller.emojiQuery != null -> EmojiSearchBar(controller)
+                    digits -> DigitLine(controller, overlay)
+                    else -> TopStrip(controller)
+                }
+                // Les panneaux prennent exactement la place des touches (le clavier ne saute pas).
+                val keysHeight = keyHeight * 4
                 if (panel == Panel.Clipboard) ClipboardPanel(controller, keysHeight)
                 if (panel == Panel.Emoji && controller.emojiQuery == null) EmojiPanel(controller, keysHeight)
                 if (panel == Panel.Memes) MemesPanel(controller, keysHeight)
                 if (panel == Panel.Dictation) DictationPanel(controller, keysHeight)
-                val showKeys = panel == Panel.None || controller.emojiQuery != null
-                if (showKeys) rows.forEachIndexed { index, row ->
-                    // La rangée de chiffres est un peu plus basse ; le pavé numérique un peu plus haut.
-                    val height = when {
-                        settings.numberRow && page == Page.Lettres && index == 0 -> keyHeight * 0.82f
-                        page == Page.Numerique -> keyHeight * 1.1f
-                        else -> keyHeight
-                    }
+                if (showKeys) rows.forEach { row ->
+                    // Le pavé numérique est un peu plus haut (gros doigts sur les numéros de téléphone).
+                    val height = if (page == Page.Numerique) keyHeight * 1.1f else keyHeight
                     Row(Modifier.fillMaxWidth().height(height)) {
                         row.forEach { key ->
                             KeyCell(key, controller, overlay, Modifier.weight(key.width).fillMaxHeight())
@@ -167,6 +173,41 @@ fun FernKeyboard(controller: KeyboardController) {
     }
 }
 
+/** Hauteur de la ligne du haut (barre de suggestions ou chiffres : c'est la même). */
+private val STRIP_HEIGHT = 44.dp
+
+/** Le bouton rond de la barre d'outils, au début de la ligne du haut (même place dans les deux cas). */
+@Composable
+private fun ToolbarButton(controller: KeyboardController) {
+    val c = Fern.colors
+    Box(
+        Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(if (controller.toolbar) c.lierre else c.mousse)
+            .clickable { controller.toggleToolbar() }
+            .semantics { contentDescription = "Barre d'outils" },
+        contentAlignment = Alignment.Center,
+    ) {
+        FernIcon(if (controller.toolbar) FernIcons.Close else KeyIcons.Grid, c.lichen, size = 18.dp)
+    }
+}
+
+/** La rangée de chiffres, posée à la place de la barre de suggestions quand elle est vide. */
+@Composable
+private fun DigitLine(controller: KeyboardController, overlay: Overlay) {
+    Row(
+        Modifier.fillMaxWidth().height(STRIP_HEIGHT).padding(start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ToolbarButton(controller)
+        Spacer(Modifier.width(2.dp))
+        Layouts.digitRow.forEach { key ->
+            KeyCell(key, controller, overlay, Modifier.weight(1f).fillMaxHeight(), small = true)
+        }
+    }
+}
+
 /**
  * La barre du haut. À gauche, le bouton de la barre d'outils. Puis, selon le moment :
  * la barre d'outils · les suggestions de Proton Pass · les 3 suggestions de mots ·
@@ -176,20 +217,10 @@ fun FernKeyboard(controller: KeyboardController) {
 private fun TopStrip(controller: KeyboardController) {
     val c = Fern.colors
     Row(
-        Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().height(STRIP_HEIGHT).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(if (controller.toolbar) c.lierre else c.mousse)
-                .clickable { controller.toggleToolbar() }
-                .semantics { contentDescription = "Barre d'outils" },
-            contentAlignment = Alignment.Center,
-        ) {
-            FernIcon(if (controller.toolbar) FernIcons.Close else KeyIcons.Grid, c.lichen, size = 18.dp)
-        }
+        ToolbarButton(controller)
         Spacer(Modifier.width(4.dp))
         val strip = controller.strip
         val showSettings: Boolean
@@ -308,7 +339,7 @@ private fun RowScope.SuggestionSlot(word: String?, literal: Boolean, highlight: 
 // ─── Une touche ────────────────────────────────────────────────────────────
 
 @Composable
-private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, modifier: Modifier) {
+private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, modifier: Modifier, small: Boolean = false) {
     val c = Fern.colors
     val bounds = remember { mutableStateOf(Rect.Zero) }
     var pressed by remember { mutableStateOf(false) }
@@ -386,7 +417,7 @@ private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, 
         contentAlignment = Alignment.Center,
     ) {
         when (key.action) {
-            is KeyAction.Text -> TextKey(key, shift, pressed, special = key.special)
+            is KeyAction.Text -> TextKey(key, shift, pressed, special = key.special, small = small)
             KeyAction.Shift -> RoundKey(pressed, filled = shift != ShiftMode.Off, locked = shift == ShiftMode.Locked) {
                 FernIcon(
                     if (shift == ShiftMode.Locked) KeyIcons.ShiftLocked else KeyIcons.Shift,
@@ -453,7 +484,7 @@ private fun KeyCell(key: Key, controller: KeyboardController, overlay: Overlay, 
 
 /** Une touche de lettre ou de signe : la lettre seule, posée sur la vague (pas de plaque). */
 @Composable
-private fun TextKey(key: Key, shift: ShiftMode, pressed: Boolean, special: Boolean) {
+private fun TextKey(key: Key, shift: ShiftMode, pressed: Boolean, special: Boolean, small: Boolean = false) {
     val c = Fern.colors
     Box(
         Modifier
@@ -465,8 +496,9 @@ private fun TextKey(key: Key, shift: ShiftMode, pressed: Boolean, special: Boole
     ) {
         Text(
             TextRules.applyShift(key.label, shift),
-            color = if (special) c.lichen else c.creme,
-            style = TextStyle(fontFamily = keyFont, fontSize = 24.sp),
+            // Les chiffres de la ligne du haut, un peu plus petits et plus discrets que les lettres.
+            color = if (special || small) c.lichen else c.creme,
+            style = TextStyle(fontFamily = keyFont, fontSize = if (small) 20.sp else 24.sp),
         )
         key.hint?.let {
             Text(

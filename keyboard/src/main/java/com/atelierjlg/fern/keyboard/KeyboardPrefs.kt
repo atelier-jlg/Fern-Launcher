@@ -4,9 +4,9 @@ import android.content.Context
 
 /** Hauteur des touches (réglable dans l'écran de réglages). */
 enum class KeyHeight(val label: String, val dp: Int) {
-    Petite("Petite", 46),
-    Normale("Normale", 52),
-    Grande("Grande", 58),
+    Petite("Petite", 44),
+    Normale("Normale", 50),
+    Grande("Grande", 56),
 }
 
 /** Les réglages du clavier. Chaque champ a une valeur par défaut, comme LauncherConfig dans Fern. */

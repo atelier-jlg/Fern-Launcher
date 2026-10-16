@@ -71,8 +71,11 @@ object Layouts {
     private val comma = text(",", popup = listOf(";", ":", "!", "?"), special = true)
     private val period = text(".", popup = listOf("…", "!", "?", "-", "'", "\""), special = true)
 
-    /** Rangée de chiffres (option « rangée de chiffres »). */
-    private val numberRow = digits.map { d ->
+    /**
+     * Rangée de chiffres (option « rangée de chiffres »). Le clavier l'affiche à la place
+     * de la barre de suggestions quand celle-ci n'a rien à proposer (même ligne, pas de hauteur en plus).
+     */
+    val digitRow: List<Key> = digits.map { d ->
         Key(d.toString(), KeyAction.Text(d.toString()), popup = digitPopup(d))
     }
 
@@ -91,7 +94,7 @@ object Layouts {
      */
     fun rows(page: Page, numberRow: Boolean = false): List<List<Key>> = when (page) {
         Page.Lettres -> buildList {
-            if (numberRow) add(this@Layouts.numberRow)
+            if (numberRow) add(digitRow)
             add("azertyuiop".mapIndexed { i, c -> letter(c, if (numberRow) null else digits[i]) })
             add("qsdfghjklm".map { letter(it) })
             add(listOf(shift) + "wxcvbn".map { letter(it) } + text("'", popup = listOf("’", "\"", "«", "»")) + delete)

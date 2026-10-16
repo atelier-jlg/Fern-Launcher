@@ -111,6 +111,14 @@ class KeyboardController(private val service: InputMethodService) {
     var notice by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * La barre du haut a quelque chose à montrer (suggestions, code, texte copié, outils…).
+     * Sinon, avec l'option « rangée de chiffres », ce sont les chiffres qui prennent sa place.
+     */
+    val stripBusy: Boolean
+        get() = toolbar || inlineViews.isNotEmpty() || !strip.isEmpty ||
+            smsCode != null || clip != null || notice != null
+
     init {
         Memes.observe {
             memes = Memes.library.all
