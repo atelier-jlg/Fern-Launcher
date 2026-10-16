@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle de message avec trois points, pistache sur nuit (même style que l'icône de Fern). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/fern_pistache"
+        android:fillType="evenOdd"
+        android:pathData="M45,33 H63 A14,14 0 0 1 77,47 V53 A14,14 0 0 1 63,67 H47 L36,75 L38.5,64.5 A14,14 0 0 1 31,53 V47 A14,14 0 0 1 45,33 Z M43,50 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0 Z M54,50 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0 Z M65,50 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0 Z" />
+</vector>

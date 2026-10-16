@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond des suggestions de Proton Pass (dessinées par Android, pas par Compose) : pilule « lierre ». -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FF24402F" />
+    <corners android:radius="20dp" />
+</shape>

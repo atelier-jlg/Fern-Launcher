@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Volontairement AUCUNE permission Internet : le clavier voit tout ce que tu tapes,
+         il ne doit rien pouvoir envoyer nulle part. -->
+    <!-- Le petit « tic » au toucher des touches. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Optionnel (réglage « Noms de mes contacts ») : pour ne jamais « corriger » un prénom. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Dictée hors ligne (Whisper) : le son ne quitte jamais le téléphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Fern Messages prête le dernier code reçu par SMS. -->
+    <queries>
+        <package android:name="com.atelierjlg.fern.messages" />
+        <!-- Fern Launcher prête les stickers de Jules. -->
+        <package android:name="com.atelierjlg.fern" />
+        <!-- Envoi d'un meme vers l'appli ouverte (repli quand elle n'accepte pas les images du clavier). -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.FernApp">
+
+        <!-- L'écran de réglages (icône « Fern Clavier » dans le tiroir). -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Les memes prêtés à l'appli où l'on écrit, le temps de l'envoi. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.images"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/meme_files" />
+        </provider>
+
+        <!-- Le clavier lui-même : un « service de saisie » qu'Android affiche sous les champs de texte. -->
+        <service
+            android:name=".FernKeyboardService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>

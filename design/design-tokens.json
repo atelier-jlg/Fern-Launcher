@@ -1,0 +1,43 @@
+{
+  "_statut": "expérimental — valeurs de travail, susceptibles de changer",
+  "couleurs": {
+    "fond": { "nuit": "#14241B", "nuit_teal_propose": "#0E1A1A" },
+    "surface": { "mousse_carte": "#1E3427", "lierre_pilule": "#24402F", "sous_bois_separateur": "#2E4A38", "carte_teal_proposee": "#12201F", "separateur_teal_propose": "#2C4441" },
+    "texte": { "creme": "#EFE5CF", "grege": "#D9D3BE", "lichen": "#B5C2A5", "mousse_pale": "#7F9580" },
+    "accent": { "rose_carmin": "#EC9AA0", "carmin": "#8E2733", "carmin_profond": "#5A1520", "vert_foret": "#186348", "pistache": "#BFE3A3", "sauge": "#9DB384", "olive": "#56633C", "vert_sombre": "#35553F" }
+  },
+  "familles_icones": {
+    "communication_mail": { "plaque": "#186348", "trait": "#F6EEDC" },
+    "social": { "plaque": "#8E2733", "trait": "#F6EADB" },
+    "urgence": { "plaque": "#EC9AA0", "trait": "#5A1520" },
+    "organisation_travail_fichiers": { "plaque": "#EFE5CF", "trait": "#14241B" },
+    "argent_courses": { "plaque": "#BFE3A3", "trait": "#14241B" },
+    "admin_securite": { "plaque": "#35553F", "trait": "#F6EEDC" },
+    "photo_musique_loisirs": { "plaque": "#9DB384", "trait": "#14241B" },
+    "dehors_maison_web": { "plaque": "#56633C", "trait": "#F6EEDC" }
+  },
+  "typo": {
+    "famille": "Bricolage Grotesque (Google Fonts, OFL)",
+    "horloge": { "taille_sp": 92, "graisse": 800, "largeur": "75%" },
+    "titre_page": { "taille_sp": 58, "graisse": 800, "largeur": "75%" },
+    "titre_widget": { "taille_sp": 32, "graisse": 800, "largeur": "75%" },
+    "corps": { "taille_sp": 16, "graisse": 600 },
+    "libelle": { "taille_sp": 12, "graisse": 800, "capitales": true, "espacement": 1.6 },
+    "nom_app": { "taille_sp": 12, "graisse": 600 }
+  },
+  "dimensions_dp": {
+    "ecran": [412, 916], "grille": 4, "marge_ecran": 20, "gouttiere": 10,
+    "rayon_carte": 28, "rayon_vignette": 18, "cible_tactile_min": 44,
+    "plaque_icone": { "dock": 56, "pack": 54, "tiroir": 50 },
+    "dock": [372, 76], "pack_2x2": [181, 212],
+    "widgets": { "contexte": [372, 176], "musique": [372, 88], "ciel": [372, 88], "carnet": [372, 176], "alternance": [176, 176], "revisions": [176, 176] },
+    "bandeau_fond": { "accueil_pct_hauteur": 29, "pages_pct_hauteur": 21 }
+  },
+  "pages": {
+    "accueil": ["horloge+date+meteo", "widget_contexte", "widget_musique", "favoris: WhatsApp, Instagram, Curve, dossier Proton", "sticker chat"],
+    "journee": { "Organisation": ["Agenda", "Tâches", "Notes", "Obsidian"], "Travail": ["Claude", "Teams", "Miro", "Canva"], "Études": ["AnkiDroid", "NumWorks", "MJ PDF", "AIESB"] },
+    "pratique": { "Argent": ["N26", "Crédit Coop", "tricount", "dossier Titres"], "Déplacements": ["Naolib", "SNCF Connect", "Maps", "Météo-France"], "Courses": ["Magasin U", "Jow", "leboncoin", "dossier Services"], "Urgence": ["App-Elles", "StayingAlive"] },
+    "les_miens": ["mur de stickers", "widget_carnet"],
+    "dock": ["Fil · Appels", "Fil", "Signal", "Appareil photo", "tiroir"]
+  }
+}

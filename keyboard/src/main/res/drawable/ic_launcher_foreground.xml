@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une vague douce au-dessus de trois rangées de touches rondes, pistache sur nuit
+     (même style que les icônes de Fern, Messages et Contact). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- La vague -->
+    <path
+        android:strokeColor="@color/fern_pistache"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M33,40 C40,34 47,34 54,39 C61,44 68,44 75,38" />
+    <!-- Les touches : 4 + 3 + barre d'espace -->
+    <path
+        android:fillColor="@color/fern_pistache"
+        android:pathData="M36,51 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M48,51 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M60,51 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M72,51 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M42,62 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M54,62 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M66,62 m-3.6,0 a3.6,3.6 0 1 0 7.2,0 a3.6,3.6 0 1 0 -7.2,0 Z M42,70 H66 A3.5,3.5 0 0 1 66,77 H42 A3.5,3.5 0 0 1 42,70 Z" />
+</vector>

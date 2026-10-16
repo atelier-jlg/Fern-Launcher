@@ -1,0 +1,9 @@
+dico_fr.dat — dictionnaire de Fern Clavier (fabriqué par tools/build_dictionary.py)
+
+Sources :
+- FrequencyWords (Hermit Dave), fréquences OpenSubtitles 2018 — contenu sous licence CC BY-SA 4.0
+  https://github.com/hermitdave/FrequencyWords
+- an-array-of-french-words (Zeke Sikelianos) — licence MIT
+  https://github.com/words/an-array-of-french-words
+
+Le fichier dérivé dico_fr.dat est lui aussi distribué sous licence CC BY-SA 4.0.

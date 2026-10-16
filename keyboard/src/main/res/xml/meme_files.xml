@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les images prêtées à l'appli où l'on écrit (envoi d'un meme ou d'un sticker). -->
+<paths>
+    <files-path name="memes" path="memes/" />
+</paths>

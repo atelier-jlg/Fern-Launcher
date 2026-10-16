@@ -1,0 +1,488 @@
+package com.atelierjlg.fern.data
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+/*
+ * Toute la configuration de Fern, enregistrée dans un fichier JSON sur le téléphone.
+ *
+ * C'est l'équivalent d'un gros dictionnaire Python sauvegardé avec json.dump().
+ * `@Serializable` dit à Kotlin de savoir convertir la classe en JSON et inversement.
+ *
+ * Règle d'or : chaque champ a une valeur par défaut. Ainsi, quand on ajoute un champ
+ * dans une nouvelle version, l'ancien fichier se charge quand même.
+ */
+
+const val DOCK_SIZE = 4
+
+/** Version actuelle du format de configuration (2 = sans la tâche « Litière » par défaut). */
+const val CURRENT_SCHEMA = 2
+const val PACK_SIZE = 4
+
+@Serializable
+data class LauncherConfig(
+    /** Version du format, pour les petites conversions au chargement (voir `migrate()`). */
+    val schema: Int = CURRENT_SCHEMA,
+    /** false tant que la disposition de départ (packs de Jules) n'a pas été posée. */
+    val seeded: Boolean = false,
+    val spaces: List<Space> = listOf(Space()),
+    val activeSpaceId: String = DEFAULT_SPACE_ID,
+    /** Clés des applis cachées du tiroir et de la recherche. */
+    val hiddenApps: Set<String> = emptySet(),
+    /** Clé d'appli → nom choisi par Jules. */
+    val renamedApps: Map<String, String> = emptyMap(),
+    /** Clé d'appli → nombre de lancements (pour le tri par fréquence). */
+    val launchCounts: Map<String, Int> = emptyMap(),
+    val drawer: DrawerSettings = DrawerSettings(),
+    val search: SearchSettings = SearchSettings(),
+    val gestures: GestureSettings = GestureSettings(),
+    /** Le thème actif. */
+    val theme: NamedTheme = ThemePresets.EstampeNuit,
+    /** Les thèmes enregistrés par Jules (ou importés). */
+    val savedThemes: List<NamedTheme> = emptyList(),
+    /** Bascule automatique de Space selon l'heure. */
+    val spaceSchedule: SpaceSchedule = SpaceSchedule(),
+    val focus: FocusSettings = FocusSettings(),
+    val place: PlaceSettings = PlaceSettings(),
+    val icons: IconSettings = IconSettings(),
+    /** Familles choisies à la main (clé d'appli → famille) ; sinon classement automatique. */
+    val appFamilies: Map<String, Family> = emptyMap(),
+    /** Noms des familles choisis par Jules (sinon le nom du guide : « Social », « Argent & courses »…). */
+    val familyNames: Map<Family, String> = emptyMap(),
+    val alternance: AlternanceSettings = AlternanceSettings(),
+    val carnet: CarnetSettings = CarnetSettings(),
+    val cours: CoursSettings = CoursSettings(),
+    val chat: ChatSettings = ChatSettings(),
+    val pomodoro: PomodoroSettings = PomodoroSettings(),
+    val screenTime: ScreenTimeSettings = ScreenTimeSettings(),
+) {
+    val activeSpace: Space
+        get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.first()
+
+    /** Le thème réellement affiché : celui du Space s'il en a un, sinon le thème général. */
+    val effectiveTheme: NamedTheme
+        get() = activeSpace.theme ?: theme
+}
+
+/** Une règle de planning : ce Space, ces jours-là, de telle heure à telle heure. */
+@Serializable
+data class SpaceRule(
+    val id: String,
+    val spaceId: String,
+    /** Jours de la semaine, 1 = lundi … 7 = dimanche. */
+    val days: Set<Int> = (1..7).toSet(),
+    /** Minutes depuis minuit (8 h 30 = 510). Si fin < début, la règle passe minuit. */
+    val startMinute: Int = 8 * 60,
+    val endMinute: Int = 18 * 60,
+)
+
+@Serializable
+data class SpaceSchedule(
+    val enabled: Boolean = false,
+    val rules: List<SpaceRule> = emptyList(),
+)
+
+/** Mode Focus : certaines applis disparaissent tant qu'il est actif. */
+@Serializable
+data class FocusSettings(
+    val enabled: Boolean = false,
+    val blockedApps: Set<String> = emptySet(),
+)
+
+/**
+ * Un « Space » : un jeu complet de pages + dock (+ éventuellement son thème).
+ * Exemple : « Perso » et « Travail », avec bascule manuelle ou à heures fixes.
+ */
+@Serializable
+data class Space(
+    val id: String = DEFAULT_SPACE_ID,
+    val name: String = "Perso",
+    val pages: List<HomePage> = listOf(HomePage(id = "accueil", title = "Accueil", blocks = listOf(ClockBlock("horloge")))),
+    /** Les applis du dock (null = emplacement vide). */
+    val dock: List<String?> = List(DOCK_SIZE) { null },
+    /** Un thème propre à ce Space (null = le thème général). */
+    val theme: NamedTheme? = null,
+)
+
+@Serializable
+data class HomePage(
+    val id: String,
+    val title: String,
+    val blocks: List<HomeBlock> = emptyList(),
+    /** Stickers posés par-dessus, en placement libre. */
+    val stickers: List<Sticker> = emptyList(),
+)
+
+/** Un élément posé sur une page. `sealed` = la liste des types possibles est fermée. */
+@Serializable
+sealed class HomeBlock {
+    abstract val id: String
+}
+
+/** Horloge + date. */
+@Serializable
+@SerialName("horloge")
+data class ClockBlock(override val id: String) : HomeBlock()
+
+/** Une rangée de 4 applis sans carte (les favoris de l'accueil). */
+@Serializable
+@SerialName("rangee")
+data class AppRowBlock(
+    override val id: String,
+    val apps: List<String?> = List(PACK_SIZE) { null },
+) : HomeBlock()
+
+/** Un pack : une carte arrondie avec un titre et 4 applis en 2×2. */
+@Serializable
+@SerialName("pack")
+data class PackBlock(
+    override val id: String,
+    val title: String,
+    val apps: List<String?> = List(PACK_SIZE) { null },
+) : HomeBlock()
+
+/** Un widget Android d'une autre appli (météo, agenda…). */
+@Serializable
+@SerialName("widget")
+data class AppWidgetBlock(
+    override val id: String,
+    /** Numéro attribué par Android à ce widget. */
+    val appWidgetId: Int,
+    /** L'appli qui fournit le widget (pour l'afficher en mode édition). */
+    val provider: String,
+    val heightDp: Int = 180,
+    /** true = demi-largeur (2×2), à côté d'un autre élément. */
+    val half: Boolean = false,
+    /** Largeur en colonnes (1 à 4) choisie dans « Taille » ; 0 = selon `half`. */
+    val columns: Int = 0,
+) : HomeBlock()
+
+/** Widget maison « Ciel » : arc du soleil le jour, phase de lune la nuit. */
+@Serializable
+@SerialName("ciel")
+data class SkyBlock(override val id: String, val half: Boolean = false) : HomeBlock()
+
+/** Widget maison « Musique » : ce qui joue, pochette en deux tons carmin et rose. */
+@Serializable
+@SerialName("musique")
+data class MusicBlock(override val id: String, val half: Boolean = false) : HomeBlock()
+
+/** Widget maison « Contexte » : moment de la journée, prochain événement, note du jour. */
+@Serializable
+@SerialName("contexte")
+data class ContextBlock(override val id: String, val note: String = "", val half: Boolean = false) : HomeBlock()
+
+/**
+ * Un espace vide : pour laisser de l'air, une ligne vide, ou poser un sticker à côté d'un pack.
+ * Largeur en colonnes (1, 2 ou 4 sur 4), hauteur en dp.
+ */
+@Serializable
+@SerialName("espace")
+data class SpacerBlock(
+    override val id: String,
+    val span: Int = 2,
+    val heightDp: Int = 80,
+) : HomeBlock()
+
+/** Une appli seule (un quart de largeur), à placer où on veut. */
+@Serializable
+@SerialName("appli")
+data class AppBlock(
+    override val id: String,
+    val app: String? = null,
+) : HomeBlock()
+
+/**
+ * Un sticker posé librement sur une page (sans grille).
+ * Position du centre en fraction de la page (0 à 1), taille en dp, rotation en degrés.
+ */
+@Serializable
+data class Sticker(
+    val id: String,
+    /** Nom du fichier image dans le dossier privé `stickers/`. */
+    val file: String,
+    val x: Float = 0.5f,
+    val y: Float = 0.5f,
+    val sizeDp: Float = 140f,
+    val rotation: Float = 0f,
+)
+
+/** Widget « Alternance » : où je suis (école / entreprise), compte à rebours, frise des semaines. */
+@Serializable
+@SerialName("alternance")
+data class AlternanceBlock(override val id: String, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Révisions » : cartes AnkiDroid à réviser ; le lotus s'ouvre quand tout est fait. */
+@Serializable
+@SerialName("revisions")
+data class RevisionsBlock(override val id: String, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Carnet du jour » : humeur de la graine à la fleur, 3 habitudes, note vers Obsidian. */
+@Serializable
+@SerialName("carnet")
+data class CarnetBlock(override val id: String, val half: Boolean = false) : HomeBlock()
+
+/**
+ * Un pack « famille » : les 4 applis les plus lancées d'une famille (Social, Argent…).
+ * Toucher la carte ouvre toute la famille ; toucher une appli la lance.
+ */
+@Serializable
+@SerialName("famille")
+data class FamilyBlock(override val id: String, val family: Family) : HomeBlock()
+
+/** Les widgets maison de la v0.14 (un seul type de bloc, `kind` dit lequel). */
+@Serializable
+enum class MaisonKind(val label: String) {
+    Cours("Cours du jour"),
+    Chat("Le chat"),
+    Meteo("Météo"),
+    Plante("Plante"),
+    Pomodoro("Pomodoro"),
+    TempsEcran("Temps d'écran"),
+}
+
+@Serializable
+@SerialName("maison")
+data class MaisonBlock(override val id: String, val kind: MaisonKind, val half: Boolean = true) : HomeBlock()
+
+/** Widget « Cours du jour » : quels agendas lire, et quels mots signalent un examen. */
+@Serializable
+data class CoursSettings(
+    /**
+     * Lien de l'emploi du temps de l'école (.ics / webcal), lu directement par Fern.
+     * S'il est rempli, il remplace l'agenda Android pour ce widget.
+     */
+    val icsUrl: String = "",
+    /** Agendas Android à lire (ceux d'ICSx⁵ par exemple) ; vide = tous. */
+    val calendarIds: Set<Long> = emptySet(),
+    val examKeywords: List<String> = listOf("examen", "partiel", "ds", "controle", "soutenance", "oral", "qcm", "rendu"),
+)
+
+/** Les moments du chat ; « Content » = quand la 1re tâche (le repas) est cochée. */
+@Serializable
+enum class CatPose(val label: String) {
+    Jour("La journée"),
+    Matin("Le matin (7 h – 10 h)"),
+    Nuit("La nuit (22 h – 7 h)"),
+    Content("Nourri, content"),
+}
+
+/** Widget « Le chat » : son nom, ses images (facultatives) et les petites tâches du jour. */
+@Serializable
+data class ChatSettings(
+    val name: String = "Le chat",
+    /**
+     * Images ou animations de Jules (PNG, GIF ou WebP animé, dossier stickers/) pour chaque moment.
+     * Absente = le chat en pixel art dessiné par Fern (la nuit et le matin reprennent l'image du jour).
+     */
+    val images: Map<CatPose, String> = emptyMap(),
+    val chores: List<String> = listOf("Gamelle"),
+    /** Le rythme de chaque tâche (même ordre que `chores`) : la gamelle 2 fois par jour. */
+    val rules: List<ChoreRule> = listOf(ChoreRule(ChoreFreq.DeuxParJour)),
+    /**
+     * Période → tâches faites. Une « période » dépend du rythme de la tâche :
+     * « 2026-10-06-matin », « 2026-10-06-soir », « 2026-10-06 » ou « 2026-10-03-semaine ».
+     * Une nouvelle période = la case se décoche toute seule. On garde les 30 dernières.
+     */
+    val done: Map<String, Set<Int>> = emptyMap(),
+    /** Partage des cases avec un proche (ex. ta compagne), via un relais ntfy. */
+    val sync: ChatSync = ChatSync(),
+)
+
+/** À quel rythme une tâche du chat revient. */
+@Serializable
+enum class ChoreFreq(val label: String) {
+    DeuxParJour("2 fois par jour · remise à zéro à 0 h et 12 h"),
+    Quotidien("1 fois par jour · remise à zéro à 0 h"),
+    Hebdomadaire("1 fois par semaine"),
+}
+
+/** Le rythme d'une tâche. Pour une tâche hebdomadaire : le jour (1 = lundi … 7 = dimanche) et l'heure de remise à zéro. */
+@Serializable
+data class ChoreRule(
+    val freq: ChoreFreq = ChoreFreq.Quotidien,
+    val day: Int = 6,
+    val hour: Int = 18,
+)
+
+/** Un changement de case, envoyé à l'autre téléphone : ce jour-là, telle tâche, cochée ou non. */
+@Serializable
+data class ChatEvent(
+    /** La période (voir ChatSettings.done), ex. « 2026-10-06-soir ». */
+    val d: String,
+    /** Numéro de la tâche, et son nom (on retrouve la tâche par son nom si l'ordre diffère). */
+    val i: Int,
+    val n: String = "",
+    /** true = cochée. */
+    val v: Boolean,
+    /** Le téléphone qui l'a envoyé (pour ignorer nos propres messages). */
+    val from: String,
+)
+
+/**
+ * Le partage du widget Chat entre deux Fern. Les deux téléphones écoutent le même « sujet » ntfy
+ * (un nom secret tiré au hasard) : quand l'un coche, il publie le changement, l'autre le lit.
+ */
+@Serializable
+data class ChatSync(
+    val enabled: Boolean = false,
+    val server: String = "https://ntfy.sh",
+    /** Le code secret partagé (ex. fern-chat-k3v9…). */
+    val topic: String = "",
+    /** Dernier message lu (identifiant ntfy), pour ne relire que les nouveaux. */
+    val lastId: String = "",
+    /** Changements pas encore envoyés (pas de réseau) : renvoyés à la prochaine occasion. */
+    val pending: List<ChatEvent> = emptyList(),
+)
+
+@Serializable
+enum class PomodoroPhase { Arret, Travail, Pause }
+
+/** Minuteur Pomodoro : réglages + l'état en cours (gardé même si Fern est fermé). */
+@Serializable
+data class PomodoroSettings(
+    val workMinutes: Int = 25,
+    val breakMinutes: Int = 5,
+    /** Active le mode Focus pendant le travail, puis remet comme avant. */
+    val autoFocus: Boolean = true,
+    val phase: PomodoroPhase = PomodoroPhase.Arret,
+    /** Début et fin de la phase en cours (millisecondes depuis 1970). */
+    val startedAt: Long = 0,
+    val endsAt: Long = 0,
+    /** Le mode Focus était-il déjà actif avant le Pomodoro ? */
+    val focusBefore: Boolean = false,
+)
+
+/** Widget « Temps d'écran doux ». */
+@Serializable
+data class ScreenTimeSettings(
+    /** Un repère (pas une limite) pour la jauge, en minutes par jour. */
+    val goalMinutes: Int = 60,
+)
+
+@Serializable
+enum class AltType { Ecole, Entreprise, Mission }
+
+/** Une période d'alternance, dates au format ISO (2026-10-06), fin incluse. */
+@Serializable
+data class AltPeriod(val type: AltType, val start: String, val end: String)
+
+@Serializable
+data class AlternanceSettings(
+    val schoolName: String = "ESB",
+    val companyName: String = "VINCI",
+    /** Nom affiché pour la mission à l'international (3ᵉ type de période). */
+    val missionName: String = "Mission int.",
+    val periods: List<AltPeriod> = emptyList(),
+) {
+    /** Le nom à afficher pour un type de période (null = pas de période : « Pause »). */
+    fun nameOf(type: AltType?): String = when (type) {
+        AltType.Ecole -> schoolName
+        AltType.Entreprise -> companyName
+        AltType.Mission -> missionName
+        null -> "Pause"
+    }
+}
+
+/** Une journée du carnet : humeur (0 graine → 4 fleur épanouie), habitudes cochées, note. */
+@Serializable
+data class CarnetDay(
+    val mood: Int? = null,
+    val habits: Set<Int> = emptySet(),
+    val note: String = "",
+)
+
+@Serializable
+data class CarnetSettings(
+    val habits: List<String> = listOf("Bouger", "Lire", "Boire de l'eau"),
+    /** Coffre Obsidian (vide = le dernier ouvert) et dossier des notes du jour. */
+    val obsidianVault: String = "",
+    val obsidianFolder: String = "Carnet",
+    /** Jour (2026-10-06) → contenu. On garde les 90 derniers jours. */
+    val days: Map<String, CarnetDay> = emptyMap(),
+)
+
+/** Où se trouve Jules (pour le soleil, la lune et la météo). */
+@Serializable
+data class PlaceSettings(
+    val name: String = "Nantes",
+    val latitude: Double = 47.2184,
+    val longitude: Double = -1.5536,
+    /** Afficher la météo à côté de la date, sous l'horloge (demande Internet, via Open-Meteo). */
+    val weatherOnClock: Boolean = true,
+)
+
+@Serializable
+enum class DrawerStyle { Grille, Liste }
+
+@Serializable
+enum class DrawerSort { Alphabetique, Frequence, Familles }
+
+/** Réglages du tiroir. */
+@Serializable
+data class DrawerSettings(
+    val style: DrawerStyle = DrawerStyle.Grille,
+    val sort: DrawerSort = DrawerSort.Alphabetique,
+    /**
+     * Nombre de colonnes en mode grille (4 ou 5), réglable dans Paramètres → Tiroir.
+     * (Nouveau nom en v0.20 : l'ancien champ « columns » est ignoré, on repart sur 5.)
+     */
+    val gridColumns: Int = 5,
+    /** Ouvrir directement l'appli quand la recherche ne donne qu'un résultat. */
+    val autoLaunchSingleResult: Boolean = false,
+)
+
+/** Réglages de la recherche (glisser vers le bas). */
+@Serializable
+data class SearchSettings(
+    /** Adresse de recherche web ; %s est remplacé par le texte cherché. */
+    val webSearchUrl: String = "https://duckduckgo.com/?q=%s",
+    /** Navigateur à utiliser (null = Firefox s'il est installé, sinon le navigateur par défaut). */
+    val browserPackage: String? = null,
+    /** Chercher aussi dans les contacts, l'agenda, les raccourcis, et faire les calculs. */
+    val extended: Boolean = false,
+)
+
+/** Ce qu'un geste peut déclencher. */
+@Serializable
+enum class GestureAction(val label: String) {
+    Rien("Rien"),
+    Tiroir("Ouvrir le tiroir"),
+    Recherche("Ouvrir la recherche"),
+    Notifications("Ouvrir les notifications"),
+    ReglagesRapides("Ouvrir les réglages rapides"),
+    Verrouiller("Verrouiller l'écran"),
+    Edition("Mode édition"),
+    RoueRadiale("Roue d'applis"),
+    Appli("Ouvrir une appli"),
+    SpaceSuivant("Passer au Space suivant"),
+    Focus("Activer / couper le mode Focus"),
+}
+
+/** Un geste → une action (et l'appli si l'action est « Ouvrir une appli »). */
+@Serializable
+data class GestureBinding(val action: GestureAction, val appKey: String? = null)
+
+const val RADIAL_SIZE = 8
+
+/** Réglages des gestes de l'accueil. */
+@Serializable
+data class GestureSettings(
+    val swipeUp: GestureBinding = GestureBinding(GestureAction.Tiroir),
+    val swipeDown: GestureBinding = GestureBinding(GestureAction.Recherche),
+    val doubleTap: GestureBinding = GestureBinding(GestureAction.Verrouiller),
+    val longPress: GestureBinding = GestureBinding(GestureAction.Edition),
+    /** Les applis de la roue (jusqu'à 8). */
+    val radialApps: List<String?> = List(RADIAL_SIZE) { null },
+)
+
+const val DEFAULT_SPACE_ID = "perso"
+
+/** Les réglages JSON communs (lecture tolérante, écriture lisible). */
+val FernJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+    prettyPrint = true
+    classDiscriminator = "type"
+}

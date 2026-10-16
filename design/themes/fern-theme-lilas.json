@@ -1,0 +1,53 @@
+{
+  "fernTheme": 1,
+  "theme": {
+    "name": "Lilas",
+    "colors": {
+      "nuit": "#1E181F",
+      "mousse": "#2A232D",
+      "lierre": "#3A3240",
+      "sousBois": "#4A4250",
+      "creme": "#F3EFF6",
+      "lichen": "#BDB3C9",
+      "moussePale": "#85798F",
+      "roseCarmin": "#C9B6EE",
+      "carmin": "#7B5AA6",
+      "pistache": "#BFB2DB",
+      "vague": "#BFB2DB",
+      "families": {
+        "Communication": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Social": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Urgence": {
+          "plate": "#E3A9C2",
+          "trait": "#3A1C2C"
+        },
+        "Organisation": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Argent": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Loisirs": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Dehors": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        },
+        "Admin": {
+          "plate": "#BFB2DB",
+          "trait": "#F5F2F8"
+        }
+      }
+    }
+  }
+}

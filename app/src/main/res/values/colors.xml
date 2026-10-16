@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Seulement pour la fenêtre avant que Compose ne dessine, et pour l'icône.
+         Les vraies couleurs du thème sont dans ui/theme/FernColors.kt -->
+    <color name="nuit">#FF14241B</color>
+    <color name="pistache">#FFBFE3A3</color>
+</resources>
