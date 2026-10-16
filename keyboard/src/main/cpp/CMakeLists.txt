@@ -10,7 +10,6 @@ include(FetchContent)
 FetchContent_Declare(
     whispercpp
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.7.6.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 # Seulement la bibliothèque (pas d'exemples, de tests ni de serveur), en statique.
